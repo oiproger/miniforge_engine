@@ -1,0 +1,101 @@
+import { useEffect, useRef } from 'react'
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
+import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController.js'
+import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js'
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker.js?worker'
+
+Object.assign(self, { MonacoEnvironment: { getWorker: () => new EditorWorker() } })
+monaco.languages.register({ id: 'glsl' })
+monaco.languages.setMonarchTokensProvider('glsl', {
+  tokenizer: {
+    root: [
+      [/\/\/.*$/, 'comment'],
+      [/\b(?:uniform|varying|float|vec[234]|mat[234]|void|return|if|discard|const)\b/, 'keyword'],
+      [/\b\d+(\.\d+)?\b/, 'number'],
+    ],
+  },
+})
+const apiFields = [
+  'object',
+  'entity',
+  'params',
+  'time',
+  'input',
+  'physics',
+  'audio',
+  'scene',
+  'ui',
+  'platform',
+  'save',
+  'events',
+  't',
+]
+const callbacks = [
+  'onCreate',
+  'onStart',
+  'onUpdate',
+  'onFixedUpdate',
+  'onDestroy',
+  'onCollisionEnter',
+  'onTriggerEnter',
+  'onTriggerExit',
+  'onPointerClick',
+]
+monaco.languages.registerCompletionItemProvider('typescript', {
+  triggerCharacters: ['.'],
+  provideCompletionItems(model, position) {
+    const word = model.getWordUntilPosition(position)
+    const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn)
+    const before = model.getLineContent(position.lineNumber).slice(0, position.column - 1)
+    const values = /\bapi\.\w*$/.test(before) ? apiFields : callbacks
+    return {
+      suggestions: values.map((label) => ({
+        label,
+        kind: monaco.languages.CompletionItemKind.Property,
+        insertText: label,
+        range,
+      })),
+    }
+  },
+})
+export default function CodeEditor({
+  value,
+  language,
+  onChange,
+}: {
+  value: string
+  language: 'glsl' | 'typescript'
+  onChange: (s: string) => void
+}) {
+  const container = useRef<HTMLDivElement>(null),
+    callback = useRef(onChange),
+    initial = useRef(value),
+    instance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  callback.current = onChange
+  useEffect(() => {
+    if (!container.current) return
+    const model = monaco.editor.createModel(initial.current, language)
+    const editor = monaco.editor.create(container.current, {
+      model,
+      theme: 'vs-dark',
+      fontSize: 13,
+      automaticLayout: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      tabSize: 2,
+    })
+    const sub = editor.onDidChangeModelContent(() => callback.current(editor.getValue()))
+    instance.current = editor
+    return () => {
+      sub.dispose()
+      editor.dispose()
+      model.dispose()
+      instance.current = null
+    }
+  }, [language])
+  useEffect(() => {
+    const editor = instance.current
+    if (editor && value !== editor.getValue()) editor.setValue(value)
+  }, [value])
+  return <div ref={container} className="mf-code" />
+}

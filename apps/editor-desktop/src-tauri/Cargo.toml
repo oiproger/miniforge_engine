@@ -1,0 +1,18 @@
+[package]
+name = "miniforge"
+version = "0.1.0"
+edition = "2021"
+description = "Miniforge Engine native WebView host"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+rfd = { version = "0.15", optional = true, default-features = false, features = ["gtk3"] }
+
+[features]
+default = []
+editor = ["dep:rfd"]
+custom-protocol = ["tauri/custom-protocol"]

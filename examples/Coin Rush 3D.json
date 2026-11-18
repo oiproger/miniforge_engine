@@ -1,0 +1,7599 @@
+{
+  "version": 1,
+  "id": "coin-rush-3d",
+  "name": "Coin Rush 3D",
+  "activeScene": "meadow",
+  "scenes": [
+    {
+      "id": "meadow",
+      "name": "Meadow Island",
+      "environment": {
+        "background": "#202731",
+        "ambient": 1.5,
+        "exposure": 1,
+        "shadows": true
+      },
+      "entities": [
+        {
+          "id": "island",
+          "name": "Floating Island",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "island-Undercroft",
+          "name": "Undercroft",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -1.28,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              11.5,
+              0.95,
+              8.5
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-shale",
+              "segments": 8,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.43
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "island-Rock-ledge",
+          "name": "Rock ledge",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.77,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              12,
+              0.54,
+              9
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 8,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.47
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "island-Earth",
+          "name": "Earth",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.38,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              12.15,
+              0.35,
+              9.15
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-soil",
+              "segments": 8,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.48
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "island-Turf",
+          "name": "Turf",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.17,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              12.23,
+              0.28,
+              9.23
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-grass",
+              "segments": 8,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.494
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "island-Meadow",
+          "name": "Meadow",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.055,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              12.28,
+              0.11,
+              9.28
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-turf",
+              "segments": 8,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.5
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "island-Shelf-0",
+          "name": "Shelf 0",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -4.45,
+              -0.7,
+              1.4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              2.8600000000000003,
+              1.04,
+              2.275
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 7,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.34
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "island-Shelf-grass-0",
+          "name": "Shelf grass 0",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -4.45,
+              -0.18,
+              1.4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              2.9250000000000003,
+              0.19,
+              2.3400000000000003
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-grass",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "island-Shelf-1",
+          "name": "Shelf 1",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              4.4,
+              -0.7,
+              -1.35
+            ],
+            "rotation": [
+              0,
+              0.32,
+              0
+            ],
+            "scale": [
+              3.2560000000000002,
+              1.04,
+              2.59
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 7,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.34
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "island-Shelf-grass-1",
+          "name": "Shelf grass 1",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              4.4,
+              -0.18,
+              -1.35
+            ],
+            "rotation": [
+              0,
+              0.32,
+              0
+            ],
+            "scale": [
+              3.33,
+              0.19,
+              2.664
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-grass",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "island-Shelf-2",
+          "name": "Shelf 2",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.9,
+              -0.7,
+              -3.08
+            ],
+            "rotation": [
+              0,
+              0.64,
+              0
+            ],
+            "scale": [
+              2.9040000000000004,
+              1.04,
+              2.31
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 7,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.34
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "island-Shelf-grass-2",
+          "name": "Shelf grass 2",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.9,
+              -0.18,
+              -3.08
+            ],
+            "rotation": [
+              0,
+              0.64,
+              0
+            ],
+            "scale": [
+              2.97,
+              0.19,
+              2.3760000000000003
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-grass",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "island-Shelf-3",
+          "name": "Shelf 3",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2.1,
+              -0.7,
+              3.38
+            ],
+            "rotation": [
+              0,
+              0.96,
+              0
+            ],
+            "scale": [
+              2.508,
+              1.04,
+              1.9949999999999999
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 7,
+              "radiusTop": 0.5,
+              "radiusBottom": 0.34
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "island-Shelf-grass-3",
+          "name": "Shelf grass 3",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2.1,
+              -0.18,
+              3.38
+            ],
+            "rotation": [
+              0,
+              0.96,
+              0
+            ],
+            "scale": [
+              2.565,
+              0.19,
+              2.052
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-grass",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-0",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -4.8,
+              -0.85,
+              1.65
+            ],
+            "rotation": [
+              0.2,
+              0,
+              0.08
+            ],
+            "scale": [
+              1.65,
+              1,
+              1.25
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-shale"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-1",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -3.25,
+              -1.03,
+              3.05
+            ],
+            "rotation": [
+              0.2,
+              0.73,
+              0.08
+            ],
+            "scale": [
+              2.05,
+              1.27,
+              0.94
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-2",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.6,
+              -0.89,
+              3.82
+            ],
+            "rotation": [
+              0.2,
+              1.46,
+              0.08
+            ],
+            "scale": [
+              1.7,
+              1.06,
+              0.9
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-3",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0.35,
+              -1.03,
+              4.08
+            ],
+            "rotation": [
+              0.2,
+              2.19,
+              0.08
+            ],
+            "scale": [
+              1.3,
+              1.25,
+              0.75
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-shale"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-4",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2,
+              -0.95,
+              3.53
+            ],
+            "rotation": [
+              0.2,
+              2.92,
+              0.08
+            ],
+            "scale": [
+              1.85,
+              1.1,
+              1.05
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-5",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              3.5,
+              -0.9,
+              2.75
+            ],
+            "rotation": [
+              0.2,
+              3.65,
+              0.08
+            ],
+            "scale": [
+              1.75,
+              1.26,
+              0.95
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-6",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              4.75,
+              -0.82,
+              1.77
+            ],
+            "rotation": [
+              0.2,
+              4.38,
+              0.08
+            ],
+            "scale": [
+              1.5,
+              1.16,
+              1.2
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-shale"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-7",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              5.5,
+              -0.8,
+              0.32
+            ],
+            "rotation": [
+              0.2,
+              5.109999999999999,
+              0.08
+            ],
+            "scale": [
+              1.1,
+              1.32,
+              1.5
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "cliff-8",
+          "name": "Boulder",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              5.06,
+              -0.81,
+              -1.57
+            ],
+            "rotation": [
+              0.2,
+              5.84,
+              0.08
+            ],
+            "scale": [
+              1.32,
+              0.95,
+              1.2
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grove",
+          "name": "Pine Grove",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "pine-0",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              -3.62,
+              0,
+              -2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.33,
+              1.33,
+              1.33
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.6384,
+                1.995,
+                0.6384
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-0-Trunk",
+          "name": "Trunk",
+          "parent": "pine-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-0-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-0-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-0-Crown",
+          "name": "Crown",
+          "parent": "pine-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-1",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              -4.38,
+              0,
+              -0.83
+            ],
+            "rotation": [
+              0,
+              0.8,
+              0
+            ],
+            "scale": [
+              1.02,
+              1.02,
+              1.02
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.4896,
+                1.53,
+                0.4896
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-1-Trunk",
+          "name": "Trunk",
+          "parent": "pine-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-1-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-1-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-1-Crown",
+          "name": "Crown",
+          "parent": "pine-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-2",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.37,
+              0,
+              -3.01
+            ],
+            "rotation": [
+              0,
+              1.6,
+              0
+            ],
+            "scale": [
+              1.15,
+              1.15,
+              1.15
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.5519999999999999,
+                1.7249999999999999,
+                0.5519999999999999
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-2-Trunk",
+          "name": "Trunk",
+          "parent": "pine-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-2-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-2-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-2-Crown",
+          "name": "Crown",
+          "parent": "pine-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-3",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.7,
+              0,
+              -3.43
+            ],
+            "rotation": [
+              0,
+              2.4000000000000004,
+              0
+            ],
+            "scale": [
+              0.88,
+              0.88,
+              0.88
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.4224,
+                1.32,
+                0.4224
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-3-Trunk",
+          "name": "Trunk",
+          "parent": "pine-3",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-3-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-3",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-3-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-3",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-3-Crown",
+          "name": "Crown",
+          "parent": "pine-3",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-4",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              2,
+              0,
+              -2.76
+            ],
+            "rotation": [
+              0,
+              3.2,
+              0
+            ],
+            "scale": [
+              1.14,
+              1.14,
+              1.14
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.5471999999999999,
+                1.71,
+                0.5471999999999999
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-4-Trunk",
+          "name": "Trunk",
+          "parent": "pine-4",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-4-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-4",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-4-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-4",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-4-Crown",
+          "name": "Crown",
+          "parent": "pine-4",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-5",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              3.95,
+              0,
+              -1.9
+            ],
+            "rotation": [
+              0,
+              4,
+              0
+            ],
+            "scale": [
+              0.97,
+              0.97,
+              0.97
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.46559999999999996,
+                1.455,
+                0.46559999999999996
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-5-Trunk",
+          "name": "Trunk",
+          "parent": "pine-5",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-5-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-5",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-5-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-5",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-5-Crown",
+          "name": "Crown",
+          "parent": "pine-5",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-6",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              4.83,
+              0,
+              -0.85
+            ],
+            "rotation": [
+              0,
+              4.800000000000001,
+              0
+            ],
+            "scale": [
+              0.77,
+              0.77,
+              0.77
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.3696,
+                1.155,
+                0.3696
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-6-Trunk",
+          "name": "Trunk",
+          "parent": "pine-6",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-6-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-6",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-6-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-6",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-6-Crown",
+          "name": "Crown",
+          "parent": "pine-6",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-7",
+          "name": "Pine Tree",
+          "parent": "grove",
+          "active": true,
+          "transform": {
+            "position": [
+              -3.47,
+              0,
+              2.2
+            ],
+            "rotation": [
+              0,
+              5.6000000000000005,
+              0
+            ],
+            "scale": [
+              0.78,
+              0.78,
+              0.78
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.3744,
+                1.17,
+                0.3744
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-7-Trunk",
+          "name": "Trunk",
+          "parent": "pine-7",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.42,
+              0.8,
+              0.42
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-bark",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-7-Lower-boughs",
+          "name": "Lower boughs",
+          "parent": "pine-7",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.02,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.58,
+              1.42,
+              1.58
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-pine",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-7-Middle-boughs",
+          "name": "Middle boughs",
+          "parent": "pine-7",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.55,
+              0
+            ],
+            "rotation": [
+              0,
+              0.54,
+              0
+            ],
+            "scale": [
+              1.26,
+              1.28,
+              1.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-needles",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pine-7-Crown",
+          "name": "Crown",
+          "parent": "pine-7",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.06,
+              0
+            ],
+            "rotation": [
+              0,
+              0.25,
+              0
+            ],
+            "scale": [
+              0.89,
+              1.16,
+              0.89
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-tips",
+              "segments": 7
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "ruins",
+          "name": "Stone Ruins",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "rock-0",
+          "name": "Boulder",
+          "parent": "ruins",
+          "active": true,
+          "transform": {
+            "position": [
+              -3.78,
+              0.12299999999999998,
+              0.6
+            ],
+            "rotation": [
+              0.2,
+              0,
+              0.08
+            ],
+            "scale": [
+              1.1889999999999998,
+              0.82,
+              1.0495999999999999
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-limestone"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.7789999999999999,
+                0.82,
+                0.7871999999999999
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "rock-1",
+          "name": "Boulder",
+          "parent": "ruins",
+          "active": true,
+          "transform": {
+            "position": [
+              -4.47,
+              0.0705,
+              0.76
+            ],
+            "rotation": [
+              0.2,
+              1.28,
+              0.08
+            ],
+            "scale": [
+              0.6815,
+              0.47,
+              0.6016
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "rock-2",
+          "name": "Boulder",
+          "parent": "ruins",
+          "active": true,
+          "transform": {
+            "position": [
+              3.85,
+              0.11699999999999999,
+              0.42
+            ],
+            "rotation": [
+              0.2,
+              2.56,
+              0.08
+            ],
+            "scale": [
+              1.131,
+              0.78,
+              0.9984000000000001
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.741,
+                0.78,
+                0.7488
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "rock-3",
+          "name": "Boulder",
+          "parent": "ruins",
+          "active": true,
+          "transform": {
+            "position": [
+              4.32,
+              0.069,
+              0.84
+            ],
+            "rotation": [
+              0.2,
+              3.84,
+              0.08
+            ],
+            "scale": [
+              0.667,
+              0.46,
+              0.5888
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-limestone"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "rock-4",
+          "name": "Boulder",
+          "parent": "ruins",
+          "active": true,
+          "transform": {
+            "position": [
+              1.72,
+              0.06149999999999999,
+              -2
+            ],
+            "rotation": [
+              0.2,
+              5.12,
+              0.08
+            ],
+            "scale": [
+              0.5944999999999999,
+              0.41,
+              0.5247999999999999
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "rock-5",
+          "name": "Boulder",
+          "parent": "ruins",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.47,
+              0.054,
+              -1.73
+            ],
+            "rotation": [
+              0.2,
+              6.4,
+              0.08
+            ],
+            "scale": [
+              0.522,
+              0.36,
+              0.4608
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-0",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.28,
+              0.024,
+              3.43
+            ],
+            "rotation": [
+              0,
+              0.19,
+              0
+            ],
+            "scale": [
+              0.72,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-limestone",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-1",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.05,
+              0.024,
+              2.85
+            ],
+            "rotation": [
+              0,
+              0.6699999999999999,
+              0
+            ],
+            "scale": [
+              0.82,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-2",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.77,
+              0.024,
+              2.23
+            ],
+            "rotation": [
+              0,
+              1.15,
+              0
+            ],
+            "scale": [
+              0.72,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-limestone",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-3",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.48,
+              0.024,
+              1.53
+            ],
+            "rotation": [
+              0,
+              1.63,
+              0
+            ],
+            "scale": [
+              0.82,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-limestone",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-4",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.48,
+              0.024,
+              0.83
+            ],
+            "rotation": [
+              0,
+              2.11,
+              0
+            ],
+            "scale": [
+              0.72,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-5",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.11,
+              0.024,
+              0.2
+            ],
+            "rotation": [
+              0,
+              2.59,
+              0
+            ],
+            "scale": [
+              0.82,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-limestone",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-6",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0.42,
+              0.024,
+              -0.34
+            ],
+            "rotation": [
+              0,
+              3.07,
+              0
+            ],
+            "scale": [
+              0.72,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-limestone",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-7",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0.87,
+              0.024,
+              -0.87
+            ],
+            "rotation": [
+              0,
+              3.55,
+              0
+            ],
+            "scale": [
+              0.82,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-8",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              1.2,
+              0.024,
+              -1.44
+            ],
+            "rotation": [
+              0,
+              4.03,
+              0
+            ],
+            "scale": [
+              0.72,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-limestone",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "paver-9",
+          "name": "Path stone",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              1.48,
+              0.024,
+              -1.93
+            ],
+            "rotation": [
+              0,
+              4.510000000000001,
+              0
+            ],
+            "scale": [
+              0.82,
+              0.057,
+              0.39
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-limestone",
+              "segments": 6
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-0-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -4.12,
+              0.13,
+              1.65
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-0-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -4.048,
+              0.13,
+              1.71
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-0-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -3.976,
+              0.13,
+              1.65
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-1-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.45,
+              0.13,
+              2.9
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-1-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.378,
+              0.13,
+              2.96
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-1-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.306,
+              0.13,
+              2.9
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-2-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.07,
+              0.13,
+              0.43
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-2-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.9979999999999998,
+              0.13,
+              0.49
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-2-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.926,
+              0.13,
+              0.43
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-3-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -3.13,
+              0.13,
+              -0.7
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-3-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -3.058,
+              0.13,
+              -0.6399999999999999
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-3-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.9859999999999998,
+              0.13,
+              -0.7
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-4-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.52,
+              0.13,
+              -2.59
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-4-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.448,
+              0.13,
+              -2.53
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-4-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.3760000000000001,
+              0.13,
+              -2.59
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-5-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0.63,
+              0.13,
+              -2.96
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-5-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0.702,
+              0.13,
+              -2.9
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-5-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              0.774,
+              0.13,
+              -2.96
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-6-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2.97,
+              0.13,
+              -1.63
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-6-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              3.0420000000000003,
+              0.13,
+              -1.5699999999999998
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-6-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              3.1140000000000003,
+              0.13,
+              -1.63
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-7-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              4.72,
+              0.13,
+              0.19
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-7-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              4.792,
+              0.13,
+              0.25
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-7-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              4.864,
+              0.13,
+              0.19
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-8-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              3.19,
+              0.13,
+              1.85
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-8-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              3.262,
+              0.13,
+              1.9100000000000001
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-8-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              3.334,
+              0.13,
+              1.85
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-9-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              1.44,
+              0.13,
+              3.18
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-9-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              1.512,
+              0.13,
+              3.24
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-9-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              1.5839999999999999,
+              0.13,
+              3.18
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-10-0",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.43,
+              0.13,
+              3.71
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.28
+            ],
+            "scale": [
+              0.11,
+              0.28,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-10-1",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.358,
+              0.13,
+              3.77
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.11,
+              0.326,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-moss",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "grass-10-2",
+          "name": "Wild grass",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.28600000000000003,
+              0.13,
+              3.71
+            ],
+            "rotation": [
+              0,
+              0,
+              0.28
+            ],
+            "scale": [
+              0.11,
+              0.372,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-grass",
+              "segments": 3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pond",
+          "name": "Meadow Spring",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              1.7,
+              0,
+              2.86
+            ],
+            "rotation": [
+              0,
+              -0.25,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "pond-Shore",
+          "name": "Shore",
+          "parent": "pond",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.022,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              2.06,
+              0.058,
+              1.09
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-moss",
+              "segments": 8
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pond-Spring",
+          "name": "Spring",
+          "parent": "pond",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.053,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.85,
+              0.028,
+              0.93
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-pond",
+              "segments": 8
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pond-Reflection",
+          "name": "Reflection",
+          "parent": "pond",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.2,
+              0.075,
+              0.09
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.48,
+              0.014,
+              0.038
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-ripple"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pond-Ripple",
+          "name": "Ripple",
+          "parent": "pond",
+          "active": true,
+          "transform": {
+            "position": [
+              0.3,
+              0.075,
+              -0.1
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.27,
+              0.014,
+              0.032
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-ripple"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "spring-pebble",
+          "name": "Boulder",
+          "parent": "pond",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.73,
+              0.09,
+              -0.27
+            ],
+            "rotation": [
+              0.2,
+              0.6,
+              0.08
+            ],
+            "scale": [
+              0.35,
+              0.24,
+              0.28
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-limestone"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "spring-stone",
+          "name": "Boulder",
+          "parent": "pond",
+          "active": true,
+          "transform": {
+            "position": [
+              0.72,
+              0.1,
+              -0.16
+            ],
+            "rotation": [
+              0.2,
+              0.28,
+              0.08
+            ],
+            "scale": [
+              0.45,
+              0.28,
+              0.32
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-granite"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "trail-marker",
+          "name": "Trail Marker",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.94,
+              0,
+              2.43
+            ],
+            "rotation": [
+              0,
+              0.3,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "trail-marker-Pole",
+          "name": "Pole",
+          "parent": "trail-marker",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.31,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.085,
+              0.62,
+              0.085
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-bark"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "trail-marker-Board",
+          "name": "Board",
+          "parent": "trail-marker",
+          "active": true,
+          "transform": {
+            "position": [
+              0.03,
+              0.61,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.6,
+              0.23,
+              0.072
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-planks"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "trail-marker-Arrow",
+          "name": "Arrow",
+          "parent": "trail-marker",
+          "active": true,
+          "transform": {
+            "position": [
+              0.055,
+              0.62,
+              0.04
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.26,
+              0.028,
+              0.016
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-blossom"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower--2.82",
+          "name": "Wildflower",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.82,
+              0.105,
+              0.93
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.035,
+              0.21,
+              0.035
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-needles",
+              "segments": 4
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower--2.82-bud",
+          "name": "Bloom",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.82,
+              0.225,
+              0.93
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.14,
+              0.11,
+              0.13
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-blossom"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower--2.6",
+          "name": "Wildflower",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.6,
+              0.105,
+              1.05
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.035,
+              0.21,
+              0.035
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-needles",
+              "segments": 4
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower--2.6-bud",
+          "name": "Bloom",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.6,
+              0.225,
+              1.05
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.14,
+              0.11,
+              0.13
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-blossom"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower-2.79",
+          "name": "Wildflower",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2.79,
+              0.105,
+              2.07
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.035,
+              0.21,
+              0.035
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-needles",
+              "segments": 4
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower-2.79-bud",
+          "name": "Bloom",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2.79,
+              0.225,
+              2.07
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.14,
+              0.11,
+              0.13
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-petal"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower-2.98",
+          "name": "Wildflower",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2.98,
+              0.105,
+              1.99
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.035,
+              0.21,
+              0.035
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-needles",
+              "segments": 4
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower-2.98-bud",
+          "name": "Bloom",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              2.98,
+              0.225,
+              1.99
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.14,
+              0.11,
+              0.13
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-petal"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower--0.38",
+          "name": "Wildflower",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.38,
+              0.105,
+              -2.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.035,
+              0.21,
+              0.035
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-needles",
+              "segments": 4
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "flower--0.38-bud",
+          "name": "Bloom",
+          "parent": "island",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.38,
+              0.225,
+              -2.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.14,
+              0.11,
+              0.13
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "mat-blossom"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-group",
+          "name": "Supply Crates",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "crate-0",
+          "name": "Wooden Crate",
+          "parent": "crate-group",
+          "active": true,
+          "transform": {
+            "position": [
+              2.93,
+              0,
+              -0.83
+            ],
+            "rotation": [
+              0,
+              0.14,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.91,
+                1,
+                0.91
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-0-Box",
+          "name": "Box",
+          "parent": "crate-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.45,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.91,
+              0.9,
+              0.91
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-grain"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-0-Back-slats",
+          "name": "Back slats",
+          "parent": "crate-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              -0.461
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.74,
+              0.73,
+              0.03
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-0-Back-brace",
+          "name": "Back brace",
+          "parent": "crate-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              -0.481745
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.75
+            ],
+            "scale": [
+              0.12,
+              0.94,
+              0.052
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-straw"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-0-Front-slats",
+          "name": "Front slats",
+          "parent": "crate-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              0.461
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.74,
+              0.73,
+              0.03
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-0-Front-brace",
+          "name": "Front brace",
+          "parent": "crate-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              0.481745
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.75
+            ],
+            "scale": [
+              0.12,
+              0.94,
+              0.052
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-straw"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-0-Band-lower",
+          "name": "Band lower",
+          "parent": "crate-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.08,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.98,
+              0.12,
+              0.98
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-planks"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-0-Band-upper",
+          "name": "Band upper",
+          "parent": "crate-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.81,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.98,
+              0.12,
+              0.98
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-planks"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1",
+          "name": "Wooden Crate",
+          "parent": "crate-group",
+          "active": true,
+          "transform": {
+            "position": [
+              3.89,
+              0,
+              -0.99
+            ],
+            "rotation": [
+              0,
+              -0.07,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.91,
+                1,
+                0.91
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1-Box",
+          "name": "Box",
+          "parent": "crate-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.45,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.91,
+              0.9,
+              0.91
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-grain"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1-Back-slats",
+          "name": "Back slats",
+          "parent": "crate-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              -0.461
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.74,
+              0.73,
+              0.03
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1-Back-brace",
+          "name": "Back brace",
+          "parent": "crate-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              -0.481745
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.75
+            ],
+            "scale": [
+              0.12,
+              0.94,
+              0.052
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-straw"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1-Front-slats",
+          "name": "Front slats",
+          "parent": "crate-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              0.461
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.74,
+              0.73,
+              0.03
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1-Front-brace",
+          "name": "Front brace",
+          "parent": "crate-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              0.481745
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.75
+            ],
+            "scale": [
+              0.12,
+              0.94,
+              0.052
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-straw"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1-Band-lower",
+          "name": "Band lower",
+          "parent": "crate-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.08,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.98,
+              0.12,
+              0.98
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-planks"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-1-Band-upper",
+          "name": "Band upper",
+          "parent": "crate-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.81,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.98,
+              0.12,
+              0.98
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-planks"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2",
+          "name": "Wooden Crate",
+          "parent": "crate-group",
+          "active": true,
+          "transform": {
+            "position": [
+              3.41,
+              0.89,
+              -0.9
+            ],
+            "rotation": [
+              0,
+              0.07,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.91,
+                1,
+                0.91
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2-Box",
+          "name": "Box",
+          "parent": "crate-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.45,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.91,
+              0.9,
+              0.91
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-grain"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2-Back-slats",
+          "name": "Back slats",
+          "parent": "crate-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              -0.461
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.74,
+              0.73,
+              0.03
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2-Back-brace",
+          "name": "Back brace",
+          "parent": "crate-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              -0.481745
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.75
+            ],
+            "scale": [
+              0.12,
+              0.94,
+              0.052
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-straw"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2-Front-slats",
+          "name": "Front slats",
+          "parent": "crate-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              0.461
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.74,
+              0.73,
+              0.03
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2-Front-brace",
+          "name": "Front brace",
+          "parent": "crate-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.46,
+              0.481745
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.75
+            ],
+            "scale": [
+              0.12,
+              0.94,
+              0.052
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-straw"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2-Band-lower",
+          "name": "Band lower",
+          "parent": "crate-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.08,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.98,
+              0.12,
+              0.98
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-planks"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "crate-2-Band-upper",
+          "name": "Band upper",
+          "parent": "crate-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.81,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.98,
+              0.12,
+              0.98
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-planks"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coins",
+          "name": "Gold Coins",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "coin-0",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.52,
+              1.1
+            ],
+            "rotation": [
+              0,
+              0.4,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-0-Rim",
+          "name": "Rim",
+          "parent": "coin-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-0-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-0-Stamp",
+          "name": "Stamp",
+          "parent": "coin-0",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-1",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              1,
+              0.52,
+              1.5
+            ],
+            "rotation": [
+              0,
+              0.52,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-1-Rim",
+          "name": "Rim",
+          "parent": "coin-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-1-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-1-Stamp",
+          "name": "Stamp",
+          "parent": "coin-1",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-2",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              2.06,
+              0.52,
+              1.55
+            ],
+            "rotation": [
+              0,
+              0.64,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-2-Rim",
+          "name": "Rim",
+          "parent": "coin-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-2-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-2-Stamp",
+          "name": "Stamp",
+          "parent": "coin-2",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-3",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              2.7,
+              0.52,
+              0.74
+            ],
+            "rotation": [
+              0,
+              0.76,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-3-Rim",
+          "name": "Rim",
+          "parent": "coin-3",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-3-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-3",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-3-Stamp",
+          "name": "Stamp",
+          "parent": "coin-3",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-4",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              1.79,
+              0.52,
+              -0.26
+            ],
+            "rotation": [
+              0,
+              0.88,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-4-Rim",
+          "name": "Rim",
+          "parent": "coin-4",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-4-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-4",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-4-Stamp",
+          "name": "Stamp",
+          "parent": "coin-4",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-5",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              0.52,
+              0.52,
+              -1.16
+            ],
+            "rotation": [
+              0,
+              1,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-5-Rim",
+          "name": "Rim",
+          "parent": "coin-5",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-5-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-5",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-5-Stamp",
+          "name": "Stamp",
+          "parent": "coin-5",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-6",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.9,
+              0.52,
+              -1.56
+            ],
+            "rotation": [
+              0,
+              1.12,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-6-Rim",
+          "name": "Rim",
+          "parent": "coin-6",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-6-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-6",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-6-Stamp",
+          "name": "Stamp",
+          "parent": "coin-6",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-7",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.98,
+              0.52,
+              -0.69
+            ],
+            "rotation": [
+              0,
+              1.24,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-7-Rim",
+          "name": "Rim",
+          "parent": "coin-7",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-7-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-7",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-7-Stamp",
+          "name": "Stamp",
+          "parent": "coin-7",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-8",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              -2.31,
+              0.52,
+              0.59
+            ],
+            "rotation": [
+              0,
+              1.3599999999999999,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-8-Rim",
+          "name": "Rim",
+          "parent": "coin-8",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-8-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-8",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-8-Stamp",
+          "name": "Stamp",
+          "parent": "coin-8",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-9",
+          "name": "Gold Coin",
+          "parent": "coins",
+          "active": true,
+          "transform": {
+            "position": [
+              -1.58,
+              0.52,
+              1.56
+            ],
+            "rotation": [
+              0,
+              1.48,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.6
+              }
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "speed": 1.2,
+                "axis": "y"
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-9-Rim",
+          "name": "Rim",
+          "parent": "coin-9",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.13,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-rim",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-9-Minted-face",
+          "name": "Minted face",
+          "parent": "coin-9",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "scale": [
+              0.54,
+              0.147,
+              0.54
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-gold",
+              "segments": 12
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "coin-9-Stamp",
+          "name": "Stamp",
+          "parent": "coin-9",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.095,
+              0.27,
+              0.18
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-rim"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player",
+          "name": "Player",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              2.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "player",
+              "params": {
+                "speed": 3.4
+              }
+            },
+            {
+              "type": "collider",
+              "shape": "capsule",
+              "size": [
+                0.46,
+                0.96,
+                0.46
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Left-boot",
+          "name": "Left boot",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.13,
+              0.1,
+              0.055
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.17,
+              0.21,
+              0.25
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-leather"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Right-boot",
+          "name": "Right boot",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.13,
+              0.1,
+              0.055
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.17,
+              0.21,
+              0.25
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-leather"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Tunic",
+          "name": "Tunic",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.39,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.45,
+              0.43,
+              0.3
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-sea"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Satchel",
+          "name": "Satchel",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.45,
+              -0.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.29,
+              0.31,
+              0.14
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Scarf",
+          "name": "Scarf",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.63,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.13,
+              0.33
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-scarf"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Face",
+          "name": "Face",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.84,
+              0.035
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.38,
+              0.36,
+              0.34
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-skin"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Left-eye",
+          "name": "Left eye",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.088,
+              0.864,
+              0.208
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.043,
+              0.055,
+              0.022
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-hair"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Right-eye",
+          "name": "Right eye",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.088,
+              0.864,
+              0.208
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.043,
+              0.055,
+              0.022
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-hair"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Scarf-end",
+          "name": "Scarf end",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.137,
+              0.53,
+              0.17
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.23
+            ],
+            "scale": [
+              0.11,
+              0.21,
+              0.045
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-scarf"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Hair",
+          "name": "Hair",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.01,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.41,
+              0.12,
+              0.38
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-hair"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Cap",
+          "name": "Cap",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.025,
+              1.1,
+              -0.025
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.49,
+              0.15,
+              0.44
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-sea"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Brim",
+          "name": "Brim",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.045,
+              0.15
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.49,
+              0.055,
+              0.24
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-sea"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Left-hand",
+          "name": "Left hand",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.275,
+              0.4,
+              0.02
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.12,
+              0.3,
+              0.15
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-skin"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Right-hand",
+          "name": "Right hand",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.275,
+              0.4,
+              0.02
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.12,
+              0.3,
+              0.15
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-skin"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "camera",
+          "name": "Scene Camera",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              10,
+              10,
+              13
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "camera",
+              "projection": "orthographic",
+              "target": [
+                0,
+                0.35,
+                0
+              ],
+              "size": 13,
+              "zoom": 1,
+              "fov": 45
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "lights",
+          "name": "Lighting",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "sun",
+          "name": "Sun",
+          "parent": "lights",
+          "active": true,
+          "transform": {
+            "position": [
+              -4,
+              10,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "directional",
+              "color": "#fff2ce",
+              "intensity": 2.35
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "ambient",
+          "name": "Sky Light",
+          "parent": "lights",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "ambient",
+              "color": "#f1f8ff",
+              "intensity": 1.55
+            }
+          ],
+          "properties": {}
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "prefab-coin",
+      "type": "prefab",
+      "name": "Gold Coin",
+      "data": "[{\"id\":\"coin-0\",\"name\":\"Gold Coin\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0.52,0],\"rotation\":[0,0.4,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"behavior\",\"kind\":\"collectible\",\"params\":{\"value\":1,\"radius\":0.6}},{\"type\":\"behavior\",\"kind\":\"rotate\",\"params\":{\"speed\":1.2,\"axis\":\"y\"}}],\"properties\":{}},{\"id\":\"coin-0-Rim\",\"name\":\"Rim\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[1.5707963267948966,0,0],\"scale\":[0.66,0.13,0.66]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-rim\",\"segments\":12}],\"properties\":{}},{\"id\":\"coin-0-Minted-face\",\"name\":\"Minted face\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[1.5707963267948966,0,0],\"scale\":[0.54,0.147,0.54]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-gold\",\"segments\":12}],\"properties\":{}},{\"id\":\"coin-0-Stamp\",\"name\":\"Stamp\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[0.095,0.27,0.18]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-rim\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#ffbd39",
+        "icon": "coin",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-pine",
+      "type": "prefab",
+      "name": "Pine Tree",
+      "data": "[{\"id\":\"pine-0\",\"name\":\"Pine Tree\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1.33,1.33,1.33]},\"components\":[{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.6384,1.995,0.6384],\"trigger\":false}],\"properties\":{}},{\"id\":\"pine-0-Trunk\",\"name\":\"Trunk\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,0.4,0],\"rotation\":[0,0,0],\"scale\":[0.42,0.8,0.42]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-bark\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Lower-boughs\",\"name\":\"Lower boughs\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,1.02,0],\"rotation\":[0,0,0],\"scale\":[1.58,1.42,1.58]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-pine\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Middle-boughs\",\"name\":\"Middle boughs\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,1.55,0],\"rotation\":[0,0.54,0],\"scale\":[1.26,1.28,1.26]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-needles\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Crown\",\"name\":\"Crown\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,2.06,0],\"rotation\":[0,0.25,0],\"scale\":[0.89,1.16,0.89]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-tips\",\"segments\":7}],\"properties\":{}}]",
+      "properties": {
+        "color": "#53945f",
+        "icon": "pine",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-crate",
+      "type": "prefab",
+      "name": "Wooden Crate",
+      "data": "[{\"id\":\"crate-0\",\"name\":\"Wooden Crate\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0.14,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.91,1,0.91],\"trigger\":false}],\"properties\":{}},{\"id\":\"crate-0-Box\",\"name\":\"Box\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.45,0],\"rotation\":[0,0,0],\"scale\":[0.91,0.9,0.91]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-grain\"}],\"properties\":{}},{\"id\":\"crate-0-Back-slats\",\"name\":\"Back slats\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,-0.461],\"rotation\":[0,0,0],\"scale\":[0.74,0.73,0.03]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"crate-0-Back-brace\",\"name\":\"Back brace\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,-0.481745],\"rotation\":[0,0,-0.75],\"scale\":[0.12,0.94,0.052]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-straw\"}],\"properties\":{}},{\"id\":\"crate-0-Front-slats\",\"name\":\"Front slats\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,0.461],\"rotation\":[0,0,0],\"scale\":[0.74,0.73,0.03]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"crate-0-Front-brace\",\"name\":\"Front brace\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,0.481745],\"rotation\":[0,0,-0.75],\"scale\":[0.12,0.94,0.052]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-straw\"}],\"properties\":{}},{\"id\":\"crate-0-Band-lower\",\"name\":\"Band lower\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.08,0],\"rotation\":[0,0,0],\"scale\":[0.98,0.12,0.98]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-planks\"}],\"properties\":{}},{\"id\":\"crate-0-Band-upper\",\"name\":\"Band upper\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.81,0],\"rotation\":[0,0,0],\"scale\":[0.98,0.12,0.98]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-planks\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#bd884e",
+        "icon": "crate",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-rock",
+      "type": "prefab",
+      "name": "Boulder",
+      "data": "[{\"id\":\"rock-0\",\"name\":\"Boulder\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0.2,0,0.08],\"scale\":[1.1889999999999998,0.82,1.0495999999999999]},\"components\":[{\"type\":\"mesh\",\"shape\":\"icosahedron\",\"material\":\"mat-limestone\"},{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.7789999999999999,0.82,0.7871999999999999],\"trigger\":false}],\"properties\":{}}]",
+      "properties": {
+        "color": "#989a96",
+        "icon": "rock",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-player",
+      "type": "prefab",
+      "name": "Player",
+      "data": "[{\"id\":\"player\",\"name\":\"Player\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"behavior\",\"kind\":\"player\",\"params\":{\"speed\":3.4}},{\"type\":\"collider\",\"shape\":\"capsule\",\"size\":[0.46,0.96,0.46],\"trigger\":false}],\"properties\":{}},{\"id\":\"player-Left-boot\",\"name\":\"Left boot\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.13,0.1,0.055],\"rotation\":[0,0,0],\"scale\":[0.17,0.21,0.25]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-leather\"}],\"properties\":{}},{\"id\":\"player-Right-boot\",\"name\":\"Right boot\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.13,0.1,0.055],\"rotation\":[0,0,0],\"scale\":[0.17,0.21,0.25]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-leather\"}],\"properties\":{}},{\"id\":\"player-Tunic\",\"name\":\"Tunic\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.39,0],\"rotation\":[0,0,0],\"scale\":[0.45,0.43,0.3]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Satchel\",\"name\":\"Satchel\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.45,-0.2],\"rotation\":[0,0,0],\"scale\":[0.29,0.31,0.14]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"player-Scarf\",\"name\":\"Scarf\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.63,0],\"rotation\":[0,0,0],\"scale\":[0.43,0.13,0.33]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-scarf\"}],\"properties\":{}},{\"id\":\"player-Face\",\"name\":\"Face\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.84,0.035],\"rotation\":[0,0,0],\"scale\":[0.38,0.36,0.34]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}},{\"id\":\"player-Left-eye\",\"name\":\"Left eye\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.088,0.864,0.208],\"rotation\":[0,0,0],\"scale\":[0.043,0.055,0.022]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Right-eye\",\"name\":\"Right eye\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.088,0.864,0.208],\"rotation\":[0,0,0],\"scale\":[0.043,0.055,0.022]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Scarf-end\",\"name\":\"Scarf end\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.137,0.53,0.17],\"rotation\":[0,0,-0.23],\"scale\":[0.11,0.21,0.045]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-scarf\"}],\"properties\":{}},{\"id\":\"player-Hair\",\"name\":\"Hair\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,1.01,0],\"rotation\":[0,0,0],\"scale\":[0.41,0.12,0.38]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Cap\",\"name\":\"Cap\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.025,1.1,-0.025],\"rotation\":[0,0,0],\"scale\":[0.49,0.15,0.44]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Brim\",\"name\":\"Brim\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,1.045,0.15],\"rotation\":[0,0,0],\"scale\":[0.49,0.055,0.24]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Left-hand\",\"name\":\"Left hand\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.275,0.4,0.02],\"rotation\":[0,0,0],\"scale\":[0.12,0.3,0.15]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}},{\"id\":\"player-Right-hand\",\"name\":\"Right hand\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.275,0.4,0.02],\"rotation\":[0,0,0],\"scale\":[0.12,0.3,0.15]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#4096a2",
+        "icon": "player",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-tile",
+      "type": "prefab",
+      "name": "Grass Tile",
+      "data": "[{\"id\":\"grass-tile\",\"name\":\"Grass Tile\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1,0.2,1]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-turf\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#93c85c",
+        "icon": "tile",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "default-material",
+      "name": "Porcelain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d9dfdf",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-turf",
+      "name": "Meadow",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#93c85c",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grass",
+      "name": "Grass",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#74ab51",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-moss",
+      "name": "Moss",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c0d76d",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-soil",
+      "name": "Soil",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#99714e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-shale",
+      "name": "Cliff stone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#716f72",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-granite",
+      "name": "Granite",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#989a96",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-slate",
+      "name": "Slate",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#626973",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-limestone",
+      "name": "Limestone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c7c5af",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pine",
+      "name": "Pine",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#38755a",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-needles",
+      "name": "Needles",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#53945f",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-tips",
+      "name": "Tips",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#75ac67",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-bark",
+      "name": "Bark",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#896544",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-timber",
+      "name": "Pine wood",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#bd884e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-planks",
+      "name": "Planks",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d4a360",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grain",
+      "name": "Grain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a27146",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-straw",
+      "name": "Straw",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e5b978",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-gold",
+      "name": "Coin gold",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffbd39",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-rim",
+      "name": "Rim",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffe779",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-amber",
+      "name": "Amber",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e28a23",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-sea",
+      "name": "Tunic",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#4096a2",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pond",
+      "name": "Pond",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#66bac1",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-ripple",
+      "name": "Ripple",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a6e3d5",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-blossom",
+      "name": "Blossom",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#fff1ca",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-petal",
+      "name": "Petal",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#efb873",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-scarf",
+      "name": "Scarf",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ef8041",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-leather",
+      "name": "Leather",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#6a473b",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-skin",
+      "name": "Skin",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e6b088",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-hair",
+      "name": "Hair",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#593d32",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    }
+  ],
+  "ui": [],
+  "locales": {
+    "en": {
+      "menu.play": "Play",
+      "menu.resume": "Resume",
+      "menu.retry": "Try again",
+      "menu.pause": "Pause",
+      "menu.results": "Results",
+      "hud.score": "Coins",
+      "hud.time": "Time",
+      "hud.best": "Personal best",
+      "menu.reward": "Watch ad · +15 seconds",
+      "menu.controls": "Move with WASD, arrow keys or the touch stick."
+    },
+    "ru": {
+      "menu.play": "Играть",
+      "menu.resume": "Продолжить",
+      "menu.retry": "Ещё раз",
+      "menu.pause": "Пауза",
+      "menu.results": "Результаты",
+      "hud.score": "Монеты",
+      "hud.time": "Время",
+      "hud.best": "Рекорд",
+      "menu.reward": "Реклама · +15 секунд",
+      "menu.controls": "Управление — WASD, стрелки или экранный джойстик."
+    }
+  },
+  "settings": {
+    "duration": 60,
+    "language": "en",
+    "mode": "collectathon",
+    "bounds": [
+      -3.8,
+      3.8,
+      -2.55,
+      2.86
+    ],
+    "sound": true
+  }
+}

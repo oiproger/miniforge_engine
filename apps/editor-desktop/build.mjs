@@ -1,0 +1,19 @@
+import { existsSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+
+const directory = dirname(fileURLToPath(import.meta.url));
+const root = resolve(directory, '../..');
+const [mode = 'editor', gameDirectory = 'dist/games/web'] = process.argv.slice(2);
+if (!['editor', 'game'].includes(mode)) throw new Error('Use editor or game [web-build-directory].');
+if (!['linux', 'win32'].includes(process.platform)) throw new Error('Build on Linux or Windows.');
+const cli = join(root, 'node_modules/@tauri-apps/cli/tauri.js');
+const frontendDist = resolve(root, mode === 'editor' ? 'dist/editor' : gameDirectory);
+if (!existsSync(join(frontendDist, 'index.html'))) throw new Error('Build the editor or export the Web Standalone game before packaging: ' + frontendDist);
+const args = [cli, 'build', '--bundles', process.platform === 'linux' ? 'deb' : 'nsis'];
+if (mode === 'editor') args.push('--features', 'editor');
+else args.push('--config', 'src-tauri/game.conf.json', '--config', JSON.stringify({build:{frontendDist}}));
+const child = spawnSync(process.execPath, args, {cwd: directory, stdio:'inherit'});
+if (child.error) throw child.error;
+process.exit(child.status ?? 1);
