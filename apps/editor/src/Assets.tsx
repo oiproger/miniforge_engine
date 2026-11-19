@@ -36,11 +36,13 @@ export default function Assets({
     'All assets': [],
     Prefabs: ['prefab'],
     Materials: ['material', 'shader'],
+    Textures: ['texture'],
     Particles: ['particle'],
+    'HTML UI': ['html'],
     Skyboxes: ['skybox'],
     Scripts: ['script'],
     Models: ['model'],
-    Media: ['texture', 'audio', 'json', 'text'],
+    Media: ['audio', 'json', 'text'],
   }
   const filtered = project.assets.filter(
     (a) =>
@@ -115,6 +117,12 @@ export default function Assets({
                       ? editAsset('new-material')
                       : folder === 'Particles'
                         ? editAsset('new-particle')
+                        : folder === 'HTML UI'
+                          ? editAsset('new-html')
+                          : folder === 'Textures'
+                            ? editAsset('new-texture')
+                            : folder === 'Prefabs'
+                              ? editAsset('new-prefab')
                         : importFiles()
                 }
               >

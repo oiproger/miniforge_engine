@@ -15,10 +15,15 @@ import {
   Import,
   Download,
 } from 'lucide-react'
-import { getScene, uid, makeMaterial, makeParticleAsset, type Asset, type Project, type TouchControlConfig } from '../../../packages/project-schema/src'
+import { getScene, uid, makeMaterial, makeParticleAsset, makeHtmlAsset, makeEntity, applyAutoStaticBatching, type Asset, type Project, type TouchControlConfig } from '../../../packages/project-schema/src'
 import InterfaceForm from './HudEditor'
 import { Field, Numeric, Color } from './Fields'
 import { ParticleEditor } from './ParticleEditor'
+import { HtmlEditor } from './HtmlEditor'
+import { PrefabEditor } from './PrefabEditor'
+import { ModelEditor } from './ModelEditor'
+import { downloadAssetFile } from './io'
+import { TextureGenerator, defaultProceduralTexture, renderProceduralTextureDataUrl } from './TextureGenerator'
 import { DEFAULT_TOUCH_CONTROLS } from '../../../packages/runtime/src/touch'
 import { defaultScript, AssetSelect } from './Inspector'
 import { shaders, checkShader } from './shaderTemplates'
@@ -635,6 +640,113 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
           )
         })()}
       </SettingsGroup>
+
+      <SettingsGroup title="Performance & Optimization">
+        {(() => {
+          const perf = p.settings.performance || {}
+          const activeScene = getScene(p)
+          const batchedCount = activeScene.entities.filter((e) => e.properties.staticBatch === true).length
+          const patchPerf = (k: string, v: unknown) =>
+            edit((n) => {
+              n.settings.performance = { ...(n.settings.performance || {}), [k]: v }
+            })
+          return (
+            <>
+              <div className="mf-form-grid">
+                <Field label="Static Mesh Batching">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(perf.staticBatching)}
+                    onChange={(e) => {
+                      const on = e.target.checked
+                      edit((n) => {
+                        n.settings.performance = { ...(n.settings.performance || {}), staticBatching: on }
+                        if (on) {
+                          for (const sc of n.scenes) applyAutoStaticBatching(sc, false)
+                        }
+                      })
+                    }}
+                  />
+                </Field>
+                <Field label="Resolution scale">
+                  <Numeric
+                    label="Resolution scale"
+                    value={perf.resolutionScale ?? 1}
+                    min={0.4}
+                    max={1}
+                    step={0.05}
+                    change={(v) => patchPerf('resolutionScale', v)}
+                  />
+                </Field>
+                <Field label="Light cull dist (m)">
+                  <Numeric
+                    label="Light cull distance"
+                    value={perf.lightCullDistance ?? 45}
+                    min={0}
+                    max={250}
+                    step={5}
+                    change={(v) => patchPerf('lightCullDistance', v)}
+                  />
+                </Field>
+                <Field label="Particle cull dist (m)">
+                  <Numeric
+                    label="Particle cull distance"
+                    value={perf.particleCullDistance ?? 40}
+                    min={0}
+                    max={250}
+                    step={5}
+                    change={(v) => patchPerf('particleCullDistance', v)}
+                  />
+                </Field>
+                <Field label="Object cull dist (m)">
+                  <Numeric
+                    label="Global cull distance"
+                    value={perf.cullDistance ?? 0}
+                    min={0}
+                    max={300}
+                    step={5}
+                    change={(v) => patchPerf('cullDistance', v)}
+                  />
+                </Field>
+                <Field label="Animation throttling">
+                  <input
+                    type="checkbox"
+                    checked={perf.animationThrottle !== false}
+                    onChange={(e) => patchPerf('animationThrottle', e.target.checked)}
+                  />
+                </Field>
+              </div>
+              <div className="mf-row" style={{ gap: 6, marginTop: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="mf-btn"
+                  onClick={() =>
+                    edit((n) => {
+                      applyAutoStaticBatching(getScene(n), true)
+                    })
+                  }
+                >
+                  Auto-mark static objects
+                </button>
+                <button
+                  type="button"
+                  className="mf-btn"
+                  onClick={() =>
+                    edit((n) => {
+                      for (const e of getScene(n).entities) e.properties.staticBatch = false
+                    })
+                  }
+                >
+                  Clear static flags
+                </button>
+                <small style={{ marginLeft: 'auto', opacity: 0.78 }}>
+                  Marked Static: {batchedCount} / {activeScene.entities.length}
+                </small>
+              </div>
+            </>
+          )
+        })()}
+      </SettingsGroup>
     </>
   )
 }
@@ -1041,10 +1153,12 @@ export function Authoring(props: AuthoringProps) {
 }
 function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: AuthoringProps) {
   const [p, set] = useState(() => structuredClone(project))
+  const [subAssetId, setSubAssetId] = useState<string | null>(null)
   const [newId] = useState(() => uid('asset'))
   const [vertex, setVertex] = useState(false),
     [error, fail] = useState('')
-  const id = target.startsWith('new-') ? newId : target
+  const activeTarget = subAssetId || target
+  const id = activeTarget.startsWith('new-') ? newId : activeTarget
   const a = p.assets.find((a) => a.id === id)
   const edit: Edit = (fn) =>
     set((old) => {
@@ -1060,7 +1174,28 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
         ? makeMaterial('New material', '#78aca0', id)
         : type === 'particle'
           ? makeParticleAsset('New Particles', 'steam', id)
-          : {
+          : type === 'html'
+            ? makeHtmlAsset('New Widget.html', 'phone', id)
+            : type === 'texture'
+              ? (() => {
+                  const cfg = defaultProceduralTexture()
+                  return {
+                    id,
+                    name: 'Procedural Texture.png',
+                    type: 'texture' as const,
+                    data: renderProceduralTextureDataUrl(cfg),
+                    properties: { procedural: cfg, isNormalMap: false },
+                  }
+                })()
+              : type === 'prefab'
+                ? {
+                    id,
+                    name: 'New Prefab',
+                    type: 'prefab' as const,
+                    data: JSON.stringify([makeEntity('New Prefab', 'box')]),
+                    properties: {},
+                  }
+                : {
             id,
             type: type === 'shader' ? 'shader' : 'script',
             name: type === 'shader' ? 'New shader.glsl' : 'New script.ts',
@@ -1111,7 +1246,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
   const name =
     target === 'settings'
       ? 'Project settings'
-      : target === 'ui'
+      : activeTarget === 'ui'
         ? 'Game interface'
         : target === 'locales'
           ? 'Localization'
@@ -1119,6 +1254,12 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
             ? 'Material editor'
             : a?.type === 'particle'
               ? '3D Particle Editor'
+              : a?.type === 'html'
+                ? 'HTML / CSS / JS Widget Studio'
+                : a?.type === 'texture'
+                  ? 'Procedural Texture Generator'
+                  : a?.type === 'prefab'
+                    ? 'Prefab Editor'
             : a?.type === 'shader'
               ? 'Shader editor'
               : a?.type === 'script'
@@ -1127,7 +1268,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
   const Icon =
     target === 'settings'
       ? SlidersHorizontal
-      : target === 'ui'
+      : activeTarget === 'ui'
         ? Monitor
         : target === 'locales'
           ? Languages
@@ -1156,7 +1297,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
       }}
     >
       <div
-        className={target === 'ui' ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
+        className={activeTarget === 'ui' ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={name}
@@ -1172,7 +1313,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
         </header>
         <div className="mf-dialog-body">
           {target === 'settings' && <Settings p={p} edit={edit} />}{' '}
-          {target === 'ui' && <InterfaceForm p={p} edit={edit} focusUiId={focusUiId} />}{' '}
+          {activeTarget === 'ui' && <InterfaceForm p={p} edit={edit} focusUiId={focusUiId} onEditAsset={(aid: string) => setSubAssetId(aid)} />}{' '}
           {target === 'locales' && <LocalesForm p={p} edit={edit} fail={fail} />}
           {a && (
             <>
@@ -1184,6 +1325,18 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
               )}
               {a.type === 'particle' && (
                 <ParticleEditor p={p} a={a} patch={(k, v) => changeA((a) => (a.properties[k] = v))} />
+              )}
+              {a.type === 'html' && (
+                <>
+                  {subAssetId && (
+                    <div style={{ marginBottom: 8 }}>
+                      <button type="button" className="mf-btn" onClick={() => setSubAssetId(null)}>
+                        ← Back to HUD Editor
+                      </button>
+                    </div>
+                  )}
+                  <HtmlEditor a={a} changeA={changeA} />
+                </>
               )}
               {a.type === 'material' && (
                 <MaterialForm p={p} a={a} edit={edit} patch={(k, v) => changeA((a) => (a.properties[k] = v))} />
@@ -1230,15 +1383,42 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                   />
                 </Suspense>
               )}
-              {a.type === 'texture' && <img className="mf-image" alt={a.name} src={a.data} />}
+              {a.type === 'texture' && (
+                a.properties?.procedural ? (
+                  <TextureGenerator a={a} changeA={changeA} edit={edit} />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <img className="mf-image" alt={a.name} src={a.data} />
+                    <button
+                      type="button"
+                      className="mf-btn"
+                      style={{ alignSelf: 'flex-start' }}
+                      onClick={() =>
+                        changeA((asset) => {
+                          const cfg = defaultProceduralTexture()
+                          asset.properties = { ...(asset.properties || {}), procedural: cfg }
+                          asset.data = renderProceduralTextureDataUrl(cfg)
+                        })
+                      }
+                    >
+                      Convert to Procedural Texture Generator
+                    </button>
+                  </div>
+                )
+              )}
               {a.type === 'audio' && <audio controls src={a.data} />}
-              {['json', 'prefab'].includes(a.type) && (
+              {a.type === 'prefab' && <PrefabEditor a={a} p={p} changeA={changeA} edit={edit} />}
+              {a.type === 'json' && (
                 <pre className="mf-readonly">{JSON.stringify(JSON.parse(a.data || '{}'), null, 2)}</pre>
               )}
               {a.type === 'model' && (
-                <p className="mf-help">
-                  Use a Mesh Renderer with imported geometry to place this model in the scene.
-                </p>
+                <ModelEditor
+                  a={a}
+                  p={p}
+                  changeA={changeA}
+                  edit={edit}
+                  onDownload={() => void downloadAssetFile(a)}
+                />
               )}
             </>
           )}

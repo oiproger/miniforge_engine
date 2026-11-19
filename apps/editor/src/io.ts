@@ -137,3 +137,30 @@ export async function dataUrl(file: File) {
     reader.readAsDataURL(file)
   })
 }
+
+
+export function isDesktopApp(): boolean {
+  return Boolean(tauriInvoke())
+}
+
+export async function convertModelViaDesktop(name: string, bytes: Uint8Array): Promise<Uint8Array> {
+  const invoke = tauriInvoke()
+  if (!invoke) throw new Error('DESKTOP_REQUIRED')
+  const out = (await invoke('convert_model_to_glb', { name, bytes: Array.from(bytes) })) as number[]
+  return new Uint8Array(out)
+}
+
+export async function downloadAssetFile(asset: { name: string; type: string; data: string }) {
+  let blob: Blob
+  let filename = asset.name || 'asset'
+  if (asset.data.startsWith('data:')) {
+    const res = await fetch(asset.data)
+    blob = await res.blob()
+  } else {
+    blob = new Blob([asset.data], { type: 'text/plain;charset=utf-8' })
+  }
+  if (asset.type === 'model' && !/\.(glb|gltf)$/i.test(filename)) {
+    filename = filename.replace(/\.[^.]+$/, '') + '.glb'
+  }
+  return download(blob, filename)
+}

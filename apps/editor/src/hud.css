@@ -326,3 +326,5 @@
 .hud-grid-box { position:absolute; border:1px solid #707878; }
 .hud-grid-box.selected { outline:2px solid #b4e683; }
 .mf-hud-dialog .hud-grid-box button.hud-item { touch-action: pan-y; cursor: pointer; }
+
+.hud-item.html { background: transparent !important; padding: 0 !important; }

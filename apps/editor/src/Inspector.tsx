@@ -36,6 +36,7 @@ import {
   getScene,
   uid,
   makePrefab,
+  updatePrefabFromEntity,
   makeParticleAsset,
   PARTICLE_PRESETS,
   makeNavZone,
@@ -757,16 +758,37 @@ export function Inspector({
                   {num('Range', 'range', 12, 0.5, 100, 0.5)}
                   {num('Fog glow', 'glow', 0, 0, 5, 0.05)}
                   {num('Glow falloff', 'glowFalloff', 1, 0.1, 8, 0.1)}
-                  {num('Light flare', 'flare', 0, 0, 5, 0.1)}
                 </>
               )}
-              {(c.kind === 'point' || c.kind === 'spot') && link('Gel texture (Gobo)', 'texture', 'gel')}
+              {c.kind !== 'ambient' && (
+                <>
+                  {num('Lens flare', 'flare', 0, 0, 5, 0.1)}
+                  <Field label="Sun rays (God rays)">
+                    <input type="checkbox" checked={Boolean(c.sunRays)} onChange={(e) => prop('sunRays', e.target.checked)} />
+                  </Field>
+                  {c.sunRays && (
+                    <>
+                      {num('Sun ray intensity', 'sunRayIntensity', 0.75, 0.05, 2, 0.05)}
+                      {num('Sun ray decay', 'sunRayDecay', 0.94, 0.82, 0.99, 0.01)}
+                    </>
+                  )}
+                </>
+              )}
               {c.kind === 'spot' && (
                 <>
                   {num('Cone angle (rad)', 'angle', 0.6, 0.05, 1.5, 0.05)}
                   {num('Cone softness', 'coneSoftness', 0.25, 0, 1, 0.05)}
                   <Field label="Cast shadow (active)">
                     <input type="checkbox" checked={Boolean(c.castShadow)} onChange={(e) => prop('castShadow', e.target.checked)} />
+                  </Field>
+                  <Field label="Gel texture (Gobo)">
+                    <AssetSelect
+                      label="Gel texture (Gobo)"
+                      assets={project.assets}
+                      type="texture"
+                      value={c.gel || ''}
+                      change={(id) => patch(i, { gel: id, castShadow: id ? true : c.castShadow })}
+                    />
                   </Field>
                 </>
               )}
@@ -1016,6 +1038,68 @@ export function Inspector({
                 }}
               />
             </Field>
+            <Field label="Static (Batch)">
+              <input
+                type="checkbox"
+                aria-label="Static batching"
+                title="Combine this static mesh with other static meshes sharing the same material at runtime"
+                checked={Boolean(entity.properties.staticBatch)}
+                onChange={(e) =>
+                  editEntity((obj) => {
+                    obj.properties.staticBatch = e.target.checked
+                  })
+                }
+              />
+            </Field>
+            <Field label="Cull distance (m)">
+              <Numeric
+                label="Entity cull distance"
+                value={entity.properties.cullDistance ?? 0}
+                min={0}
+                max={300}
+                step={5}
+                change={(v) =>
+                  editEntity((obj) => {
+                    obj.properties.cullDistance = v > 0 ? v : undefined
+                  })
+                }
+              />
+            </Field>
+            {entity.properties.prefabId && (
+              <div style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(88, 216, 255, 0.08)', border: '1px solid rgba(88, 216, 255, 0.28)', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <small style={{ color: '#8ee6ff', fontWeight: 600 }}>
+                  Live Prefab: {asset(entity.properties.prefabId)?.name || entity.properties.prefabId}
+                </small>
+                <div className="mf-row" style={{ gap: 5, flexWrap: 'wrap' }}>
+                  <button type="button" className="mf-btn" onClick={() => onEditAsset?.(entity.properties.prefabId)}>
+                    Edit Prefab
+                  </button>
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    onClick={() => {
+                      edit((p) => {
+                        updatePrefabFromEntity(p, entity.id)
+                      })
+                      setFeedback(entity.id)
+                    }}
+                  >
+                    Apply &amp; Sync All
+                  </button>
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    onClick={() =>
+                      editEntity((obj) => {
+                        delete obj.properties.prefabId
+                      })
+                    }
+                  >
+                    Unlink
+                  </button>
+                </div>
+              </div>
+            )}
             {(['position', 'rotation', 'scale'] as const).map((key) => (
               <div className="mf-transform" key={key}>
                 <span>{titleCase(key)}</span>

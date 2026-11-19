@@ -1,4 +1,6 @@
 import { containerStyle, gridItemStyle } from '../../../packages/project-schema/src/hud-layout'
+import { makeHtmlAsset } from '../../../packages/project-schema/src'
+import { buildHtmlWidgetSrcdoc } from '../../../packages/runtime/src/overlay'
 import { useRef, useState, type PointerEvent, type CSSProperties } from 'react'
 import {
   AppWindow,
@@ -47,7 +49,7 @@ const actions: Record<ButtonAction, string> = {
   reward: 'Rewarded ad',
   language: 'Switch language',
 }
-const types = ['text', 'button', 'panel', 'blur', 'image', 'progress', 'counter', 'container']
+const types = ['text', 'button', 'panel', 'blur', 'image', 'html', 'progress', 'counter', 'container']
 const labels: Record<string, string> = {
   text: 'Text',
   button: 'Button',
@@ -55,6 +57,7 @@ const labels: Record<string, string> = {
   blur: 'Background blur',
   container: 'Container',
   image: 'Image',
+  html: 'HTML Frame',
   progress: 'Progress bar',
   counter: 'Counter',
 }
@@ -93,6 +96,7 @@ function createElement(screen: string, type: string, index: number): UIElement {
       background: '#29383c',
     })
   if (type === 'image') Object.assign(el, { width: 16, text: '' })
+  if (type === 'html') Object.assign(el, { width: 34, height: 40, text: '', interactive: true, asset: '' })
   return el
 }
 function ensureScreen(p: Project, s: UIScreen) {
@@ -109,12 +113,16 @@ function ElementProperties({
   patch,
   windows,
   items,
+  edit,
+  onEditAsset,
 }: {
   p: Project
   el: UIElement
   patch: (changes: Partial<UIElement>) => void
   items: UIElement[]
   windows: UIScreen[]
+  edit?: (fn: (p: Project) => void) => void
+  onEditAsset?: (id: string) => void
 }) {
   function number(key: string, label: string, fallback: number, min?: number, max?: number) {
     return (
@@ -141,6 +149,60 @@ function ElementProperties({
       <Field label="Text / locale key">
         <input value={el.text} onChange={(e) => patch({ text: e.target.value })} />
       </Field>
+      {el.type === 'html' && (
+        <>
+          <Field label="HTML asset">
+            <select
+              aria-label="HTML asset"
+              value={el.asset || ''}
+              onChange={(e) => patch({ asset: e.target.value })}
+            >
+              <option value="">Select HTML widget…</option>
+              {p.assets
+                .filter((a) => a.type === 'html' || a.type === 'text')
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+            </select>
+          </Field>
+          <Field label="Interactive">
+            <input
+              type="checkbox"
+              checked={el.interactive !== false}
+              onChange={(e) => patch({ interactive: e.target.checked })}
+            />
+          </Field>
+          <div className="mf-row" style={{ gap: 6, marginBottom: 6 }}>
+            {el.asset ? (
+              <button
+                type="button"
+                className="mf-btn"
+                onClick={() => onEditAsset?.(el.asset)}
+              >
+                Open HTML Editor
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="mf-btn"
+                onClick={() => {
+                  const created = makeHtmlAsset('HUD Widget.html', 'phone')
+                  edit?.((proj) => {
+                    proj.assets.push(created)
+                    const item = proj.ui.find((u) => u.id === el.id)
+                    if (item) item.asset = created.id
+                  })
+                  onEditAsset?.(created.id)
+                }}
+              >
+                + Create & Edit HTML Widget
+              </button>
+            )}
+          </div>
+        </>
+      )}
       {el.type === 'image' && (
         <Field label="Image">
           <AssetSelect
@@ -399,7 +461,7 @@ function Canvas({
     const style: CSSProperties = {
       ...anchorStyle(el.anchor, pos.x, pos.y),
       color: el.color || 'white',
-      backgroundColor: el.background || (el.type === 'blur' ? 'rgba(18, 26, 32, 0.35)' : undefined),
+      backgroundColor: el.background || (el.type === 'blur' ? 'rgba(18, 26, 32, 0.35)' : el.type === 'html' ? 'transparent' : undefined),
       backdropFilter: Number(el.backdropBlur ?? (el.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(el.backdropBlur ?? 12)}px)` : undefined,
       WebkitBackdropFilter: Number(el.backdropBlur ?? (el.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(el.backdropBlur ?? 12)}px)` : undefined,
       borderRadius: Number.isFinite(el.borderRadius) ? el.borderRadius + 'px' : (el.type === 'blur' ? '12px' : undefined),
@@ -456,6 +518,25 @@ function Canvas({
       >
         {asset ? (
           <img src={asset.data} alt="" />
+        ) : el.type === 'html' ? (
+          (() => {
+            const htmlAsset = project.assets.find((a) => a.id === el.asset && (a.type === 'html' || a.type === 'text'))
+            return htmlAsset ? (
+              <iframe
+                title={htmlAsset.name}
+                sandbox="allow-scripts"
+                srcDoc={buildHtmlWidgetSrcdoc(
+                  'hud-prev-' + el.id,
+                  htmlAsset.data || '',
+                  String(htmlAsset.properties?.css || ''),
+                  String(htmlAsset.properties?.js || ''),
+                )}
+                style={{ width: '100%', height: '100%', border: 0, pointerEvents: 'none', background: 'transparent', colorScheme: 'dark' }}
+              />
+            ) : (
+              <span style={{ fontSize: 11, opacity: 0.75 }}>HTML Frame (выбери ассет)</span>
+            )
+          })()
         ) : el.type === 'progress' ? (
           <progress value={50} max={100} />
         ) : (
@@ -498,10 +579,12 @@ export default function InterfaceForm({
   p,
   edit,
   focusUiId,
+  onEditAsset,
 }: {
   p: Project
   edit: Edit
   focusUiId?: string
+  onEditAsset?: (id: string) => void
 }) {
   const [defaults] = useState(() => phases.map((phase) => makeScreen(phase, names[phase])))
   const screens = [
@@ -724,6 +807,8 @@ export default function InterfaceForm({
               el={element}
               windows={screens.filter((s) => s.phase === 'window')}
               patch={(changes) => patchElement(element.id, changes)}
+              edit={edit}
+              onEditAsset={onEditAsset}
             />
           </>
         ) : (

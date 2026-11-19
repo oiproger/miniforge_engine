@@ -68,7 +68,7 @@ export function Thumb({ asset, project }: { asset: Asset; project: Project }) {
     } else set(undefined)
   }, [asset, project])
   const Icon =
-    asset.type === 'script'
+    asset.type === 'script' || asset.type === 'html'
       ? FileCode2
       : asset.type === 'audio'
         ? Music2

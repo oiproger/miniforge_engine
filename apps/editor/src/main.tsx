@@ -44,6 +44,9 @@ import {
   Sun,
   CircleDot,
   Flame,
+  Compass,
+  Stamp,
+  Image,
   Hexagon,
   Diamond,
   Hand,
@@ -65,6 +68,9 @@ import {
 import {
   makeTerrain,
   makeEntity,
+  makeNavZone,
+  sampleTerrainLayerAt,
+  type Terrain,
   makeScene,
   makePrefab,
   instantiatePrefab,
@@ -135,6 +141,10 @@ const geometries = [
   'Water',
   'Volumetric Light',
   'Bake Zone',
+  '3D Particle',
+  '3D Billboard',
+  '3D Decal',
+  'NavGrid Zone',
 ]
 function bytes(n: number) {
   return n > 1e6 ? (n / 1e6).toFixed(2) + ' MB' : (n / 1024).toFixed(1) + ' KB'
@@ -161,6 +171,11 @@ function App() {
     hardness: 0.5,
     level: 0.5,
     activeLayer: 1,
+    scatterAssets: [],
+    scatterDensity: 4,
+    scatterScaleMin: 0.75,
+    scatterScaleMax: 1.35,
+    scatterSpacing: 1.2,
   })
   const patchTerrainBrush = (patchData: Partial<TerrainBrushConfig>) =>
     setTerrainBrush((prev) => ({ ...prev, ...patchData }))
@@ -378,6 +393,18 @@ function App() {
     const asset = p.assets.find((a) => a.id === assetId)
     if (!asset) return
     const pos: Vec3 = worldPos ?? [0, 0, 0]
+    if (asset.type === 'particle') {
+      patch((n) => {
+        const e = makeEntity(asset.name)
+        e.transform.position = [...pos]
+        if (targetId && !worldPos) e.parent = targetId
+        e.components.push({ type: 'particle', assetId: asset.id, preset: 'steam', playing: true })
+        getScene(n).entities.push(e)
+        select(e.id)
+      })
+      note('Placed particle ' + asset.name)
+      return
+    }
     if (asset.type === 'skybox') {
       patch((n) => {
         getScene(n).environment.skyEnabled = true
@@ -563,6 +590,43 @@ function App() {
           reflectionResolution: 128,
           updateInterval: 4,
         })
+      if (kind === '3D Particle')
+        e.components.push({
+          type: 'particle',
+          assetId: n.assets.find((a) => a.type === 'particle')?.id || '',
+          preset: 'steam',
+          playing: true,
+        })
+      if (kind === '3D Billboard')
+        e.components.push({
+          type: 'billboard',
+          texture: '',
+          color: '#ffffff',
+          width: 1.5,
+          height: 1.5,
+          opacity: 1,
+          lockY: false,
+          additive: false,
+          unlit: true,
+          pixelated: false,
+          atlasCols: 1,
+          atlasRows: 1,
+          atlasFrame: 0,
+          fps: 0,
+        })
+      if (kind === '3D Decal')
+        e.components.push({
+          type: 'decal',
+          texture: '',
+          color: '#ffffff',
+          width: 1.2,
+          height: 1.2,
+          opacity: 0.9,
+          normalOffset: 0.008,
+          blendMode: 'alpha',
+          pixelated: false,
+        })
+      if (kind === 'NavGrid Zone') e.components.push(makeNavZone())
       getScene(n).entities.push(e)
       select(e.id)
     })
@@ -618,7 +682,17 @@ function App() {
       x,
       y,
       items: [
-        ['Open asset', () => use(a), FolderOpen],
+        ...(a.type === 'model'
+          ? [
+              ['Edit model', () => edit(a.id), FolderOpen] as MenuItem,
+              ['Place in scene', () => use(a), Plus] as MenuItem,
+            ]
+          : a.type === 'prefab'
+            ? [
+                ['Edit prefab', () => edit(a.id), FolderOpen] as MenuItem,
+                ['Spawn in scene', () => use(a), Plus] as MenuItem,
+              ]
+            : [['Open asset', () => use(a), FolderOpen] as MenuItem]),
         [
           'Rename',
           () => {
@@ -697,6 +771,9 @@ function App() {
     ['New material', () => edit('new-material'), CircleDot],
     ['New shader', () => edit('new-shader'), Code2],
     ['New 3D particle', () => edit('new-particle'), Flame],
+    ['New HTML widget', () => edit('new-html'), Code2],
+    ['New procedural texture', () => edit('new-texture'), Image],
+    ['New prefab', () => edit('new-prefab'), Box],
   ]
   useEffect(() => {
     function key(e: KeyboardEvent) {
@@ -957,6 +1034,71 @@ function App() {
                   setP(next)
                 }
               }}
+              onTerrainScatter={(entityId, worldPos, radiusMeters, erase) => {
+                const next = structuredClone(live.current)
+                const sc = getScene(next)
+                const tEnt = sc.entities.find((e) => e.id === entityId)
+                const tc = tEnt?.components.find((c) => c.type === 'terrain') as Terrain | undefined
+                if (!tEnt || !tc) return
+                if (erase) {
+                  const toDrop = sc.entities.filter(
+                    (e) =>
+                      e.id !== entityId &&
+                      Array.isArray(e.properties?.tags) &&
+                      e.properties.tags.includes('scatter') &&
+                      Math.hypot(e.transform.position[0] - worldPos[0], e.transform.position[2] - worldPos[2]) <= radiusMeters,
+                  )
+                  for (const dEnt of toDrop) removeEntity(sc, dEnt.id)
+                  if (toDrop.length) change(next)
+                  return
+                }
+                const pickedIds = terrainBrush.scatterAssets?.length
+                  ? terrainBrush.scatterAssets
+                  : next.assets.filter((a) => a.type === 'prefab' || a.type === 'model').slice(0, 1).map((a) => a.id)
+                if (!pickedIds.length) {
+                  note('Select at least one Prefab or Model in Terrain Scatter settings')
+                  return
+                }
+                const density = Math.max(1, Math.min(25, terrainBrush.scatterDensity ?? 4))
+                const spacing = Math.max(0.2, terrainBrush.scatterSpacing ?? 1.2)
+                const sMin = terrainBrush.scatterScaleMin ?? 0.75
+                const sMax = Math.max(sMin, terrainBrush.scatterScaleMax ?? 1.35)
+                let spawned = 0
+                for (let k = 0; k < density; k++) {
+                  const ang = Math.random() * Math.PI * 2
+                  const r = Math.sqrt(Math.random()) * radiusMeters
+                  const wx = worldPos[0] + Math.cos(ang) * r
+                  const wz = worldPos[2] + Math.sin(ang) * r
+                  const sample = sampleTerrainLayerAt(tc, wx, wz, tEnt.transform)
+                  if (!sample.inside) continue
+                  const tooClose = sc.entities.some(
+                    (e) =>
+                      Array.isArray(e.properties?.tags) &&
+                      e.properties.tags.includes('scatter') &&
+                      Math.hypot(e.transform.position[0] - wx, e.transform.position[2] - wz) < spacing,
+                  )
+                  if (tooClose) continue
+                  const chosenId = pickedIds[Math.floor(Math.random() * pickedIds.length)]
+                  const asset = next.assets.find((a) => a.id === chosenId)
+                  if (!asset) continue
+                  let placed: Entity
+                  if (asset.type === 'prefab') {
+                    placed = instantiatePrefab(sc, asset, null)
+                  } else {
+                    placed = makeEntity(asset.name.replace(/\.[^.]+$/, ''))
+                    placed.components.push({ type: 'mesh', shape: 'model', asset: asset.id })
+                    sc.entities.push(placed)
+                  }
+                  const scVal = sMin + Math.random() * (sMax - sMin)
+                  placed.transform.position = [wx, sample.height, wz]
+                  placed.transform.rotation = [0, Math.random() * Math.PI * 2, 0]
+                  placed.transform.scale = [scVal, scVal, scVal]
+                  const existingTags = Array.isArray(placed.properties.tags) ? placed.properties.tags : []
+                  placed.properties.tags = [...new Set([...existingTags, 'scatter'])]
+                  spawned++
+                }
+                if (spawned) change(next)
+              }}
                 onSelect={select}
                 onTransform={(id, tr) =>
                   patch((n) => {
@@ -1127,8 +1269,8 @@ function App() {
           <div
             className="popup"
             style={{
-              left: Math.min(menu.x, innerWidth - 205),
-              top: Math.min(menu.y, innerHeight - menu.items.length * 34 - 12),
+              left: Math.max(8, Math.min(menu.x, innerWidth - 260)),
+              top: Math.max(8, Math.min(menu.y, innerHeight - Math.min(menu.items.length * 34 + 16, innerHeight - 60))),
             }}
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -1264,6 +1406,10 @@ function App() {
                     Waves,
                     Sparkles,
                     Aperture,
+                    Flame,
+                    Image,
+                    Stamp,
+                    Compass,
                   ][i] ?? Box
                   return (
                     <button key={kind} onClick={() => newEntity(kind, dialog === 'child' ? selected : null)}>

@@ -1,8 +1,8 @@
 import { SceneNode, Vector3 } from '../../graphics/src/scene'
 import { createWorld } from '../../graphics/src'
-import { bakeNavZone, findNavPath, setNavAreaState, needsPhysics, instantiatePrefab, makePrefab, subtree, uid, type NavZone } from '../../project-schema/src'
+import { bakeNavZone, findNavPath, sampleTerrainLayerAt, setNavAreaState, needsPhysics, instantiatePrefab, makePrefab, subtree, uid, type NavZone } from '../../project-schema/src'
 import { bindRule } from '../../behaviors/src/rules'
-import type { Component, Entity, Project, Vec3 } from '../../project-schema/src'
+import type { Component, Entity, Project, Terrain, Vec3 } from '../../project-schema/src'
 import { behavior } from '../../behaviors/src'
 import { AudioEngine } from './audio'
 import { TweenManager } from './tween'
@@ -329,6 +329,9 @@ export async function startGame(
     updateZoneProbe: (zoneId) => world.updateZoneProbe(zoneId),
     setShadowParams: (opts) => world.setShadowParams(opts),
     setRenderQuality: (opts) => world.setRenderQuality(opts),
+    setResolutionScale: (scale) => world.setResolutionScale(scale),
+    setCullDistance: (dist) => world.setCullDistance(dist),
+    setOptimization: (opts) => world.setOptimization(opts),
   }
 
   const materialsAPI: MaterialsAPI = {
@@ -336,6 +339,61 @@ export async function startGame(
     setColor: (entityId, hex, opacity) => world.setEntityColor(entityId, hex, opacity),
     setEmissive: (entityId, hex, intensity) => world.setEntityEmissive(entityId, hex, intensity),
     setShader: (entityId, shaderAssetId) => world.setEntityShader(entityId, shaderAssetId),
+    getSurfaceAt: (position, direction = [0, -1, 0], maxDist = 4) => {
+      const orig = Array.isArray(position) ? new Vector3().fromArray(position) : position
+      const dir = new Vector3().fromArray(direction)
+      const hit = physics?.raycastHit?.(orig, dir, maxDist)
+      if (hit) {
+        const ent = scene.entities.find((e) => e.id === hit.id)
+        if (ent) {
+          const tc = ent.components.find((c) => c.type === 'terrain' && c.enabled !== false) as Terrain | undefined
+          if (tc) {
+            const sample = sampleTerrainLayerAt(tc, hit.point[0], hit.point[2], ent.transform)
+            const matName = project.assets.find((a) => a.id === sample.materialId)?.name ?? ''
+            return {
+              entityId: ent.id,
+              entityName: ent.name,
+              materialId: sample.materialId,
+              materialName: matName,
+              tags: Array.isArray(ent.properties.tags) ? ent.properties.tags : [],
+              point: hit.point,
+              normal: hit.normal,
+              isTerrain: true,
+              layerIndex: sample.layerIndex,
+            }
+          }
+          const mc = ent.components.find((c) => c.type === 'mesh' && c.enabled !== false)
+          const matId = String(mc?.material || '')
+          const matName = project.assets.find((a) => a.id === matId)?.name ?? ''
+          return {
+            entityId: ent.id,
+            entityName: ent.name,
+            materialId: matId,
+            materialName: matName,
+            tags: Array.isArray(ent.properties.tags) ? ent.properties.tags : [],
+            point: hit.point,
+            normal: hit.normal,
+            isTerrain: false,
+          }
+        }
+      }
+      const tSample = terrainAPI.getLayerAt(orig.x, orig.z)
+      if (tSample && Math.abs(orig.y - tSample.height) <= maxDist) {
+        const ent = scene.entities.find((e) => e.id === tSample.entityId)
+        return {
+          entityId: tSample.entityId,
+          entityName: ent?.name ?? 'Terrain',
+          materialId: tSample.materialId,
+          materialName: tSample.materialName,
+          tags: Array.isArray(ent?.properties.tags) ? ent!.properties.tags : [],
+          point: [orig.x, tSample.height, orig.z] as Vec3,
+          normal: [0, 1, 0] as Vec3,
+          isTerrain: true,
+          layerIndex: tSample.layerIndex,
+        }
+      }
+      return undefined
+    },
     create: (name, properties) => {
       const id = uid('mat')
       project.assets.push({ id, name, type: 'material', data: '', properties: { ...properties } })
@@ -348,6 +406,7 @@ export async function startGame(
     setColor: (id, hex) => world.setLightColor(id, hex),
     setRange: (id, range) => world.setLightRange(id, range),
     setGlow: (id, glow, falloff) => world.setLightGlow(id, glow, falloff),
+    setSunRays: (id, enabled, intensity, decay) => world.setLightSunRays(id, enabled, intensity, decay),
     setShadowLight: (id) => world.setShadowLight(id),
     setGel: (id, texId) => world.setLightGel(id, texId),
     setEnabled: (id, enabled) => setActive(id, enabled),
@@ -418,6 +477,7 @@ export async function startGame(
   function emit(name: string, payload?: unknown) {
     events.emit(name, payload)
     options.onEvent?.(name, payload)
+    overlay.dispatchEvent(name, payload)
   }
   function quiet() {
     input.clear()
@@ -619,6 +679,8 @@ export async function startGame(
     }
     return undefined
   }
+  const _navWp = new Vector3()
+  const _navLocal = new Vector3()
   function stepNavAgents(dt: number) {
     for (const ag of navAgents.values()) {
       if (!ag.moving || !ag.path.length) continue
@@ -626,7 +688,7 @@ export async function startGame(
       if (!node || !active(ag.id)) { ag.moving = false; continue }
       const target = ag.path[ag.index]
       if (!target) { ag.moving = false; continue }
-      const wp = node.getWorldPosition(new Vector3())
+      const wp = node.getWorldPosition(_navWp)
       const dx = target[0] - wp.x
       const dz = target[2] - wp.z
       const dist = Math.hypot(dx, dz)
@@ -647,9 +709,9 @@ export async function startGame(
       const nx = wp.x + (dx / dist) * step
       const nz = wp.z + (dz / dist) * step
       const ny = wp.y + (target[1] - wp.y) * Math.min(1, dt * 8)
-      const local = new Vector3(nx, ny, nz)
-      node.parent?.worldToLocal(local)
-      node.position.copy(local)
+      _navLocal.set(nx, ny, nz)
+      node.parent?.worldToLocal(_navLocal)
+      node.position.copy(_navLocal)
       physics?.teleportBody?.(ag.id, [nx, ny, nz])
       const desiredYaw = Math.atan2(dx, dz)
       let diff = desiredYaw - node.rotation.y
@@ -657,6 +719,20 @@ export async function startGame(
       while (diff < -Math.PI) diff += Math.PI * 2
       node.rotation.y += diff * Math.min(1, dt * ag.turnSpeed)
     }
+  }
+  const terrainAPI: GameAPI['terrain'] = {
+    getLayerAt(x: number, z: number) {
+      for (const e of scene.entities) {
+        if (!e.active) continue
+        const tc = e.components.find((c) => c.type === 'terrain' && c.enabled !== false) as Terrain | undefined
+        if (!tc) continue
+        const s = sampleTerrainLayerAt(tc, x, z, e.transform)
+        if (!s.inside) continue
+        const matName = project.assets.find((a) => a.id === s.materialId)?.name ?? ''
+        return { entityId: e.id, height: s.height, layerIndex: s.layerIndex, materialId: s.materialId, materialName: matName, weights: s.weights }
+      }
+      return undefined
+    },
   }
   const navAPI: GameAPI['nav'] = {
     findPath(start, goal, opts) {
@@ -829,6 +905,7 @@ export async function startGame(
         getState: (id) => world.getAnimationState(id),
         getBonePosition: (id, boneName) => world.getBoneWorldPosition(id, boneName),
       },
+      terrain: terrainAPI,
       nav: navAPI,
       ui: {
         get: (id) => overlay.get(id),

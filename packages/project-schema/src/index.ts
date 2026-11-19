@@ -31,7 +31,27 @@ export interface Scene {
   environment: Environment
   entities: Entity[]
 }
-export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox' | 'text' | 'particle'
+export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox' | 'text' | 'particle' | 'html'
+export interface ModelAnimationClip {
+  id: string
+  name: string
+  sourceClip: string
+  startTime: number
+  endTime: number
+  loop?: boolean
+  speed?: number
+}
+export interface ModelPartMaterialOverride {
+  color?: string
+  roughness?: number
+  metalness?: number
+  opacity?: number
+  unlit?: boolean
+  pixelated?: boolean
+  doubleSided?: boolean
+  emissive?: string
+  emissiveIntensity?: number
+}
 export interface Asset {
   id: string
   name: string
@@ -207,6 +227,99 @@ export interface TouchSettings {
   lookSensitivity: number
   opacity: number
   controls?: TouchControlConfig[]
+}
+
+
+export const HTML_WIDGET_TEMPLATES: Record<string, { html: string; css: string; js: string }> = {
+  phone: {
+    html: `<div class="phone">
+  <div class="bar"><span>12:40</span><span>4G 🔋84%</span></div>
+  <div class="title">ПГТ · Мессенджер</div>
+  <div class="msg" id="msg">ЖЭК: Проверь трубу у 3-го подъезда</div>
+  <div class="btns">
+    <button data-event="phone.accept_job" data-payload='{"job":"pipe_fix"}'>Принять заказ</button>
+    <button class="sec" id="pingBtn">Открыть карту</button>
+  </div>
+</div>`,
+    css: `body{margin:0;font-family:system-ui,sans-serif;background:transparent;color:#eef3f8;overflow:hidden}
+.phone{background:rgba(15,22,30,.92);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:12px;backdrop-filter:blur(10px);box-shadow:0 10px 28px rgba(0,0,0,.45)}
+.bar{display:flex;justify-content:space-between;font-size:11px;color:#8fa3b8;margin-bottom:8px}
+.title{font-weight:700;font-size:14px;color:#ffb84d;margin-bottom:6px}
+.msg{font-size:12px;background:rgba(255,255,255,.06);padding:8px;border-radius:8px;margin-bottom:10px;line-height:1.35}
+.btns{display:flex;gap:6px}
+button{flex:1;border:none;border-radius:8px;padding:7px 10px;background:#ff8c32;color:#111;font-weight:700;font-size:12px;cursor:pointer}
+button.sec{background:rgba(88,216,255,.18);color:#8ee6ff;border:1px solid rgba(88,216,255,.35)}`,
+    js: `document.getElementById('pingBtn')?.addEventListener('click', () => {
+  miniforge.emit('phone.open_map', { tab: 'tasks' });
+  console.log('Map requested from Phone UI');
+});
+miniforge.on('phone.notify', (data) => {
+  const el = document.getElementById('msg');
+  if (el) el.textContent = String(data?.text || data || 'Новое сообщение');
+});`,
+  },
+  dialogue: {
+    html: `<div class="dlg">
+  <div class="speaker" id="speaker">Дворник Михалыч</div>
+  <div class="text" id="text">Опять на контуре давление скачет. Поможешь перекрыть вентиль?</div>
+  <div class="choices">
+    <button data-event="dialogue.choice" data-payload='{"id":"yes"}'>1. Да, показывай где</button>
+    <button data-event="dialogue.choice" data-payload='{"id":"later"}'>2. Позже зайду</button>
+  </div>
+</div>`,
+    css: `body{margin:0;font-family:system-ui,sans-serif;background:transparent;color:#f0f4f8}
+.dlg{background:rgba(12,17,24,.92);border:1px solid rgba(255,184,77,.35);border-radius:12px;padding:14px}
+.speaker{font-weight:700;font-size:13px;color:#ffb84d;margin-bottom:4px}
+.text{font-size:13px;line-height:1.4;margin-bottom:10px;color:#dce5ef}
+.choices{display:flex;gap:8px}
+button{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#fff;padding:7px 12px;border-radius:8px;font-size:12px;cursor:pointer}
+button:hover{background:rgba(255,140,50,.28);border-color:#ff8c32}`,
+    js: `miniforge.on('dialogue.show', (p) => {
+  if (p?.speaker) document.getElementById('speaker').textContent = p.speaker;
+  if (p?.text) document.getElementById('text').textContent = p.text;
+});`,
+  },
+  inventory: {
+    html: `<div class="inv">
+  <div class="hdr"><span>Инвентарь</span><button data-action="close">✕</button></div>
+  <div class="grid" id="grid">
+    <button class="slot" data-event="inventory.use" data-payload='{"item":"wrench"}'>🔧 Ключ</button>
+    <button class="slot" data-event="inventory.use" data-payload='{"item":"flashlight"}'>🔦 Фонарь</button>
+    <button class="slot" data-event="inventory.use" data-payload='{"item":"tea"}'>☕ Термос</button>
+    <button class="slot" data-event="inventory.use" data-payload='{"item":"pass"}'>🪪 Пропуск</button>
+  </div>
+</div>`,
+    css: `body{margin:0;font-family:system-ui,sans-serif;background:transparent;color:#eef3f8}
+.inv{background:rgba(15,21,29,.94);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px}
+.hdr{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;margin-bottom:8px}
+.hdr button{background:none;border:none;color:#9ab;cursor:pointer;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.slot{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font-size:12px;cursor:pointer}
+.slot:hover{border-color:#58d8ff;background:rgba(88,216,255,.15)}`,
+    js: `console.log('Inventory HTML widget ready');`,
+  },
+  blank: {
+    html: `<div class="card">
+  <h3>HTML Frame Widget</h3>
+  <button data-event="ui.custom_click" data-payload='{"ok":true}'>Отправить событие</button>
+</div>`,
+    css: `body{margin:0;font-family:system-ui,sans-serif;background:transparent;color:#fff}
+.card{background:rgba(16,23,32,.9);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px}
+h3{margin:0 0 8px;font-size:14px}
+button{padding:6px 12px;border-radius:6px;border:none;background:#58d8ff;color:#0a0f14;font-weight:700;cursor:pointer}`,
+    js: `// Используйте miniforge.emit('event.name', data) и miniforge.on('event.name', cb)`,
+  },
+}
+
+export function makeHtmlAsset(name = 'HUD Widget.html', template = 'phone', id = uid('html')): Asset {
+  const tpl = HTML_WIDGET_TEMPLATES[template] || HTML_WIDGET_TEMPLATES.blank
+  return {
+    id,
+    name,
+    type: 'html',
+    data: tpl.html,
+    properties: { css: tpl.css, js: tpl.js },
+  }
 }
 
 export function makeMaterial(name: string, color: string, id = uid('mat')): Asset {
@@ -414,8 +527,72 @@ export function instantiatePrefab(scene: Scene, asset: Asset, parent: string | n
     e.components = remap(e.components)
     e.properties = remap(e.properties)
   }
+  nodes[0].properties = { ...nodes[0].properties, prefabId: asset.id }
   scene.entities.push(...nodes)
   return nodes[0]
+}
+
+export function syncPrefabInstances(project: Project, prefabId: string): number {
+  const asset = project.assets.find((a) => a.id === prefabId && a.type === 'prefab')
+  if (!asset) return 0
+  const template: Entity[] = JSON.parse(asset.data)
+  if (!template.length) return 0
+  let updated = 0
+  for (const scene of project.scenes) {
+    const roots = scene.entities.filter((e) => e.properties?.prefabId === prefabId)
+    for (const inst of roots) {
+      const savedId = inst.id
+      const savedParent = inst.parent
+      const savedTransform = structuredClone(inst.transform)
+      // Remove existing children of this instance
+      const oldSub = subtree(scene, savedId).slice(1)
+      const oldChildIds = new Set(oldSub.map((c) => c.id))
+      if (oldChildIds.size) {
+        scene.entities = scene.entities.filter((e) => !oldChildIds.has(e.id))
+      }
+      // Clone template nodes and remap IDs (keeping root ID = savedId)
+      const nodes: Entity[] = structuredClone(template)
+      const ids = new Map<string, string>()
+      ids.set(nodes[0].id, savedId)
+      for (let i = 1; i < nodes.length; i++) ids.set(nodes[i].id, uid('node'))
+      const remap = (val: any): any => {
+        if (typeof val === 'string') return ids.get(val) ?? val
+        if (Array.isArray(val)) return val.map(remap)
+        if (record(val)) return Object.fromEntries(Object.entries(val).map(([k, v]) => [k, remap(v)]))
+        return val
+      }
+      inst.name = nodes[0].name
+      inst.active = nodes[0].active
+      inst.parent = savedParent
+      inst.transform = savedTransform
+      inst.components = remap(nodes[0].components)
+      inst.properties = { ...remap(nodes[0].properties), prefabId }
+      for (let i = 1; i < nodes.length; i++) {
+        const ch = nodes[i]
+        ch.id = ids.get(ch.id)!
+        ch.parent = ch.parent ? ids.get(ch.parent)! : savedId
+        ch.components = remap(ch.components)
+        ch.properties = remap(ch.properties)
+        scene.entities.push(ch)
+      }
+      updated++
+    }
+  }
+  return updated
+}
+
+export function updatePrefabFromEntity(project: Project, entityId: string): number {
+  const scene = getScene(project)
+  const entity = scene.entities.find((e) => e.id === entityId)
+  const prefabId = entity?.properties?.prefabId
+  if (!entity || !prefabId) return 0
+  const asset = project.assets.find((a) => a.id === prefabId && a.type === 'prefab')
+  if (!asset) return 0
+  const nodes = structuredClone(subtree(scene, entityId))
+  nodes[0].parent = null
+  delete nodes[0].properties.prefabId
+  asset.data = JSON.stringify(nodes)
+  return syncPrefabInstances(project, prefabId)
 }
 export function duplicateEntity(scene: Scene, id: string): Entity {
   const original = scene.entities.find((e) => e.id === id)
@@ -441,4 +618,34 @@ export function needsPhysics(entities: Entity[]) {
             ))),
     ),
   )
+}
+
+
+export function isEligibleForStaticBatch(e: Entity): boolean {
+  const hasPrimMesh = e.components.some(
+    (c) => c.enabled !== false && c.type === 'mesh' && c.shape !== 'model',
+  )
+  if (!hasPrimMesh) return false
+  const hasDynamic = e.components.some(
+    (c) =>
+      c.enabled !== false &&
+      (['script', 'behavior', 'animation', 'navAgent', 'particle', 'billboard', 'water', 'terrain'].includes(c.type) ||
+        (c.type === 'body' && (c.kind === 'dynamic' || c.kind === 'kinematic')) ||
+        (c.type === 'collider' && c.trigger)),
+  )
+  return !hasDynamic
+}
+
+export function applyAutoStaticBatching(scene: Scene, overwrite = false): number {
+  let count = 0
+  for (const e of scene.entities) {
+    if (overwrite || e.properties.staticBatch === undefined) {
+      const ok = isEligibleForStaticBatch(e)
+      e.properties.staticBatch = ok
+      if (ok) count++
+    } else if (e.properties.staticBatch) {
+      count++
+    }
+  }
+  return count
 }

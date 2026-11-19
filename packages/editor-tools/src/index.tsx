@@ -25,6 +25,11 @@ export interface TerrainBrushConfig {
   hardness: number
   level: number
   activeLayer: number
+  scatterAssets?: string[]
+  scatterDensity?: number
+  scatterScaleMin?: number
+  scatterScaleMax?: number
+  scatterSpacing?: number
 }
 
 export interface ViewportProps {
@@ -44,6 +49,7 @@ export interface ViewportProps {
   terrainBrush?: TerrainBrushConfig
   onTerrainBrushChange?: (patch: Partial<TerrainBrushConfig>) => void
   onTerrainEdit?: (entityId: string, patch: Partial<Terrain>, commit: boolean) => void
+  onTerrainScatter?: (entityId: string, worldPos: Vec3, radiusMeters: number, erase: boolean) => void
 }
 const axes = ['x', 'y', 'z'] as const,
   colors = ['#e68177', '#9acf85', '#80acdf']
@@ -112,6 +118,25 @@ export function SceneViewport(props: ViewportProps) {
       pitch = -flyPitch
     }
     let handles: { x: number; y: number; ax: number; ay: number; axis: number }[] = []
+    let hoveredAxis = -1
+    const pickGizmoHandle = (px: number, py: number) => {
+      let best: (typeof handles)[number] | undefined
+      let bestDist = 18
+      for (const h of handles) {
+        const dx = h.x - h.ax
+        const dy = h.y - h.ay
+        const lenSq = dx * dx + dy * dy || 1
+        const t = Math.max(0.08, Math.min(1.08, ((px - h.ax) * dx + (py - h.ay) * dy) / lenSq))
+        const segDist = Math.hypot(px - (h.ax + t * dx), py - (h.ay + t * dy))
+        const tipDist = Math.hypot(px - h.x, py - h.y)
+        const d = Math.min(segDist, tipDist * 0.85)
+        if (d < bestDist) {
+          bestDist = d
+          best = h
+        }
+      }
+      return best
+    }
     let terrainHover: { worldPos: Vec3; gx: number; gz: number } | null = null
     let terrainStroke: {
       entityId: string
@@ -357,18 +382,52 @@ export function SceneViewport(props: ViewportProps) {
         p = project(center)
       if (!p) return
       ctx.strokeStyle = '#ffb57c'
-      ctx.strokeRect(p.x - 5, p.y - 5, 10, 10)
+      ctx.lineWidth = 1.8
+      ctx.strokeRect(p.x - 6, p.y - 6, 12, 12)
       if (latest.current.tool === 'select') return
-      const len = distance * 0.1
+      const len = distance * 0.135
+      const activeAxis = drag?.id ? drag.axis : hoveredAxis
       axes.forEach((axis, i) => {
         const end = node.position.clone()
         end[axis] += len
         if (node.parent) node.parent.localToWorld(end)
         const q = project(end)
         if (!q) return
-        line(center, end, colors[i], 3)
-        ctx.fillStyle = colors[i]
-        ctx.fillRect(q.x - 4, q.y - 4, 8, 8)
+        const hot = activeAxis === i
+        const col = hot ? '#ffffff' : colors[i]
+        // Dark halo under axis for crisp visibility on bright surfaces
+        line(center, end, 'rgba(0,0,0,0.55)', hot ? 9 : 7)
+        line(center, end, colors[i], hot ? 6.5 : 4.6)
+        if (hot) line(center, end, '#ffffffaa', 2)
+        const ang = Math.atan2(q.y - p.y, q.x - p.x)
+        ctx.save()
+        ctx.translate(q.x, q.y)
+        ctx.fillStyle = col
+        ctx.strokeStyle = 'rgba(0,0,0,0.65)'
+        ctx.lineWidth = 1.6
+        if (latest.current.tool === 'translate') {
+          ctx.rotate(ang)
+          ctx.beginPath()
+          ctx.moveTo(9, 0)
+          ctx.lineTo(-6, -6.5)
+          ctx.lineTo(-6, 6.5)
+          ctx.closePath()
+          ctx.fill()
+          ctx.stroke()
+        } else if (latest.current.tool === 'rotate') {
+          ctx.beginPath()
+          ctx.arc(0, 0, hot ? 7.5 : 6, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.stroke()
+        } else {
+          const s = hot ? 7 : 5.5
+          ctx.fillRect(-s, -s, s * 2, s * 2)
+          ctx.strokeRect(-s, -s, s * 2, s * 2)
+        }
+        ctx.restore()
+        ctx.font = '700 11px system-ui, sans-serif'
+        ctx.fillStyle = hot ? '#ffffff' : colors[i]
+        ctx.fillText(axis.toUpperCase(), q.x + Math.cos(ang) * 14 - 4, q.y + Math.sin(ang) * 14 + 4)
         handles.push({ x: q.x, y: q.y, ax: p.x, ay: p.y, axis: i })
       })
     }
@@ -425,21 +484,7 @@ export function SceneViewport(props: ViewportProps) {
       (e) => {
         canvas.focus()
         canvas.setPointerCapture(e.pointerId)
-        const h =
-          e.button === 0 && !e.altKey
-            ? handles.find((h) => {
-                const dx = h.x - h.ax,
-                  dy = h.y - h.ay,
-                  t = Math.max(
-                    0.15,
-                    Math.min(
-                      1,
-                      ((e.offsetX - h.ax) * dx + (e.offsetY - h.ay) * dy) / (dx * dx + dy * dy || 1),
-                    ),
-                  )
-                return Math.hypot(e.offsetX - h.ax - t * dx, e.offsetY - h.ay - t * dy) < 8
-              })
-            : undefined
+        const h = e.button === 0 && !e.altKey ? pickGizmoHandle(e.offsetX, e.offsetY) : undefined
         const tbNow = latest.current.terrainBrush
         const selT = getSelectedTerrain()
         if (tbNow?.enabled && selT && e.button === 0 && !e.altKey && !e.shiftKey && navModeRef.current !== 'fly') {
@@ -447,6 +492,12 @@ export function SceneViewport(props: ViewportProps) {
           const hit = raycastTerrain(selT.terrain, ray.origin, ray.direction, selT.entity.transform)
           if (hit) {
             terrainHover = hit
+            if (tbNow.tool === 'Scatter' || tbNow.tool === 'Erase scatter') {
+              const cellW = (selT.terrain.size / selT.terrain.segments) * (selT.entity.transform.scale[0] || 1)
+              latest.current.onTerrainScatter?.(selT.entity.id, hit.worldPos, tbNow.radius * cellW, tbNow.tool === 'Erase scatter')
+              drag = { x: e.offsetX, y: e.offsetY, lastX: e.offsetX, lastY: e.offsetY, axis: -1, mode: 'scatter', amount: 0, dx: 0, dy: 0 }
+              return
+            }
             const data = structuredClone(selT.terrain)
             brushTerrain(data, tbNow.tool, hit.gx, hit.gz, tbNow.radius, tbNow.strength, tbNow.level, tbNow.falloff, tbNow.activeLayer, tbNow.hardness)
             terrainStroke = { entityId: selT.entity.id, data, lastGx: hit.gx, lastGz: hit.gz, lastPush: performance.now() }
@@ -488,6 +539,15 @@ export function SceneViewport(props: ViewportProps) {
           const activeT = terrainStroke?.entityId === selTMove.entity.id ? terrainStroke.data : selTMove.terrain
           const hit = raycastTerrain(activeT, ray.origin, ray.direction, selTMove.entity.transform)
           terrainHover = hit
+          if (drag?.mode === 'scatter' && hit) {
+            if (Math.hypot(e.offsetX - drag.lastX, e.offsetY - drag.lastY) > 18) {
+              drag.lastX = e.offsetX
+              drag.lastY = e.offsetY
+              const cellW = (selTMove.terrain.size / selTMove.terrain.segments) * (selTMove.entity.transform.scale[0] || 1)
+              latest.current.onTerrainScatter?.(selTMove.entity.id, hit.worldPos, tbMove.radius * cellW, tbMove.tool === 'Erase scatter')
+            }
+            return
+          }
           if (drag?.mode === 'terrain' && terrainStroke && hit) {
             const dist = Math.hypot(hit.gx - terrainStroke.lastGx, hit.gz - terrainStroke.lastGz)
             const steps = Math.max(1, Math.ceil(dist / Math.max(0.35, tbMove.radius * 0.35)))
@@ -526,7 +586,12 @@ export function SceneViewport(props: ViewportProps) {
         } else {
           terrainHover = null
         }
-        if (!drag) return
+        if (!drag) {
+          const hh = pickGizmoHandle(e.offsetX, e.offsetY)
+          hoveredAxis = hh ? hh.axis : -1
+          canvas.style.cursor = hh ? 'pointer' : ''
+          return
+        }
         const dx = e.offsetX - drag.lastX,
           dy = e.offsetY - drag.lastY
         drag.lastX = e.offsetX

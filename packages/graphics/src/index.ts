@@ -3,7 +3,7 @@ import { createDevice } from './device.generated'
 import { SceneNode, SceneCamera, Vector3, type Triangles } from './scene'
 import { terrainGeometry } from './terrain'
 import { PostProcessor, defaultPostProcess, type PostProcessOptions } from './postprocess'
-import { defaultParticleConfig, ensureTerrainLayers, type Project, type Entity, type Component, type ParticleConfig, type Terrain, type Vec3 } from '../../project-schema/src'
+import { defaultParticleConfig, ensureTerrainLayers, isEligibleForStaticBatch, type Project, type Entity, type Component, type ParticleConfig, type Terrain, type Vec3 } from '../../project-schema/src'
 
 export type { PostProcessOptions } from './postprocess'
 export { defaultPostProcess } from './postprocess'
@@ -181,6 +181,16 @@ export function createWorld(
     meshes = new Map<string, L.Mesh>()
   const sceneLights = new Map<string, Component>()
   const entityLights = new Map<string, L.Light3D>()
+  const activeFlares: any[] = []
+  interface SunRaySource {
+    id: string
+    directional: boolean
+    intensity: number
+    decay: number
+    color: [number, number, number]
+    enabled: boolean
+  }
+  const sunRaySources = new Map<string, SunRaySource>()
   interface ProbeRecord {
     id: string
     cube: { size: number; capturePos: L.Vector3 }
@@ -198,6 +208,19 @@ export function createWorld(
   let globalBakedLighting = false
   let shadowFollowCamera = false
   let renderFrameCount = 0
+  let resolutionScale = 1
+  let lightCullDist = 45
+  let particleCullDist = 40
+  let animationThrottle = true
+  let staticBatching = false
+  let globalCullDist = 0
+  const entityCullDist = new Map<string, number>()
+  const distanceCulled = new Set<string>()
+  const entityLightBaseIntensity = new Map<string, number>()
+  const batchedMeshes: L.EngineObject3D[] = []
+  const _tmpV1 = new Vector3()
+  const _tmpV2 = new Vector3()
+  const _tmpV3 = new Vector3()
   const debugQueue: { kind: 'line' | 'box'; a: Vec3; b: Vec3; color: string; until: number }[] = []
   interface ParticleInstance {
     obj: L.EngineObject3D
@@ -293,7 +316,7 @@ export function createWorld(
       if (n) return n
     }
   }
-  const hidden = (o: L.EngineObject) => owner(o)?.active === false
+  const hidden = (o: L.EngineObject) => { const ow = owner(o); return !ow ? false : ow.active === false || distanceCulled.has(ow.id) }
   function hexToRgbTuple(hex: string): [number, number, number] {
     const clean = (hex || '#ffffff').replace('#', '')
     const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean.padEnd(6, 'f')
@@ -414,7 +437,14 @@ export function createWorld(
     for (const em of emitters.values()) {
       const node = objects.get(em.id)
       const activeNode = Boolean(node?.active)
-      const wp = node ? node.getWorldPosition(new Vector3()) : new Vector3()
+      const wp = node ? node.getWorldPosition(_tmpV1) : _tmpV1.set(0, 0, 0)
+      if (particleCullDist > 0) {
+        const dSq = (wp.x - camPos.x) ** 2 + (wp.y - camPos.y) ** 2 + (wp.z - camPos.z) ** 2
+        if (dSq > particleCullDist * particleCullDist) {
+          for (const p of em.pool) { if (p.alive) { p.alive = false; p.obj.color.a = 0 } }
+          continue
+        }
+      }
       const origin: Vec3 = [wp.x, wp.y, wp.z]
       if (activeNode && em.playing && em.config.rate > 0) {
         em.accum += em.config.rate * dt
@@ -460,14 +490,14 @@ export function createWorld(
     for (const bb of billboards.values()) {
       const node = objects.get(bb.id)
       if (!node?.active) continue
-      const wp = node.getWorldPosition(new Vector3())
+      const wp = node.getWorldPosition(_tmpV1)
       const dx = camPos.x - wp.x
       const dy = camPos.y - wp.y
       const dz = camPos.z - wp.z
       const yawB = Math.atan2(dx, dz)
       const pitchB = bb.lockY ? 0 : -Math.atan2(dy, Math.hypot(dx, dz) || 1e-5)
       bb.obj.pos3D.set(wp.x, wp.y, wp.z)
-      const ws = node.getWorldScale(new Vector3())
+      const ws = node.getWorldScale(_tmpV2)
       bb.obj.scale3D.set(bb.width * ws.x, bb.height * ws.y, 1)
       bb.obj.rotation3D.set(pitchB, yawB, 0)
       if (bb.fps > 0 && (bb.atlasCols > 1 || bb.atlasRows > 1)) {
@@ -641,6 +671,140 @@ export function createWorld(
       obj.shader = undefined
     }
   }
+  
+function sampleAnimChannel(
+  ch: { times: Float32Array; values: Float32Array; components: number; interpolation: string },
+  t: number,
+): number[] {
+  const { times, values, components: c, interpolation } = ch
+  const last = times.length - 1
+  if (last < 0) return c === 4 ? [0, 0, 0, 1] : [0, 0, 0]
+  const isCubic = interpolation === 'CUBICSPLINE'
+  const stride = isCubic ? 3 * c : c
+  const valOff = isCubic ? c : 0
+  if (t <= times[0] || last === 0) {
+    const out: number[] = []
+    for (let i = 0; i < c; i++) out.push(values[valOff + i])
+    return out
+  }
+  if (t >= times[last]) {
+    const out: number[] = []
+    for (let i = 0; i < c; i++) out.push(values[last * stride + valOff + i])
+    return out
+  }
+  let lo = 0,
+    hi = last
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1
+    if (times[mid] <= t) lo = mid
+    else hi = mid - 1
+  }
+  if (interpolation === 'STEP') {
+    const out: number[] = []
+    for (let i = 0; i < c; i++) out.push(values[lo * stride + valOff + i])
+    return out
+  }
+  const dt = times[lo + 1] - times[lo] || 1e-6
+  const u = Math.max(0, Math.min(1, (t - times[lo]) / dt))
+  const o0 = lo * stride
+  const o1 = (lo + 1) * stride
+  const out = new Array<number>(c)
+  if (isCubic) {
+    const u2 = u * u,
+      u3 = u2 * u
+    const h00 = 2 * u3 - 3 * u2 + 1
+    const h10 = u3 - 2 * u2 + u
+    const h01 = -2 * u3 + 3 * u2
+    const h11 = u3 - u2
+    for (let i = 0; i < c; i++) {
+      out[i] =
+        h00 * values[o0 + c + i] +
+        h10 * dt * values[o0 + 2 * c + i] +
+        h01 * values[o1 + c + i] +
+        h11 * dt * values[o1 + i]
+    }
+  } else if (c === 4) {
+    let dot = 0
+    for (let i = 0; i < 4; i++) dot += values[o0 + i] * values[o1 + i]
+    const sign = dot < 0 ? -1 : 1
+    dot *= sign
+    let s0 = 1 - u,
+      s1 = u * sign
+    if (dot < 0.9995) {
+      const ang = Math.acos(Math.min(1, dot))
+      const s = Math.sin(ang) || 1
+      s0 = Math.sin((1 - u) * ang) / s
+      s1 = (Math.sin(u * ang) / s) * sign
+    }
+    for (let i = 0; i < 4; i++) out[i] = s0 * values[o0 + i] + s1 * values[o1 + i]
+  } else {
+    for (let i = 0; i < c; i++) out[i] = values[o0 + i] + (values[o1 + i] - values[o0 + i]) * u
+  }
+  if (c === 4) {
+    const len = Math.hypot(out[0], out[1], out[2], out[3]) || 1
+    for (let i = 0; i < 4; i++) out[i] /= len
+  }
+  return out
+}
+
+function sliceGltfAnimation(source: any, startTime: number, endTime: number, name: string) {
+  const s = Math.max(0, Number(startTime) || 0)
+  const e = Math.max(s + 0.001, Number(endTime) || s + 0.001)
+  const duration = e - s
+  const channels = (source.channels || []).map((ch: any) => {
+    const c: number = ch.components || (ch.path === 'rotation' ? 4 : 3)
+    const isCubic = ch.interpolation === 'CUBICSPLINE'
+    const stride = isCubic ? 3 * c : c
+    const valOff = isCubic ? c : 0
+    const outTimes: number[] = []
+    const outVals: number[] = []
+    const pushSample = (relT: number, vals: number[]) => {
+      outTimes.push(relT)
+      for (let i = 0; i < c; i++) outVals.push(vals[i])
+    }
+    pushSample(0, sampleAnimChannel(ch, s))
+    const srcTimes: Float32Array = ch.times
+    for (let i = 0; i < srcTimes.length; i++) {
+      const kt = srcTimes[i]
+      if (kt > s + 1e-5 && kt < e - 1e-5) {
+        const vals: number[] = []
+        for (let j = 0; j < c; j++) vals.push(ch.values[i * stride + valOff + j])
+        pushSample(kt - s, vals)
+      }
+    }
+    pushSample(duration, sampleAnimChannel(ch, e))
+    return {
+      node: ch.node,
+      path: ch.path,
+      interpolation: ch.interpolation === 'STEP' ? 'STEP' : 'LINEAR',
+      times: new Float32Array(outTimes),
+      values: new Float32Array(outVals),
+      components: c,
+    }
+  })
+  return { name, channels, duration }
+}
+
+function applyModelAssetClips(model: any, asset: { properties?: Record<string, any> }) {
+  if (!model) return
+  if (!model.__baseAnimations) {
+    model.__baseAnimations = [...(model.animations || [])]
+  }
+  const base: any[] = model.__baseAnimations
+  const customDefs = Array.isArray(asset.properties?.clips) ? asset.properties.clips : []
+  const sliced: any[] = []
+  for (const def of customDefs) {
+    if (!def?.name) continue
+    const src =
+      base.find((a) => a.name === def.sourceClip) ??
+      (base.length ? base[0] : undefined)
+    if (!src) continue
+    sliced.push(sliceGltfAnimation(src, def.startTime, def.endTime, String(def.name)))
+  }
+  const customNames = new Set(sliced.map((s) => s.name))
+  model.animations = [...base.filter((b) => !customNames.has(b.name)), ...sliced]
+}
+
   function playAnimation(id: string, clip?: string, loop = true, speed = 1, blendTime = 0) {
     const model = players.get(id),
       a = model?.model.getAnimation(clip || 0)
@@ -867,6 +1031,8 @@ export function createWorld(
       n.rotation.fromArray(e.transform.rotation)
       n.scale.fromArray(e.transform.scale)
       n.visible = e.active
+      const cd = Number(e.properties?.cullDistance ?? 0)
+      if (cd > 0) entityCullDist.set(e.id, cd)
       for (const c of e.components.filter((c) => c.enabled !== false)) {
         if (c.type === 'terrain') {
           const tData = c as Terrain
@@ -976,7 +1142,40 @@ export function createWorld(
           pending.push(
             models.get(a.id)!.then((model) => {
               if (gen !== generation || objects.get(e.id) !== n) return
+              applyModelAssetClips(model, a)
               const obj = model.createObject()
+              const partMats = (a.properties?.partMaterials || {}) as Record<string, string>
+              const partOvr = (a.properties?.partOverrides || {}) as Record<string, Record<string, any>>
+              const parts: L.EngineObject3D[] = (obj as any).parts || []
+              for (let pi = 0; pi < parts.length; pi++) {
+                const po = parts[pi]
+                const matId = partMats[String(pi)]
+                if (matId) {
+                  material(po, matId)
+                } else if (partOvr[String(pi)]) {
+                  const ov = partOvr[String(pi)]
+                  if (ov.color || ov.opacity != null) {
+                    const prevA = po.color?.a ?? 1
+                    const col = color(ov.color || '#ffffff', ov.opacity ?? prevA)
+                    po.color = col
+                    po.transparent = col.a < 1
+                  }
+                  if (ov.roughness != null) {
+                    const rough = Math.max(0, Math.min(1, Number(ov.roughness)))
+                    po.specular = 1 - rough
+                    ;(po as any).shininess = Math.max(2, Math.pow(2, (1 - rough) * 8))
+                  }
+                  if (ov.metalness != null) po.reflectivity = Number(ov.metalness)
+                  if (ov.unlit != null) po.emissive = ov.unlit ? 1 : Number(ov.emissiveIntensity ?? 0)
+                  else if (ov.emissiveIntensity != null) po.emissive = Number(ov.emissiveIntensity)
+                  if (ov.emissive) {
+                    po.emissiveMapColor = color(ov.emissive)
+                    if (!po.emissiveMap && ov.emissive !== '#000000') po.emissiveMap = d.whiteTexture()
+                  }
+                  if (ov.pixelated != null) (po as any).pixelated = Boolean(ov.pixelated)
+                  if (ov.doubleSided != null && po.mesh) po.mesh.doubleSided = Boolean(ov.doubleSided)
+                }
+              }
               root.addChild(obj)
               list.push(obj)
               players.set(e.id, obj)
@@ -1137,8 +1336,35 @@ export function createWorld(
           }
         } else if (c.type === 'light') {
           const tint = color(c.color ?? '#ffffff')
-          if (c.kind === 'ambient' || c.kind === 'directional') sceneLights.set(n.id, c)
-          else {
+          if (c.sunRays) {
+            sunRaySources.set(e.id, {
+              id: e.id,
+              directional: c.kind === 'directional',
+              intensity: Math.max(0.05, Number(c.sunRayIntensity ?? 0.75)),
+              decay: Math.max(0.8, Math.min(0.99, Number(c.sunRayDecay ?? 0.94))),
+              color: hexToRgbTuple(c.color ?? '#ffe8bd'),
+              enabled: true,
+            })
+          }
+          if (c.kind === 'ambient' || c.kind === 'directional') {
+            sceneLights.set(n.id, c)
+            if (c.kind === 'directional' && Number(c.flare ?? 0) > 0) {
+              const dirLight = new d.Light3D(d.vec3(), 100, tint, c.intensity ?? 1)
+              ;(dirLight as any).directional = true
+              root.addChild(dirLight)
+              if (typeof (dirLight as any).addFlare === 'function') {
+                const fl = (dirLight as any).addFlare(Number(c.flare), 7, 1.15, 0.85, tint)
+                if (fl) {
+                  fl.occlusion = false
+                  fl.fadeTime = 0
+                  fl.visible = 1
+                  fl.visibleFound = true
+                  activeFlares.push(fl)
+                }
+              }
+              entityLights.set(e.id, dirLight)
+            }
+          } else {
             const light = new d.Light3D(d.vec3(), c.range ?? 12, tint, c.intensity ?? 1)
             root.addChild(light)
             if (c.kind === 'spot') {
@@ -1148,9 +1374,17 @@ export function createWorld(
             ;(light as any).glow = Number(c.glow ?? 0)
             ;(light as any).glowFalloff = Number(c.glowFalloff ?? 1)
             if (Number(c.flare ?? 0) > 0 && typeof (light as any).addFlare === 'function') {
-              ;(light as any).addFlare(Number(c.flare))
+              const fl = (light as any).addFlare(Number(c.flare), 7, 1.15, 0.85, tint)
+              if (fl) {
+                fl.occlusion = false
+                fl.fadeTime = 0
+                fl.visible = 1
+                fl.visibleFound = true
+                activeFlares.push(fl)
+              }
             }
-            if (c.gel) {
+            if (c.gel && c.kind === 'spot') {
+              ;(r as any).shadowLight = light
               const gelTex = texture(c.gel)
               if (gelTex) {
                 pending.push(
@@ -1164,6 +1398,7 @@ export function createWorld(
               ;(r as any).shadowLight = light
             }
             entityLights.set(e.id, light)
+            entityLightBaseIntensity.set(e.id, light.intensity)
           }
         }
       }
@@ -1190,6 +1425,8 @@ export function createWorld(
       }
       sceneLights.delete(n.id)
       entityLights.delete(n.id)
+      entityCullDist.delete(n.id)
+      sunRaySources.delete(n.id)
       zoneProbes.delete(n.id)
       const em = emitters.get(n.id)
       if (em) {
@@ -1229,6 +1466,13 @@ export function createWorld(
     decals.clear()
     for (const dd of dynamicDecals) dd.obj.destroy()
     dynamicDecals.length = 0
+    for (const bm of batchedMeshes) bm.destroy()
+    batchedMeshes.length = 0
+    entityLightBaseIntensity.clear()
+    entityCullDist.clear()
+    distanceCulled.clear()
+    activeFlares.length = 0
+    sunRaySources.clear()
     flashlight?.destroy()
     flashlight = undefined
     flashlightEnabled = false
@@ -1386,6 +1630,68 @@ export function createWorld(
     for (const z of targetZones) { (r as any).cubeCaptures?.add(z.cube) }
     assignReflectionMaps()
   }
+  function buildStaticBatches(entities: Entity[]) {
+    if (options.editor || !staticBatching) return
+    const groups = new Map<string, { matId: string; items: { entity: Entity; mesh: L.Mesh; node: SceneNode }[] }>()
+    for (const e of entities) {
+      if (!e.active) continue
+      const wantBatch = e.properties.staticBatch === true
+      if (!wantBatch || !isEligibleForStaticBatch(e)) continue
+      const mc = e.components.find((c) => c.enabled !== false && c.type === 'mesh' && c.shape !== 'model')
+      const node = objects.get(e.id)
+      if (!mc || !node) continue
+      const matId = String(mc.material || '')
+      const matProps = project.assets.find((a) => a.id === matId)?.properties
+      // Skip transparent/additive/custom-shader materials from opaque static batching
+      if (matProps && ((matProps.opacity ?? 1) < 1 || matProps.additive || matProps.shader)) continue
+      const mesh = primitive(mc)
+      if (!mesh.points?.length) continue
+      let grp = groups.get(matId)
+      if (!grp) {
+        grp = { matId, items: [] }
+        groups.set(matId, grp)
+      }
+      grp.items.push({ entity: e, mesh, node })
+    }
+    for (const grp of groups.values()) {
+      if (grp.items.length < 2) continue
+      const allPts: L.Vector3[] = []
+      const allUvs: L.Vector2[] = []
+      const allIdx: number[] = []
+      let baseVertex = 0
+      for (const { entity, mesh, node } of grp.items) {
+        const tri = mesh.getTriangles()
+        const pts = mesh.points
+        const uvs = mesh.uvs
+        for (let i = 0; i < pts.length; i++) {
+          _tmpV1.set(pts[i].x, pts[i].y, pts[i].z)
+          node.localToWorld(_tmpV1)
+          allPts.push(d.vec3(_tmpV1.x, _tmpV1.y, _tmpV1.z))
+          const uv = uvs?.[i]
+          allUvs.push(uv ? d.vec2(uv.x, uv.y) : d.vec2(0, 0))
+        }
+        for (let i = 0; i < tri.indices.length; i++) {
+          allIdx.push(baseVertex + tri.vertices[tri.indices[i]])
+        }
+        baseVertex += pts.length
+        // Hide individual renderables since they are now drawn in 1 batched call
+        const objs = renderables.get(entity.id)
+        if (objs) {
+          for (const o of objs) {
+            o.destroy()
+          }
+          objs.length = 0
+        }
+      }
+      if (!allIdx.length) continue
+      const combined = new d.Mesh().addTriangles(allPts, allIdx, undefined, allUvs).computeNormals(false)
+      const key = '__batch:' + grp.matId + ':' + batchedMeshes.length
+      meshes.set(key, combined)
+      const bObj = new d.EngineObject3D(d.vec3(), combined)
+      material(bObj, grp.matId)
+      batchedMeshes.push(bObj)
+    }
+  }
   function load(p: Project, id?: string) {
     clear()
     project = p
@@ -1412,6 +1718,14 @@ export function createWorld(
     ;(r as any).anisotropy = Math.max(1, Math.min(16, Number(env.anisotropy ?? 4)))
     ;(r as any).mipmaps = env.mipmaps !== false
     ;(r as any).frustumCulling = env.frustumCulling !== false
+    const perf = p.settings?.performance || {}
+    resolutionScale = Math.max(0.4, Math.min(1, Number(perf.resolutionScale ?? 1)))
+    ratio = Math.min(window.devicePixelRatio || 1, 2) * resolutionScale
+    lightCullDist = Math.max(0, Number(perf.lightCullDistance ?? 45))
+    particleCullDist = Math.max(0, Number(perf.particleCullDistance ?? 40))
+    animationThrottle = perf.animationThrottle !== false
+    staticBatching = Boolean(perf.staticBatching)
+    globalCullDist = Math.max(0, Number(perf.cullDistance ?? 0))
     ;(r as any).sortTransparent = env.sortTransparent !== false
     ;(r as any).softShadowHeight = Number(env.softShadowHeight ?? 0)
     ;(r as any).smoothShading = Boolean(env.smoothShading)
@@ -1472,6 +1786,7 @@ export function createWorld(
     })
     ratio = Math.min(window.devicePixelRatio || 1, env.pixelRatioLimit ?? 1.6) * (env.resolutionScale ?? 1)
     addEntities(scene.entities)
+    buildStaticBatches(scene.entities)
     globalBakedLighting = Boolean(env.bakedLighting)
     const refMode = env.reflectionMode === 'realtime' || env.reflectionMode === 'baked' ? env.reflectionMode : 'off'
     setReflections(refMode, Number(env.reflectionResolution ?? 128), Number(env.reflectionInterval ?? 4))
@@ -1492,9 +1807,18 @@ export function createWorld(
     }
   }
   function sync() {
+    distanceCulled.clear()
     for (const [id, obj] of roots) {
       const n = objects.get(id)!
       obj.pos3D.set(n.position.x, n.position.y, n.position.z)
+      if (!options.editor) {
+        const limit = entityCullDist.get(id) ?? globalCullDist
+        if (limit > 0 && !meshes.has(id + '/terrain/0') && !meshes.has(id + '/water')) {
+          const wp = n.getWorldPosition(_tmpV3)
+          const dSq = (wp.x - camera.position.x) ** 2 + (wp.y - camera.position.y) ** 2 + (wp.z - camera.position.z) ** 2
+          if (dSq > limit * limit) distanceCulled.add(id)
+        }
+      }
       obj.rotation3D.set(n.rotation.x, n.rotation.y, n.rotation.z)
       obj.scale3D.set(n.scale.x, n.scale.y, n.scale.z)
       const parent = n.parent && roots.get(n.parent.id)
@@ -1518,6 +1842,23 @@ export function createWorld(
           r.sunColor = tint.scale((light.intensity ?? 1) * 0.29 * exposure)
           if (pos.x || pos.y || pos.z) r.sunDirection = v(pos)
         }
+      }
+    }
+    if (lightCullDist > 0 && entityLights.size) {
+      const shLight = (r as any).shadowLight
+      for (const [id, light] of entityLights) {
+        const baseI = entityLightBaseIntensity.get(id)
+        if (baseI === undefined) continue
+        if (light === shLight) {
+          light.intensity = baseI
+          continue
+        }
+        const n = objects.get(id)
+        if (!n?.active) { light.intensity = 0; continue }
+        const wp = n.getWorldPosition(_tmpV3)
+        const maxD = (light.radius || 12) + lightCullDist
+        const dSq = (wp.x - camera.position.x) ** 2 + (wp.y - camera.position.y) ** 2 + (wp.z - camera.position.z) ** 2
+        light.intensity = dSq <= maxD * maxD ? baseI : 0
       }
     }
     if (shadowFollowCamera) { (r as any).shadowCenter = d.vec3(camera.position.x, 0, camera.position.z) }
@@ -1590,6 +1931,66 @@ export function createWorld(
       ratio,
       hidden,
     )
+    for (const fl of activeFlares) {
+      if (!fl.destroyed) {
+        fl.visible = 1
+        fl.visibleFound = true
+        if (typeof fl.update === 'function') fl.update()
+      }
+    }
+    let bestRay: { uv: [number, number]; intensity: number; color: [number, number, number]; decay: number } | null = null
+    if (sunRaySources.size) {
+      const wPx = Math.max(1, container.clientWidth)
+      const hPx = Math.max(1, container.clientHeight)
+      const cy = Math.cos(camera.rotation.y), sy = Math.sin(camera.rotation.y)
+      const cp = Math.cos(camera.rotation.x), sp = Math.sin(camera.rotation.x)
+      const fwd = [-sy * cp, sp, -cy * cp]
+      const right = [cy, 0, -sy]
+      const up = [
+        right[1] * fwd[2] - right[2] * fwd[1],
+        right[2] * fwd[0] - right[0] * fwd[2],
+        right[0] * fwd[1] - right[1] * fwd[0],
+      ]
+      const tanHalf = Math.tan(((camera.fov * Math.PI) / 180) * 0.5)
+      const aspect = wPx / hPx
+      for (const src of sunRaySources.values()) {
+        if (!src.enabled || src.intensity <= 0) continue
+        const node = objects.get(src.id)
+        if (!node?.active) continue
+        const wp = node.getWorldPosition(_tmpV1)
+        let relX: number, relY: number, relZ: number
+        if (src.directional) {
+          const len = Math.hypot(wp.x, wp.y, wp.z) || 1
+          relX = (wp.x / len) * 100
+          relY = (wp.y / len) * 100
+          relZ = (wp.z / len) * 100
+        } else {
+          relX = wp.x - camera.position.x
+          relY = wp.y - camera.position.y
+          relZ = wp.z - camera.position.z
+        }
+        const depth = relX * fwd[0] + relY * fwd[1] + relZ * fwd[2]
+        if (depth <= 0.1) continue
+        const rx = relX * right[0] + relY * right[1] + relZ * right[2]
+        const ry = relX * up[0] + relY * up[1] + relZ * up[2]
+        const ndcX = rx / (depth * tanHalf * aspect)
+        const ndcY = ry / (depth * tanHalf)
+        const margin = Math.max(Math.abs(ndcX), Math.abs(ndcY))
+        if (margin > 1.75) continue
+        const fade = Math.max(0, Math.min(1, 1 - Math.max(0, margin - 0.85) / 0.9))
+        const eff = src.intensity * fade
+        if (!bestRay || eff > bestRay.intensity) {
+          bestRay = {
+            uv: [ndcX * 0.5 + 0.5, ndcY * 0.5 + 0.5],
+            intensity: eff,
+            color: src.color,
+            decay: src.decay,
+          }
+        }
+      }
+    }
+    if (bestRay) post.setSunRay(bestRay.uv, bestRay.intensity, bestRay.color, bestRay.decay)
+    else post.setSunRay([0.5, 0.5], 0)
     post.render(canvas)
     info.memory.textures = textures.size
     info.render.triangles = d.triangles()
@@ -1666,7 +2067,9 @@ export function createWorld(
     setSkyAsset,
     setLightIntensity(id: string, intensity: number) {
       const light = entityLights.get(id)
-      if (light) light.intensity = Math.max(0, intensity)
+      const val = Math.max(0, intensity)
+      entityLightBaseIntensity.set(id, val)
+      if (light) light.intensity = val
     },
     setLightColor(id: string, hex: string) {
       const light = entityLights.get(id)
@@ -1675,6 +2078,19 @@ export function createWorld(
     setLightRange(id: string, range: number) {
       const light = entityLights.get(id)
       if (light) light.radius = Math.max(0.1, range)
+    },
+    setLightSunRays(id: string, enabled: boolean, intensity = 0.75, decay = 0.94) {
+      if (!enabled) { sunRaySources.delete(id); return }
+      const existing = sunRaySources.get(id)
+      const sceneLight = sceneLights.get(id)
+      sunRaySources.set(id, {
+        id,
+        directional: existing?.directional ?? sceneLight?.kind === 'directional',
+        intensity: Math.max(0.05, intensity),
+        decay: Math.max(0.8, Math.min(0.99, decay)),
+        color: existing?.color ?? hexToRgbTuple(sceneLight?.color ?? '#ffe8bd'),
+        enabled: true,
+      })
     },
     setLightGlow(id: string, glow: number, falloff?: number) {
       const light = entityLights.get(id)
@@ -1692,6 +2108,7 @@ export function createWorld(
         ;(light as any).gel = undefined
         return
       }
+      if (light.coneAngle > 0) (r as any).shadowLight = light
       const p = texture(textureAssetId)
       if (p) {
         void p.then((t) => {
@@ -1706,6 +2123,18 @@ export function createWorld(
         shadowFollowCamera = opts.followCamera
         if (!shadowFollowCamera) (r as any).shadowCenter = undefined
       }
+    },
+    setCullDistance(dist: number) {
+      globalCullDist = Math.max(0, Number(dist || 0))
+    },
+    setResolutionScale(scale: number) {
+      resolutionScale = Math.max(0.4, Math.min(1, Number(scale || 1)))
+      ratio = Math.min(window.devicePixelRatio || 1, 2) * resolutionScale
+    },
+    setOptimization(opts: { lightCullDistance?: number; particleCullDistance?: number; animationThrottle?: boolean }) {
+      if (opts.lightCullDistance !== undefined) lightCullDist = Math.max(0, opts.lightCullDistance)
+      if (opts.particleCullDistance !== undefined) particleCullDist = Math.max(0, opts.particleCullDistance)
+      if (opts.animationThrottle !== undefined) animationThrottle = Boolean(opts.animationThrottle)
     },
     setRenderQuality(opts: { anisotropy?: number; mipmaps?: boolean; frustumCulling?: boolean; sortTransparent?: boolean }) {
       if (opts.anisotropy !== undefined) (r as any).anisotropy = Math.max(1, Math.min(16, opts.anisotropy))
@@ -2007,6 +2436,50 @@ export function createWorld(
       return hit && hit.distance <= max ? owner(hit.object)?.id : undefined
     },
     animationClips: (id: string) => players.get(id)?.model.animations.map((a) => a.name) ?? [],
+    inspectModel: (id: string) => {
+      const player = players.get(id) as any
+      const m = player?.model
+      if (!m) return undefined
+      const toHex = (c: any) => {
+        if (!c) return '#ffffff'
+        const h = (x: number) => Math.max(0, Math.min(255, Math.round(x * 255))).toString(16).padStart(2, '0')
+        return `#${h(c.r ?? 1)}${h(c.g ?? 1)}${h(c.b ?? 1)}`
+      }
+      const parts = (m.parts || []).map((pt: any, index: number) => {
+        const mesh = pt.mesh
+        const verts = mesh?.points?.length ?? mesh?.vertexDataCount ?? 0
+        const idxCount = mesh?.indices?.length ?? mesh?.vertexIndices?.length ?? 0
+        const tris = idxCount ? Math.floor(idxCount / 3) : Math.max(0, verts - 2)
+        return {
+          index,
+          name: String(pt.name || `Part ${index}`),
+          vertices: verts,
+          triangles: tris,
+          color: toHex(pt.color),
+          hasTexture: Boolean(pt.textureInfo),
+          roughness: Number(pt.roughness ?? 1),
+          unlit: Boolean(pt.unlit),
+          pixelated: Boolean(pt.pixelated),
+          doubleSided: Boolean(mesh?.doubleSided),
+        }
+      })
+      const baseAnims: any[] = m.__baseAnimations || m.animations || []
+      const nativeClips = baseAnims.map((a: any) => ({ name: String(a.name), duration: Number(a.duration || 0) }))
+      const allClips = (m.animations || []).map((a: any) => ({ name: String(a.name), duration: Number(a.duration || 0) }))
+      const nt = m.nodeTree
+      const bones = Array.isArray(nt?.nodes) ? nt.nodes.map((nd: any, i: number) => String(nd?.name || `Bone_${i}`)) : []
+      const b = typeof m.getBounds === 'function' ? m.getBounds() : { min: { x: -1, y: 0, z: -1 }, max: { x: 1, y: 2, z: 1 } }
+      return {
+        parts,
+        nativeClips,
+        allClips,
+        bones,
+        bounds: {
+          min: [b.min.x, b.min.y, b.min.z] as Vec3,
+          max: [b.max.x, b.max.y, b.max.z] as Vec3,
+        },
+      }
+    },
     animationBones: (id: string): string[] => {
       const nt = (players.get(id)?.model as any)?.nodeTree
       return Array.isArray(nt?.nodes) ? nt.nodes.map((n: any, i: number) => String(n?.name || `Bone_${i}`)) : []
@@ -2058,11 +2531,18 @@ export function createWorld(
     },
     updateAnimations(dt: number) {
       d.tick(dt)
-      for (const [id, obj] of players)
-        if (objects.get(id)?.active && obj.animationPlaying) {
-          obj.update()
-          if (!obj.animationPlaying && obj.animation) options.onAnimationFinished?.(id, obj.animation.name)
+      for (const [id, obj] of players) {
+        const node = objects.get(id)
+        if (!node?.active || !obj.animationPlaying) continue
+        if (animationThrottle) {
+          const wp = node.getWorldPosition(_tmpV1)
+          const dSq = (wp.x - camera.position.x) ** 2 + (wp.y - camera.position.y) ** 2 + (wp.z - camera.position.z) ** 2
+          if (dSq > 1600 && renderFrameCount % 4 !== 0) continue
+          if (dSq > 400 && renderFrameCount % 2 !== 0) continue
         }
+        obj.update()
+        if (!obj.animationPlaying && obj.animation) options.onAnimationFinished?.(id, obj.animation.name)
+      }
     },
     dispose() {
       if (disposed) return

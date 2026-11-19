@@ -55,6 +55,54 @@ export function translate(
   return value.replace(/\{(\w+)\}/g, (s: string, k: string) => String(params[k] ?? s))
 }
 
+export function buildHtmlWidgetSrcdoc(
+  frameId: string,
+  html: string,
+  css = '',
+  js = '',
+): string {
+  const safeId = JSON.stringify(frameId)
+  const bridge = `<script>(function(){
+  var FRAME_ID=${safeId};
+  var listeners={};
+  function post(kind,payload){try{window.parent.postMessage({__mfHtml:true,frameId:FRAME_ID,kind:kind,payload:payload},'*');}catch(e){}}
+  window.miniforge={
+    emit:function(name,data){post('emit',{name:String(name),data:data});},
+    action:function(name,data){post('action',{name:String(name),data:data});},
+    setVar:function(key,value){post('setVar',{key:String(key),value:value});},
+    on:function(name,cb){if(!listeners[name])listeners[name]=[];listeners[name].push(cb);return function(){listeners[name]=(listeners[name]||[]).filter(function(f){return f!==cb;});};}
+  };
+  ['log','warn','error'].forEach(function(lvl){
+    var orig=console[lvl];
+    console[lvl]=function(){
+      var args=[].slice.call(arguments).map(function(a){try{return typeof a==='object'?JSON.stringify(a):String(a);}catch(e){return String(a);}});
+      post('console',{level:lvl,text:args.join(' ')});
+      if(orig)orig.apply(console,arguments);
+    };
+  });
+  window.addEventListener('error',function(ev){post('console',{level:'error',text:ev.message||'Script error'});});
+  window.addEventListener('message',function(ev){
+    var d=ev.data;
+    if(!d||!d.__mfToHtml)return;
+    (listeners[d.name]||[]).forEach(function(fn){try{fn(d.data);}catch(err){post('console',{level:'error',text:String(err)});}});
+  });
+  document.addEventListener('click',function(ev){
+    var t=ev.target&&ev.target.closest?ev.target.closest('[data-event],[data-action]'):null;
+    if(!t)return;
+    var act=t.getAttribute('data-action');
+    if(act){post('action',{name:act,data:t.getAttribute('data-target')||undefined});}
+    var evName=t.getAttribute('data-event');
+    if(evName){
+      var raw=t.getAttribute('data-payload');
+      var parsed=raw;
+      if(raw){try{parsed=JSON.parse(raw);}catch(e){}}
+      post('emit',{name:evName,data:parsed});
+    }
+  });
+})();<\/script>`
+  return `<!DOCTYPE html><html style="background:transparent;color-scheme:dark"><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden}${css || ''}</style>${bridge}</head><body style="background:transparent">${html || ''}<script>try{${js || ''}}catch(e){console.error(e);}<\/script></body></html>`
+}
+
 export class Overlay {
   host = document.createElement('div')
   private shadow = this.host.attachShadow({ mode: 'open' })
@@ -71,6 +119,28 @@ export class Overlay {
   private snapshot?: { score: number; time: number; best: number; lang: string; mode: boolean }
   private variables: Record<string, unknown> = {}
   private labels = new Map<string, HTMLElement>()
+  private htmlFrames = new Map<string, HTMLIFrameElement>()
+  private onHtmlMessage = (ev: MessageEvent) => {
+    const d = ev.data
+    if (!d || !d.__mfHtml) return
+    const frame = this.htmlFrames.get(String(d.frameId))
+    if (!frame || ev.source !== frame.contentWindow) return
+    if (d.kind === 'emit' && d.payload?.name) {
+      this.actions.emit(String(d.payload.name), d.payload.data)
+    } else if (d.kind === 'action' && d.payload?.name) {
+      const act = String(d.payload.name)
+      if (act === 'play') this.actions.play()
+      else if (act === 'pause') this.actions.pause()
+      else if (act === 'retry') this.actions.retry()
+      else if (act === 'close') this.close()
+      else if (act === 'back') this.back()
+      else if (act === 'open' && d.payload.data) this.open(String(d.payload.data))
+      else this.actions.emit(act, d.payload.data)
+    } else if (d.kind === 'setVar' && d.payload?.key) {
+      this.variables[String(d.payload.key)] = d.payload.value
+      this.actions.emit('ui.var.set', { key: d.payload.key, value: d.payload.value })
+    }
+  }
   constructor(
     private project: Project,
     private actions: Actions,
@@ -108,6 +178,7 @@ export class Overlay {
       this.stick.style.transform = ''
     }
     this.shadow.append(style, this.hud, this.pad, this.panel, this.custom, this.mountedLayer, this.stats)
+    window.addEventListener('message', this.onHtmlMessage)
   }
   private button(text: string, fn: () => void) {
     const el = document.createElement('button')
@@ -247,6 +318,7 @@ export class Overlay {
     this.panel.replaceChildren()
     this.custom.replaceChildren()
     this.labels.clear()
+    this.htmlFrames.clear()
     const items = this.project.ui.filter(
       (item) =>
         item.visible !== false &&
@@ -304,7 +376,22 @@ export class Overlay {
           : document.createElement(
               item.type === 'image' ? 'img' : item.type === 'progress' ? 'progress' : 'div',
             )
-      if (el instanceof HTMLImageElement) {
+      if (item.type === 'html') {
+        el.textContent = ''
+        const asset = this.project.assets.find((a) => a.id === item.asset && (a.type === 'html' || a.type === 'text'))
+        const iframe = document.createElement('iframe')
+        iframe.setAttribute('sandbox', 'allow-scripts')
+        iframe.style.cssText = 'width:100%;height:100%;border:0;background:transparent;color-scheme:dark;display:block;'
+        iframe.setAttribute('allowtransparency', 'true')
+        iframe.srcdoc = buildHtmlWidgetSrcdoc(
+          item.id,
+          asset?.data || '',
+          String(asset?.properties?.css || ''),
+          String(asset?.properties?.js || ''),
+        )
+        el.append(iframe)
+        this.htmlFrames.set(item.id, iframe)
+      } else if (el instanceof HTMLImageElement) {
         el.src = this.project.assets.find((a) => a.id === item.asset)?.data || ''
         el.alt = this.t(item.text || '')
       } else if (item.type !== 'progress') el.textContent = this.t(item.text || '')
@@ -323,7 +410,7 @@ export class Overlay {
         border: item.borderColor ? `1px solid ${item.borderColor}` : '',
         backdropFilter: Number(item.backdropBlur ?? (item.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(item.backdropBlur ?? 12)}px)` : '',
         webkitBackdropFilter: Number(item.backdropBlur ?? (item.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(item.backdropBlur ?? 12)}px)` : '',
-        pointerEvents: item.type === 'button' ? 'auto' : 'none',
+        pointerEvents: item.type === 'button' || (item.type === 'html' && item.interactive !== false) ? 'auto' : 'none',
       })
       if (item.type === 'button' && item.action === 'input' && item.target) this.bindInput(el, item.target)
       this.labels.set(item.id, el)
@@ -396,7 +483,13 @@ export class Overlay {
   performance(text: string) {
     this.stats.textContent = text
   }
+  dispatchEvent(name: string, data?: unknown) {
+    for (const iframe of this.htmlFrames.values()) {
+      try { iframe.contentWindow?.postMessage({ __mfToHtml: true, name, data }, '*') } catch {}
+    }
+  }
   dispose() {
+    window.removeEventListener('message', this.onHtmlMessage)
     for (const id of [...this.mounted.keys()]) this.unmount(id)
     this.input.releaseVirtual()
     this.host.remove()

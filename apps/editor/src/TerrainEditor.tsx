@@ -7,6 +7,7 @@ import {
   ensureTerrainLayers,
   generateTerrainPreset,
   removeTerrainMaterialLayer,
+  resizeTerrain,
   terrainTools,
   type Terrain,
   type TerrainPreset,
@@ -314,9 +315,113 @@ export function TerrainEditor({
           </button>
         </div>
       </Field>
-      <Field label="Terrain size">
-        <Numeric label="Terrain size" value={terrain.size} min={0.1} change={(size) => change({ size })} />
+      <Field label="Grid resolution">
+        <select
+          aria-label="Terrain grid resolution"
+          value={terrain.segments}
+          onChange={(e) => {
+            const copy = structuredClone(terrain)
+            resizeTerrain(copy, Number(e.target.value), terrain.size)
+            change({
+              segments: copy.segments,
+              heights: copy.heights,
+              layers: copy.layers,
+              splatWeights: copy.splatWeights,
+              layerSoftness: copy.layerSoftness,
+            })
+          }}
+        >
+          {[16, 24, 32, 48, 64, 96, 128].map((seg) => (
+            <option key={seg} value={seg}>
+              {seg} × {seg} cells
+            </option>
+          ))}
+        </select>
       </Field>
+      <Field label="Terrain size (m)">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+          <Numeric label="Terrain size" value={terrain.size} min={2} max={512} step={2} change={(size) => change({ size })} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[16, 32, 64, 128].map((sz) => (
+              <button key={sz} type="button" className="mf-preset-chip" onClick={() => change({ size: sz })}>
+                {sz}m
+              </button>
+            ))}
+          </div>
+        </div>
+      </Field>
+      {(tool === 'Scatter' || tool === 'Erase scatter') && brush && onBrushChange && (
+        <div style={{ padding: 7, borderRadius: 6, background: 'rgba(126, 231, 135, 0.08)', border: '1px solid rgba(126, 231, 135, 0.3)', marginBottom: 8 }}>
+          <div className="mf-minor-label" style={{ marginTop: 0, color: '#7ee787' }}>
+            Foliage / Model Scatter Brush
+          </div>
+          <Field label="Density / stamp">
+            <Numeric
+              label="Scatter density"
+              value={brush.scatterDensity ?? 4}
+              min={1}
+              max={25}
+              step={1}
+              change={(v) => onBrushChange({ scatterDensity: Math.round(v) })}
+            />
+          </Field>
+          <Field label="Min spacing (m)">
+            <Numeric
+              label="Scatter spacing"
+              value={brush.scatterSpacing ?? 1.2}
+              min={0.2}
+              max={15}
+              step={0.2}
+              change={(v) => onBrushChange({ scatterSpacing: v })}
+            />
+          </Field>
+          <Field label="Scale min / max">
+            <div className="mf-vec2-inline">
+              <Numeric
+                label="Min scale"
+                value={brush.scatterScaleMin ?? 0.75}
+                min={0.1}
+                max={5}
+                step={0.05}
+                change={(v) => onBrushChange({ scatterScaleMin: v })}
+              />
+              <Numeric
+                label="Max scale"
+                value={brush.scatterScaleMax ?? 1.35}
+                min={0.1}
+                max={5}
+                step={0.05}
+                change={(v) => onBrushChange({ scatterScaleMax: v })}
+              />
+            </div>
+          </Field>
+          <div style={{ fontSize: 11, color: '#9eb4c9', marginBottom: 4 }}>Models / Prefabs to scatter:</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 110, overflowY: 'auto' }}>
+            {assets
+              .filter((a) => a.type === 'prefab' || a.type === 'model')
+              .map((a) => {
+                const picked = (brush.scatterAssets || []).includes(a.id)
+                return (
+                  <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={picked}
+                      onChange={(e) => {
+                        const curList = brush.scatterAssets || []
+                        const nextList = e.target.checked
+                          ? [...curList, a.id]
+                          : curList.filter((id) => id !== a.id)
+                        onBrushChange({ scatterAssets: nextList })
+                      }}
+                    />
+                    <span>{a.name}</span>
+                    <small style={{ marginLeft: 'auto', opacity: 0.6 }}>{a.type}</small>
+                  </label>
+                )
+              })}
+          </div>
+        </div>
+      )}
       <Field label="Texture repeat">
         <Numeric
           label="Texture repeat"

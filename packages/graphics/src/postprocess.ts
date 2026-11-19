@@ -67,6 +67,9 @@ uniform float uBloom, uBloomThreshold;
 uniform float uVignette, uChromatic, uGrain, uScanlines;
 uniform float uContrast, uSaturation;
 uniform int uToneMap;
+uniform vec2 uSunRayOrigin;
+uniform vec3 uSunRayColor;
+uniform float uSunRayIntensity, uSunRayDecay;
 in vec2 vUV;
 out vec4 outColor;
 
@@ -140,6 +143,23 @@ void main() {
     col += (glow / 9.0) * uBloom;
   }
 
+  // Screen-space Crepuscular Sun Rays (16-tap radial scattering, skipped when intensity == 0)
+  if (uSunRayIntensity > 0.001) {
+    vec2 delta = (uv - uSunRayOrigin) * (0.72 / 16.0);
+    vec2 sampleUV = uv;
+    float illum = 1.0;
+    vec3 shafts = vec3(0.0);
+    for (int i = 0; i < 16; i++) {
+      sampleUV -= delta;
+      vec3 s = texture(uScene, clamp(sampleUV, 0.001, 0.999)).rgb;
+      float bright = smoothstep(0.42, 0.92, luma(s));
+      shafts += s * bright * illum;
+      illum *= uSunRayDecay;
+    }
+    float distFade = clamp(1.15 - length(uv - uSunRayOrigin) * 0.65, 0.15, 1.0);
+    col += (shafts / 16.0) * uSunRayColor * uSunRayIntensity * distFade * 1.45;
+  }
+
   // Contrast & Saturation
   col = (col - 0.5) * uContrast + 0.5;
   float l = luma(col);
@@ -181,6 +201,17 @@ export class PostProcessor {
   private uniforms: Record<string, WebGLUniformLocation | null> = {}
   private opts: Required<PostProcessOptions> = { ...defaultPostProcess }
   private startTime = performance.now()
+  private sunRayOrigin: [number, number] = [0.5, 0.5]
+  private sunRayColor: [number, number, number] = [1, 0.92, 0.78]
+  private sunRayIntensity = 0
+  private sunRayDecay = 0.94
+
+  setSunRay(origin: [number, number], intensity: number, color: [number, number, number] = [1, 0.92, 0.78], decay = 0.94) {
+    this.sunRayOrigin = origin
+    this.sunRayIntensity = Math.max(0, intensity)
+    this.sunRayColor = color
+    this.sunRayDecay = Math.max(0.8, Math.min(0.99, decay))
+  }
 
   constructor(container: HTMLElement) {
     this.canvas = document.createElement('canvas')
@@ -201,7 +232,8 @@ export class PostProcessor {
       o.scanlines > 0.001 ||
       Math.abs(o.contrast - 1) > 0.005 ||
       Math.abs(o.saturation - 1) > 0.005 ||
-      o.toneMapping === 'aces'
+      o.toneMapping === 'aces' ||
+      this.sunRayIntensity > 0.001
     )
   }
 
@@ -273,6 +305,10 @@ export class PostProcessor {
       'uContrast',
       'uSaturation',
       'uToneMap',
+      'uSunRayOrigin',
+      'uSunRayColor',
+      'uSunRayIntensity',
+      'uSunRayDecay',
     ]) {
       this.uniforms[name] = gl.getUniformLocation(prog, name)
     }
@@ -316,6 +352,10 @@ export class PostProcessor {
     gl.uniform1f(u.uContrast, o.contrast)
     gl.uniform1f(u.uSaturation, o.saturation)
     gl.uniform1i(u.uToneMap, o.toneMapping === 'aces' ? 1 : 0)
+    gl.uniform2f(u.uSunRayOrigin, this.sunRayOrigin[0], this.sunRayOrigin[1])
+    gl.uniform3f(u.uSunRayColor, this.sunRayColor[0], this.sunRayColor[1], this.sunRayColor[2])
+    gl.uniform1f(u.uSunRayIntensity, this.sunRayIntensity)
+    gl.uniform1f(u.uSunRayDecay, this.sunRayDecay)
 
     gl.bindVertexArray(this.vao)
     gl.drawArrays(gl.TRIANGLES, 0, 3)

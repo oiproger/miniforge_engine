@@ -23,10 +23,10 @@
     "littlejsengine": "1.30.1",
     "lucide-react": "^0.577.0",
     "monaco-editor": "^0.55.1",
-    "pnpm": "^12.21.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "assimpjs": "^0.0.10"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",

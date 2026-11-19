@@ -184,6 +184,12 @@ export interface GraphicsAPI {
   setShadowParams(opts: { softness?: number; bias?: number; followCamera?: boolean }): void
   /** Configure anisotropy (1..16), mipmaps, frustum culling, and transparent sorting. */
   setRenderQuality(opts: { anisotropy?: number; mipmaps?: boolean; frustumCulling?: boolean; sortTransparent?: boolean }): void
+  /** Scale internal WebGL render resolution (0.4 .. 1.0) for higher FPS on iGPU / HiDPI screens. */
+  setResolutionScale(scale: number): void
+  /** Set global runtime distance culling threshold in meters (0 = disabled). */
+  setCullDistance(distance: number): void
+  /** Configure runtime distance culling for lights & particles and distant glTF animation throttling. */
+  setOptimization(opts: { lightCullDistance?: number; particleCullDistance?: number; animationThrottle?: boolean }): void
 }
 
 export interface DebugAPI {
@@ -204,6 +210,34 @@ export interface MaterialsAPI {
   setShader(entityId: string, shaderAssetId: string | null): void
   /** Create a new material asset at runtime and return its ID. */
   create(name: string, properties: Record<string, any>): string
+  /** Query surface material & terrain layer under any world position (works on both Terrain and any 3D model/mesh). */
+  getSurfaceAt(position: Vec3 | Vector3, direction?: Vec3, maxDist?: number): SurfaceSample | undefined
+}
+
+export interface TerrainLayerSample {
+  entityId: string
+  height: number
+  layerIndex: number
+  materialId: string
+  materialName: string
+  weights: number[]
+}
+
+export interface SurfaceSample {
+  entityId: string
+  entityName: string
+  materialId: string
+  materialName: string
+  tags: string[]
+  point: Vec3
+  normal: Vec3
+  isTerrain: boolean
+  layerIndex?: number
+}
+
+export interface TerrainAPI {
+  /** Sample the dominant terrain material layer & exact ground height at world (x, z). */
+  getLayerAt(x: number, z: number): TerrainLayerSample | undefined
 }
 
 export interface LightsAPI {
@@ -215,6 +249,8 @@ export interface LightsAPI {
   setRange(id: string, range: number): void
   /** Set volumetric fog glow intensity & falloff on a point/spot light. */
   setGlow(id: string, glow: number, falloff?: number): void
+  /** Toggle optional screen-space Sun Rays (God Rays) on any light entity. */
+  setSunRays(id: string, enabled: boolean, intensity?: number, decay?: number): void
   /** Assign a Spot Light entity as the active shadow-casting light (or null for sun). */
   setShadowLight(id: string | null): void
   /** Assign a projection texture (gobo/cookie) to a Light3D (or null to clear). */
@@ -340,6 +376,8 @@ export interface GameAPI {
     getState(id: string): { clip: string; time: number; duration: number; playing: boolean; speed: number; loop: boolean } | undefined
     getBonePosition(id: string, boneName: string): Vec3 | undefined
   }
+  /** Terrain height & multi-material layer queries (ideal for footstep sounds). */
+  terrain: TerrainAPI
   /** NavGrid A* pathfinding, dynamic obstacles, Off-Mesh Links, and NPC NavAgent steering. */
   nav: {
     findPath(start: Vec3, goal: Vec3, opts?: { smooth?: boolean; zoneId?: string }): Vec3[]

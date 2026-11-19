@@ -6,3 +6,4 @@ target/
 *.tsbuildinfo
 apps/editor/public/engine/
 packages/graphics/src/device.generated.js
+apps/editor/public/assimpjs.wasm

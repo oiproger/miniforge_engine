@@ -9,6 +9,8 @@ export const terrainTools = [
   'Terrace',
   'Paint',
   'Erase paint',
+  'Scatter',
+  'Erase scatter',
 ] as const
 export type TerrainTool = (typeof terrainTools)[number]
 export type TerrainPreset = 'flat' | 'hills' | 'valley' | 'crater' | 'ridge'
@@ -402,4 +404,112 @@ export function brushTerrain(
       }
     }
   }
+}
+
+
+/** Bilinearly resize terrain grid resolution (segments) and/or world size while preserving heights & all material layers. */
+export function resizeTerrain(t: Terrain, newSegments: number, newSize?: number) {
+  const oldN = t.segments
+  const n = Math.max(4, Math.min(128, Math.round(newSegments)))
+  const { materials, splatWeights, layerSoftness } = ensureTerrainLayers(t)
+  const oldHeights = t.heights.slice()
+  const oldWeights = splatWeights.map((w) => w.slice())
+
+  const sampleGrid = (arr: number[], gx: number, gz: number) => {
+    const cx = Math.max(0, Math.min(oldN, gx))
+    const cz = Math.max(0, Math.min(oldN, gz))
+    const x0 = Math.min(oldN - 1, Math.floor(cx))
+    const z0 = Math.min(oldN - 1, Math.floor(cz))
+    const fx = cx - x0
+    const fz = cz - z0
+    const i00 = z0 * (oldN + 1) + x0
+    return (
+      arr[i00] * (1 - fx) * (1 - fz) +
+      arr[i00 + 1] * fx * (1 - fz) +
+      arr[i00 + oldN + 1] * (1 - fx) * fz +
+      arr[i00 + oldN + 2] * fx * fz
+    )
+  }
+
+  const nextHeights = new Array<number>((n + 1) ** 2)
+  const nextWeights = materials.map(() => new Array<number>((n + 1) ** 2))
+  const nextLayers = new Array<number>(n * n).fill(0)
+
+  for (let z = 0; z <= n; z++) {
+    const oz = (z / n) * oldN
+    for (let x = 0; x <= n; x++) {
+      const ox = (x / n) * oldN
+      const vi = z * (n + 1) + x
+      nextHeights[vi] = Math.round(sampleGrid(oldHeights, ox, oz) * 1000) / 1000
+      let sum = 0
+      for (let l = 0; l < materials.length; l++) {
+        const w = sampleGrid(oldWeights[l], ox, oz)
+        nextWeights[l][vi] = w
+        sum += w
+      }
+      if (sum > 1e-5) {
+        for (let l = 0; l < materials.length; l++) nextWeights[l][vi] /= sum
+      } else {
+        nextWeights[0][vi] = 1
+      }
+      if (x < n && z < n) {
+        let dom = 0, best = nextWeights[0][vi]
+        for (let l = 1; l < materials.length; l++) {
+          if (nextWeights[l][vi] > best) { best = nextWeights[l][vi]; dom = l }
+        }
+        nextLayers[z * n + x] = dom
+      }
+    }
+  }
+
+  t.segments = n
+  if (newSize !== undefined && Number.isFinite(newSize) && newSize > 0) t.size = newSize
+  t.heights = nextHeights
+  t.splatWeights = nextWeights
+  t.layers = nextLayers
+  t.layerSoftness = layerSoftness
+}
+
+export function sampleTerrainLayerAt(
+  t: Terrain,
+  worldX: number,
+  worldZ: number,
+  transform?: Transform,
+): { inside: boolean; height: number; layerIndex: number; materialId: string; weights: number[] } {
+  const px = transform?.position[0] ?? 0
+  const py = transform?.position[1] ?? 0
+  const pz = transform?.position[2] ?? 0
+  const sx = transform?.scale[0] || 1
+  const sy = transform?.scale[1] || 1
+  const sz = transform?.scale[2] || 1
+  const lx = (worldX - px) / sx
+  const lz = (worldZ - pz) / sz
+  const half = t.size * 0.5
+  const inside = lx >= -half && lx <= half && lz >= -half && lz <= half
+  const { materials, splatWeights } = ensureTerrainLayers(t)
+  const gx = Math.max(0, Math.min(t.segments, (lx / t.size + 0.5) * t.segments))
+  const gz = Math.max(0, Math.min(t.segments, (lz / t.size + 0.5) * t.segments))
+  const height = py + sampleTerrainGridHeight(t, gx, gz) * sy
+  const n = t.segments
+  const x0 = Math.min(n - 1, Math.floor(gx))
+  const z0 = Math.min(n - 1, Math.floor(gz))
+  const fx = gx - x0
+  const fz = gz - z0
+  const i00 = z0 * (n + 1) + x0
+  const weights = splatWeights.map(
+    (arr) =>
+      arr[i00] * (1 - fx) * (1 - fz) +
+      arr[i00 + 1] * fx * (1 - fz) +
+      arr[i00 + n + 1] * (1 - fx) * fz +
+      arr[i00 + n + 2] * fx * fz,
+  )
+  let layerIndex = 0
+  let best = weights[0] ?? 1
+  for (let l = 1; l < weights.length; l++) {
+    if (weights[l] > best) {
+      best = weights[l]
+      layerIndex = l
+    }
+  }
+  return { inside, height, layerIndex, materialId: materials[layerIndex] || '', weights }
 }

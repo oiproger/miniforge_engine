@@ -20,7 +20,7 @@ export async function modelClipNames(model: Blob): Promise<string[]> {
   }
   const document = JSON.parse(await json.text())
   return (document.animations ?? []).map(
-    (clip: { name?: string }, i: number) => clip.name || 'animation_' + i,
+    (clip: { name?: string }, i: number) => clip.name || 'animation ' + i,
   )
 }
 
@@ -50,8 +50,12 @@ function AnimationFields({
         .then(modelClipNames)
         .then((names) => {
           if (!abort.signal.aborted) {
-            setClips(names)
-            if (!names.length) setStatus('This model contains no animation clips.')
+            const custom = Array.isArray(model.properties?.clips)
+              ? model.properties.clips.map((cl: any) => String(cl?.name || '')).filter(Boolean)
+              : []
+            const merged = [...custom, ...names.filter((n) => !custom.includes(n))]
+            setClips(merged)
+            if (!merged.length) setStatus('This model contains no animation clips.')
           }
         })
         .catch(() => {
@@ -59,7 +63,7 @@ function AnimationFields({
         })
     }
     return () => abort.abort()
-  }, [model?.data])
+  }, [model?.data, model?.properties?.clips])
   return (
     <>
       <Field label="Animation clip">
