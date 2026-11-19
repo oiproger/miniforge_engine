@@ -64,3 +64,100 @@ test('spawned collider can be disabled, reenabled, destroyed and its ID reused',
     sim.dispose()
   }
 })
+
+test('character climbs a low step and a triangle slope but stops at a tall wall', async () => {
+  const { Mesh, BoxGeometry } = await import('three')
+  const scene = makeScene(),
+    objects = new Map<string, Group>()
+  function object(
+    name: string,
+    x: number,
+    y: number,
+    components: (typeof scene.entities)[number]['components'],
+  ) {
+    const e = makeEntity(name)
+    e.components = components
+    const node = new Group()
+    node.position.set(x, y, 0)
+    objects.set(e.id, node)
+    scene.entities.push(e)
+    return { e, node }
+  }
+  const { e: player, node } = object('Player', 0, 0.02, [
+    { type: 'behavior', kind: 'player', params: { stepHeight: 0.3, maxSlope: 42 } },
+  ])
+  const floor = object('Floor', 0, -0.1, [{ type: 'collider', size: [20, 0.2, 4] }])
+  floor.e.properties.floor = true
+  object('Step', 1, 0.09, [{ type: 'collider', size: [1, 0.18, 3] }])
+  const ramp = object('Ramp', 2.5, 0.38, [{ type: 'collider', shape: 'mesh' }])
+  const mesh = new Mesh(new BoxGeometry(2.4, 0.1, 3))
+  mesh.rotation.z = 0.28
+  ramp.node.add(mesh)
+  const wall = object('Wall', 4.2, 1, [{ type: 'collider', size: [0.25, 2, 4] }])
+  const sim = await createPhysics({ objects }, scene)
+  let peak = 0,
+    stepY = 0,
+    touched = false
+  try {
+    for (let i = 0; i < 250; i++) {
+      sim.step(1 / 60, () => {})
+      const move = sim.moveCharacter!(player.id, [0.025, -0.02, 0])!
+      node.position.add(new Vector3(...move.delta))
+      peak = Math.max(peak, node.position.y)
+      if (node.position.x > 0.8 && node.position.x < 1.1) stepY = Math.max(stepY, node.position.y)
+      touched ||= move.contacts.includes(wall.e.id)
+    }
+    expect(stepY).toBeGreaterThan(0.15)
+    expect(peak).toBeGreaterThan(0.65)
+    expect(touched).toBe(true)
+    expect(node.position.x).toBeLessThan(4)
+  } finally {
+    sim.dispose()
+    mesh.geometry.dispose()
+  }
+})
+
+test('a character lands below its spawn height on sculpted terrain and cannot climb a steep face', async () => {
+  const { makeTerrain } = await import('../../project-schema/src')
+  const { terrainGeometry } = await import('../../graphics/src/terrain')
+  const { Mesh } = await import('three')
+  const scene = makeScene(),
+    ground = makeEntity('Terrain'),
+    player = makeEntity('Climber')
+  const t = makeTerrain(16)
+  for (let z = 0; z <= 16; z++)
+    for (let x = 0; x <= 16; x++) t.heights[z * 17 + x] = Math.max(0, x - 8) * 3 - 1
+  ground.components = [t]
+  player.components = [{ type: 'behavior', kind: 'first-person', params: { maxSlope: 35, stepHeight: 0.15 } }]
+  const surface = new Group(),
+    node = new Group(),
+    geo = terrainGeometry(t)
+  surface.add(new Mesh(geo))
+  node.position.set(-1, 2, 0)
+  scene.entities = [ground, player]
+  const sim = await createPhysics(
+    {
+      objects: new Map([
+        [ground.id, surface],
+        [player.id, node],
+      ]),
+    },
+    scene,
+  )
+  function step(dx: number) {
+    sim.step(1 / 60, () => {})
+    const result = sim.moveCharacter!(player.id, [dx, -0.04, 0])!
+    node.position.add(new Vector3(...result.delta))
+  }
+  try {
+    for (let i = 0; i < 100; i++) step(0)
+    expect(node.position.y).toBeCloseTo(-1, 1)
+    for (let i = 0; i < 120; i++) step(0.03)
+    expect(node.position.x).toBeGreaterThan(-0.4)
+    expect(node.position.x).toBeLessThan(0.15)
+    expect(node.position.y).toBeLessThan(-0.7)
+  } finally {
+    sim.dispose()
+    geo.dispose()
+  }
+})

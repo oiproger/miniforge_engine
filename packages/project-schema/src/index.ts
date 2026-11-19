@@ -1,3 +1,5 @@
+import {validTerrain} from './terrain'
+export * from './terrain'
 import {validateScreens, type UIScreen, type Anchor, type ButtonAction} from './screens'
 export * from './screens'
 // Project v1 is plain JSON. A component's type and an asset's ID are stable routing keys.
@@ -142,6 +144,7 @@ function validateEntities(entities: Entity[]): void {
       Array.isArray(e.components) && e.components.every((c) => record(c) && typeof c.type === 'string'),
       'invalid components of ' + e.name,
     )
+    for (const c of e.components) if (c.type === 'terrain') need(validTerrain(c), 'invalid terrain of ' + e.name)
     need(record(e.properties), 'invalid entity properties')
   }
   for (const id of ids) {
@@ -207,6 +210,11 @@ export function validateProject(input: unknown): Project {
       typeof input.settings.language === 'string',
     'invalid settings',
   )
+  const elements = new Map((input as Project).ui.map(el=>[el.id,el]))
+  for (const el of elements.values()) if(el.parentId) {
+    const parent=elements.get(el.parentId)
+    need(el.type!=='container' && parent?.type==='container' && parent.screen===el.screen, 'invalid HUD container for '+el.id)
+  }
   validateScreens(input as Project)
   return input as Project
 }
@@ -283,4 +291,21 @@ export function duplicateEntity(scene: Scene, id: string): Entity {
   const copy = instantiatePrefab(scene, makePrefab(scene, id), original.parent)
   copy.name += ' Copy'
   return copy
+}
+
+export function needsPhysics(entities: Entity[]) {
+  return entities.some((e) =>
+    e.components.some(
+      (c) =>
+        c.enabled !== false &&
+        (c.type === 'body' ||
+          c.type === 'terrain' ||
+          (c.type === 'collider' &&
+            !c.trigger &&
+            !e.components.some(
+              (b) =>
+                b.enabled !== false && b.type === 'behavior' && ['player', 'first-person'].includes(b.kind),
+            ))),
+    ),
+  )
 }

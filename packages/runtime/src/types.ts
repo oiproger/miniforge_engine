@@ -6,6 +6,7 @@ import type { Events, ScriptLifecycle } from './lifecycle'
 import type { Input } from './input'
 
 export interface PhysicsSession {
+  moveCharacter?(id: string, delta: Vec3): { delta: Vec3; grounded: boolean; contacts: string[] } | undefined
   add(entity: Entity): void
   remove(id: string): void
   setActive(id: string, active: boolean): void

@@ -27,6 +27,8 @@ import {
   type Vec3,
 } from '../../../packages/project-schema/src'
 import ScriptParams from './ScriptParams'
+import { TerrainEditor } from './TerrainEditor'
+import { makeTerrain, type Terrain } from '../../../packages/project-schema/src/terrain'
 import { VisualFields } from './VisualFields'
 import { Section, Field, Numeric, Color } from './Fields'
 import './authoring.css'
@@ -46,6 +48,7 @@ const names: Record<string, string> = {
   audio: 'Audio Source',
   animation: 'Animation Player',
   sprite: 'Billboard Sprite',
+  terrain: 'Terrain',
 }
 const icons = {
   mesh: Box,
@@ -117,6 +120,9 @@ export function Inspector({
     const assetId = uid('asset')
     const item: Component = { type: kind, enabled: true }
     switch (kind) {
+      case 'terrain':
+        Object.assign(item, makeTerrain())
+        break
       case 'animation':
         Object.assign(item, { clip: '', loop: true, autoplay: true, speed: 1, event: '' })
         break
@@ -212,6 +218,7 @@ export function Inspector({
           toggle={() => prop('enabled', c.enabled === false)}
           remove={() => editEntity((e) => e.components.splice(i, 1))}
         >
+          {c.type === 'terrain' && <TerrainEditor terrain={c as Terrain} assets={project.assets} change={data=>patch(i,data)} />}
           {(c.type === 'animation' || c.type === 'sprite') && (
             <VisualFields c={c} assets={project.assets} modelId={entity?.components.find(part => part.type === 'mesh' && part.shape === 'model')?.asset} change={prop}/>
           )}
@@ -256,7 +263,7 @@ export function Inspector({
           )}
           {c.type === 'collider' && (
             <>
-              {select('Shape', ['box', 'sphere', 'capsule'], c.shape, (v) => prop('shape', v))}
+              {select('Shape', ['box', 'sphere', 'capsule', 'mesh'], c.shape, (v) => prop('shape', v))}
               <Field label="Trigger">
                 <input
                   type="checkbox"

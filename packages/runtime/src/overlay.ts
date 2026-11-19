@@ -1,3 +1,4 @@
+import { containerStyle, gridItemStyle } from '../../project-schema/src/hud-layout'
 import type { Project, UIElement } from '../../project-schema/src'
 import { anchorStyle } from '../../project-schema/src/screens'
 import type { Input } from './input'
@@ -262,7 +263,10 @@ export class Overlay {
         this.panel.append(this.button(this.t('menu.reward'), this.actions.reward))
       this.panel.append(this.button(lang.toUpperCase(), this.actions.language))
     }
-    for (const item of items) {
+    const ordered = [...items.filter((i) => !i.parentId), ...items.filter((i) => i.parentId)]
+    for (const item of ordered) {
+      const parent = item.parentId ? this.labels.get(item.parentId) : this.custom
+      if (!parent) continue
       const el =
         item.type === 'button'
           ? this.button(this.t(item.text), () => this.activate(item))
@@ -288,7 +292,12 @@ export class Overlay {
       })
       if (item.type === 'button' && item.action === 'input' && item.target) this.bindInput(el, item.target)
       this.labels.set(item.id, el)
-      this.custom.append(el)
+      if (item.type === 'container') {
+        el.textContent = ''
+        Object.assign(el.style, containerStyle(item))
+      }
+      if (item.parentId) Object.assign(el.style, gridItemStyle)
+      parent.append(el)
     }
     this.update(score, time, { ...this.variables, score, time, best })
   }
@@ -303,7 +312,23 @@ export class Overlay {
       scoreEl.textContent = `${this.t('hud.score')}  ${score}    ·    ${this.t('hud.time')}  ${Math.ceil(time)}`
     for (const item of this.project.ui) {
       const el = this.labels.get(item.id)
-      if (!el || !item.variable) continue
+      if (el && item.type === 'container' && item.itemsVariable) {
+        const value = vars[item.itemsVariable]
+        const entries = Array.isArray(value) ? value : []
+        const cells = el.getElementsByClassName('inventory-entry')
+        while (cells.length > entries.length) cells[cells.length - 1].remove()
+        for (let i = 0; i < entries.length; i++) {
+          let cell = cells[i]
+          if (!cell) {
+            cell = document.createElement('div')
+            cell.className = 'inventory-entry'
+            el.append(cell)
+          }
+          const label = this.t(String(entries[i] ?? ''))
+          if (cell.textContent !== label) cell.textContent = label
+        }
+      }
+      if (!el || !item.variable || item.type === 'container') continue
       if (el instanceof HTMLProgressElement) {
         el.max = Number(item.max) || 100
         el.value = Number(vars[item.variable]) || 0

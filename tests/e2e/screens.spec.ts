@@ -14,6 +14,8 @@ test('authored HUD navigates windows and sends held input through the real overl
     const button=(id,text,screen,action,target,x,y)=>({id,type:'button',text,screen,action,target,x,y})
     project.ui=[button('start','Enter vault','menu','play',null,10,10),button('inv','Inventory',undefined,'open','bag',10,20),
       button('jump','Jump',undefined,'input','Jump',20,40),button('store','Shop','bag','open','shop',10,10),
+      {id:'bag-grid',type:'container',screen:'shop',x:10,y:40,width:40,height:22,cellWidth:80,rowHeight:42,itemsVariable:'wares'},
+      {id:'grid-label',type:'text',text:'Stock',parentId:'bag-grid',screen:'shop',x:0,y:0},
       button('back','Previous','shop','back',null,20,20),button('exit','Exit','shop','close',null,30,30),
       {id:'gold',text:'Gold',screen:'bag',type:'counter',variable:'gold',anchor:'bottom-right',x:4,y:8}]
     const signal=new AbortController()
@@ -21,7 +23,7 @@ test('authored HUD navigates windows and sends held input through the real overl
     const actions={ play:()=>overlay.render('playing',3,42,7,'en',true),pause:()=>overlay.render('paused',3,42,7,'en',true),retry(){},reward(){},language(){},emit(){} }
     const overlay=new Overlay(project,actions,input,k=>translate(project,'en',k))
     window.held=()=>input.pressed('Jump');window.movement=()=>input.move;document.body.append(overlay.host)
-    overlay.render('menu',3,42,7,'en',true);overlay.update(3,42,{gold:12})
+    overlay.render('menu',3,42,7,'en',true);overlay.update(3,42,{gold:12,wares:Array.from({length:10},(_,i)=>'Item '+(i+1))})
   `,
     },
     bundle: true,
@@ -44,6 +46,14 @@ test('authored HUD navigates windows and sends held input through the real overl
   await page.keyboard.press('Escape')
   await expect(gold).toBeVisible()
   await btn('Shop').click()
+  await page.setViewportSize({ width: 360, height: 640 })
+  const grid = page.locator('[data-ui-id=bag-grid]')
+  await expect(grid.getByText('Stock')).toBeVisible()
+  const tenth = grid.getByText('Item 10', { exact: true })
+  await tenth.scrollIntoViewIfNeeded()
+  expect(await grid.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+  await expect(tenth).toBeInViewport()
+  await page.setViewportSize({ width: 1440, height: 900 })
   await btn('Previous').click()
   await expect(gold).toBeVisible()
   await btn('Shop').click()

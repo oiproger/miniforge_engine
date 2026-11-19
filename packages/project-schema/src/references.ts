@@ -44,6 +44,7 @@ export function projectIssues(project: Project): ProjectIssue[] {
             if(type==='asset')asset(owner,key,c.params?.[key])
           }
         }
+        if(c.type==='terrain'){asset(owner,'base material',c.baseMaterial,'material');asset(owner,'paint material',c.paintMaterial,'material')}
         if(c.type==='audio')asset(owner,'audio clip',c.asset,'audio')
         if(c.type==='sprite')asset(owner,'sprite texture',c.texture,'texture')
         if(c.type==='behavior'){

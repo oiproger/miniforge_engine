@@ -1,3 +1,5 @@
+import { terrainGeometry } from './terrain'
+import type { Terrain } from '../../project-schema/src/terrain'
 import * as T from 'three'
 import type { Project, Entity, Vec3, Component } from '../../project-schema/src'
 
@@ -105,6 +107,7 @@ export function createWorld(
     for (const id of ids) objects.get(id)?.traverse((node) => removal.add(node))
     restoreBatches(removal)
     for (const node of removal) {
+      if(node instanceof T.Mesh && node.userData.terrain && geometry.delete(node.geometry.uuid))node.geometry.dispose()
       if (node.userData.importedRoot) disposeTree(node)
       if (node instanceof T.DirectionalLight && shadows.delete(node.shadow)) node.shadow.dispose()
       if (node.userData.entityId && objects.get(node.userData.entityId) === node) {
@@ -270,7 +273,20 @@ export function createWorld(
         objects.set(entity.id, group)
         for (const c of entity.components) {
           if (c.enabled === false) continue
-          if (c.type === 'mesh') {
+          if (c.type === 'terrain') {
+            const ground = terrainGeometry(c as Terrain)
+            geometry.set(ground.uuid, ground)
+            const surface = (id: string, painted: boolean) => {
+              if (id) return material(id)
+              const key = painted ? '__terrainSoil' : '__terrainGrass'
+              if (!materials.has(key)) materials.set(key, new T.MeshStandardMaterial({color: painted ? '#a78357' : '#718753'}))
+              return materials.get(key)!
+            }
+            const mesh = new T.Mesh(ground, [surface(c.baseMaterial,false),surface(c.paintMaterial,true)])
+            mesh.userData.terrain = true
+            mesh.receiveShadow = mesh.castShadow = true
+            group.add(mesh)
+          } else if (c.type === 'mesh') {
             if (c.shape === 'model') {
               const asset = c.asset && assets.get(c.asset)
               if (asset?.data)
@@ -410,7 +426,7 @@ export function createWorld(
     ) {
       const movable = new Set(
         current.entities
-          .filter((e) => e.components.some((c) => c.type === 'behavior' || c.type === 'body'))
+          .filter((e) => e.components.some((c) => c.type === 'behavior' || c.type === 'body' || (c.type === 'collider' && c.shape === 'mesh')))
           .map((e) => e.id),
       )
       const groups = new Map<string, T.Mesh<T.BufferGeometry, T.Material>[]>()

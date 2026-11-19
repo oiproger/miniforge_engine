@@ -1,5 +1,5 @@
 import { strToU8, strFromU8, zipSync, unzipSync } from 'fflate'
-import { validateProject, serializeProject, parseProject, type Project, type Entity } from '../../project-schema/src'
+import { needsPhysics, validateProject, serializeProject, parseProject, type Project, type Entity } from '../../project-schema/src'
 import type { Profile } from '../../platform-sdk/src'
 import { projectIssues } from '../../project-schema/src/references'
 export type { Profile }
@@ -112,9 +112,8 @@ async function prepare(project: Project, preview: boolean, read: RuntimeLoader) 
   }
   let physics: string | undefined
   if (
-    compiled.assets.some(a=>a.type==='prefab' && (JSON.parse(a.data) as Project['scenes'][number]['entities']).some(e=>e.components.some(c=>c.type==='body' && c.enabled!==false))) || compiled.scenes.some((s) =>
-      s.entities.some((e) => e.components.some((c) => c.type === 'body' && c.enabled !== false)),
-    )
+    compiled.assets.some(a=>a.type==='prefab' && needsPhysics(JSON.parse(a.data))) ||
+    compiled.scenes.some(s=>needsPhysics(s.entities))
   ) {
     const js = await read('physics.js')
     physics = preview ? 'data:text/javascript;charset=utf-8,' + encodeURIComponent(js) : './physics.js'

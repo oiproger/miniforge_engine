@@ -1,0 +1,56 @@
+import { test, expect } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
+import { unzipSync, strFromU8 } from 'fflate'
+import type { Project, Terrain } from '../../packages/project-schema/src'
+
+test('a brush stroke and painted material cells survive a project archive round trip', async ({ page }) => {
+  await page.goto('/editor/')
+  const button = (name: string) => page.getByRole('button', { name, exact: true })
+  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible()
+  await button('Add entity').click()
+  await button('Terrain').click()
+  const map = page.getByLabel('Terrain brush map')
+  await map.scrollIntoViewIfNeeded()
+  await map.click()
+  await page.getByLabel('Terrain tool').selectOption('Paint')
+  await map.click()
+  const download = page.waitForEvent('download')
+  await button('Save project').click()
+  const path = await (await download).path()
+  const project = JSON.parse(strFromU8(unzipSync(await readFile(path!))['project.json'])) as Project
+  const terrain = project.scenes[0].entities.find((e) => e.name === 'Terrain')?.components[0] as Terrain
+  expect(Math.max(...terrain.heights)).toBeGreaterThan(0)
+  expect(terrain.layers).toContain(1)
+  await button('File').click()
+  const chooser = page.waitForEvent('filechooser')
+  await button('Open project').click()
+  await (await chooser).setFiles(path!)
+  await expect(page.getByText('Project opened', { exact: true })).toBeVisible()
+})
+
+test('HUD editor places a new control in a grid and retains the layout after saving', async ({ page }) => {
+  await page.goto('/editor/')
+  const button = (name: string) => page.getByRole('button', { name, exact: true })
+  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible()
+  await button('Project').click()
+  await button('UI editor').click()
+  await button('New screen').click()
+  await button('Create screen').click()
+  const type = page.getByLabel('UI element type')
+  await type.selectOption('container')
+  await button('Add element').click()
+  await page.getByLabel('Text / locale key').fill('Backpack')
+  await type.selectOption('button')
+  await button('Add element').click()
+  await page.getByLabel('Text / locale key').fill('Equip')
+  await expect(page.getByLabel('Parent container')).not.toHaveValue('')
+  const cell = page.locator('.hud-grid-box').getByRole('button', { name: 'Select Equip' })
+  await expect(cell).toBeVisible()
+  await button('Portrait preview').click()
+  await expect(cell).toBeVisible()
+  await button('Save changes').click()
+  await button('Project').click()
+  await button('UI editor').click()
+  await button('Inventory').click()
+  await expect(cell).toBeVisible()
+})

@@ -60,6 +60,7 @@ import {
   Aperture,
 } from 'lucide-react'
 import {
+  makeTerrain,
   makeEntity,
   makeScene,
   makePrefab,
@@ -125,6 +126,7 @@ const geometries = [
   'Spot Light',
   'Audio Source',
   'Trigger',
+  'Terrain',
 ]
 function bytes(n: number) {
   return n > 1e6 ? (n / 1e6).toFixed(2) + ' MB' : (n / 1024).toFixed(1) + ' KB'
@@ -336,6 +338,7 @@ function App() {
           intensity: 2,
         })
       if (kind === 'Audio Source') e.components.push({ type: 'audio', asset: '', volume: 1 })
+      if (kind === 'Terrain') e.components.push(makeTerrain())
       if (kind === 'Trigger') e.components.push({ type: 'collider', shape: 'box', trigger: true })
       getScene(n).entities.push(e)
       select(e.id)
@@ -997,6 +1000,7 @@ function App() {
                     Sun,
                     Music2,
                     Hexagon,
+                    Layers3,
                   ][i]
                   return (
                     <button key={kind} onClick={() => newEntity(kind, dialog === 'child' ? selected : null)}>

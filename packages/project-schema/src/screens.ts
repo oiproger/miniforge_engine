@@ -94,15 +94,18 @@ export function duplicateScreen(project: Project, id: string): UIScreen {
   if (!src) throw new Error('Unknown screen')
   const screen = { ...src, id: uid('screen'), name: src.name + ' Copy', phase: 'window' as const }
   project.screens!.push(screen)
+  const copiedIds=new Map<string,string>()
   const controls = project.ui
     .filter((item) => item.screen === id)
     .map((item) => {
       const copy = structuredClone(item)
       copy.id = uid('ui')
+      copiedIds.set(item.id,copy.id)
       copy.screen = screen.id
       if (copy.action === 'open' && copy.target === id) copy.target = screen.id
       return copy
     })
+  for(const copy of controls) if(copy.parentId)copy.parentId=copiedIds.get(copy.parentId)
   project.ui.push(...controls)
   return screen
 }

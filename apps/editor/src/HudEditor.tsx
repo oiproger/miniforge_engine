@@ -1,3 +1,4 @@
+import { containerStyle, gridItemStyle } from '../../../packages/project-schema/src/hud-layout'
 import { useRef, useState, type PointerEvent, type CSSProperties } from 'react'
 import {
   AppWindow,
@@ -46,11 +47,12 @@ const actions: Record<ButtonAction, string> = {
   reward: 'Rewarded ad',
   language: 'Switch language',
 }
-const types = ['text', 'button', 'panel', 'image', 'progress', 'counter']
+const types = ['text', 'button', 'panel', 'image', 'progress', 'counter', 'container']
 const labels: Record<string, string> = {
   text: 'Text',
   button: 'Button',
   panel: 'Panel',
+  container: 'Container',
   image: 'Image',
   progress: 'Progress bar',
   counter: 'Counter',
@@ -79,6 +81,15 @@ function createElement(screen: string, type: string, index: number): UIElement {
   if (type === 'counter') el.variable = 'score'
   if (type === 'progress') Object.assign(el, { variable: 'health', max: 100, width: 26 })
   if (type === 'panel') Object.assign(el, { width: 32, height: 25, background: '#29383c', text: '' })
+  if (type === 'container')
+    Object.assign(el, {
+      width: 65,
+      height: 50,
+      text: '',
+      layout: 'grid',
+      scroll: true,
+      background: '#29383c',
+    })
   if (type === 'image') Object.assign(el, { width: 16, text: '' })
   return el
 }
@@ -95,10 +106,12 @@ function ElementProperties({
   el,
   patch,
   windows,
+  items,
 }: {
   p: Project
   el: UIElement
   patch: (changes: Partial<UIElement>) => void
+  items: UIElement[]
   windows: UIScreen[]
 }) {
   function number(key: string, label: string, fallback: number, min?: number, max?: number) {
@@ -146,7 +159,8 @@ function ElementProperties({
       {el.type === 'button' && (
         <>
           <Field label="Button action">
-            <select aria-label="Button action"
+            <select
+              aria-label="Button action"
               value={el.action || 'event'}
               onChange={(e) => actionChange(e.target.value as ButtonAction)}
             >
@@ -164,7 +178,11 @@ function ElementProperties({
           )}
           {el.action === 'open' && (
             <Field label="Target window">
-              <select aria-label="Target window" value={el.target || ''} onChange={(e) => patch({ target: e.target.value })}>
+              <select
+                aria-label="Target window"
+                value={el.target || ''}
+                onChange={(e) => patch({ target: e.target.value })}
+              >
                 {windows.map((s) => (
                   <option value={s.id} key={s.id}>
                     {s.name}
@@ -175,7 +193,11 @@ function ElementProperties({
           )}
           {el.action === 'input' && (
             <Field label="Input action">
-              <select aria-label="Input action" value={el.target || 'Interact'} onChange={(e) => patch({ target: e.target.value })}>
+              <select
+                aria-label="Input action"
+                value={el.target || 'Interact'}
+                onChange={(e) => patch({ target: e.target.value })}
+              >
                 {inputActions.map((k) => (
                   <option key={k}>{k}</option>
                 ))}
@@ -185,43 +207,92 @@ function ElementProperties({
         </>
       )}
       <h4>Layout</h4>
-      <Field label="Anchor">
-        <select aria-label="Anchor"
-          value={el.anchor || 'top-left'}
-          onChange={(e) => patch({ anchor: e.target.value as Anchor, x: 0, y: 0 })}
-        >
-          {anchors.map((k) => (
-            <option key={k} value={k}>
-              {k.replace('-', ' ')}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <div className="hud-double">
-        {number('x', 'X (%)', 0, -100, 100)}
-        {number('y', 'Y (%)', 0, -100, 100)}
-      </div>
-      <div className="hud-double">
-        {(['width', 'height'] as const).map((k) => (
-          <Field label={k === 'width' ? 'Width (%)' : 'Height (%)'} key={k}>
+      {el.type === 'container' ? (
+        <>
+          <Field label="Arrangement">
+            <select value={el.layout ?? 'grid'} onChange={(e) => patch({ layout: e.target.value })}>
+              <option value="grid">Grid</option>
+              <option value="list">List</option>
+            </select>
+          </Field>
+          {el.layout !== 'list' && number('cellWidth', 'Minimum cell width', 96, 12, 1000)}
+          {number('rowHeight', 'Minimum row height', 40, 8, 500)}
+          {number('gap', 'Spacing', 6, 0, 64)}
+          <Field label="Scroll">
             <input
-              aria-label={k + ' percent'}
-              type="number"
-              step=".5"
-              min=".1"
-              max="100"
-              placeholder="Auto"
-              value={el[k] ?? ''}
-              onChange={(e) =>
-                patch({
-                  [k]:
-                    e.target.value === '' ? undefined : Math.max(0.1, Math.min(100, Number(e.target.value))),
-                })
-              }
+              type="checkbox"
+              checked={el.scroll !== false}
+              onChange={(e) => patch({ scroll: e.target.checked })}
             />
           </Field>
-        ))}
-      </div>
+          <Field label="Items variable">
+            <input
+              value={el.itemsVariable ?? ''}
+              onChange={(e) => patch({ itemsVariable: e.target.value })}
+            />
+          </Field>
+        </>
+      ) : (
+        <Field label="Parent container">
+          <select
+            value={el.parentId ?? ''}
+            onChange={(e) => patch({ parentId: e.target.value || undefined })}
+          >
+            <option value="">Screen</option>
+            {items
+              .filter((i) => i.type === 'container')
+              .map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.text || i.id}
+                </option>
+              ))}
+          </select>
+        </Field>
+      )}
+      {!el.parentId && (
+        <>
+          <Field label="Anchor">
+            <select
+              aria-label="Anchor"
+              value={el.anchor || 'top-left'}
+              onChange={(e) => patch({ anchor: e.target.value as Anchor, x: 0, y: 0 })}
+            >
+              {anchors.map((k) => (
+                <option key={k} value={k}>
+                  {k.replace('-', ' ')}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="hud-double">
+            {number('x', 'X (%)', 0, -100, 100)}
+            {number('y', 'Y (%)', 0, -100, 100)}
+          </div>
+          <div className="hud-double">
+            {(['width', 'height'] as const).map((k) => (
+              <Field label={k === 'width' ? 'Width (%)' : 'Height (%)'} key={k}>
+                <input
+                  aria-label={k + ' percent'}
+                  type="number"
+                  step=".5"
+                  min=".1"
+                  max="100"
+                  placeholder="Auto"
+                  value={el[k] ?? ''}
+                  onChange={(e) =>
+                    patch({
+                      [k]:
+                        e.target.value === ''
+                          ? undefined
+                          : Math.max(0.1, Math.min(100, Number(e.target.value))),
+                    })
+                  }
+                />
+              </Field>
+            ))}
+          </div>
+        </>
+      )}
       {number('zIndex', 'Layer', 0, 0, 1000)}
       <Field label="Visible">
         <input
@@ -236,13 +307,17 @@ function ElementProperties({
       </Field>
       {number('fontSize', 'Font size', 16, 1, 250)}
       <Field label="Alignment">
-        <select aria-label="Alignment" value={el.align || 'left'} onChange={(e) => patch({ align: e.target.value })}>
+        <select
+          aria-label="Alignment"
+          value={el.align || 'left'}
+          onChange={(e) => patch({ align: e.target.value })}
+        >
           {['left', 'center', 'right'].map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
       </Field>
-      {(el.type === 'panel' || el.type === 'button') && (
+      {(el.type === 'panel' || el.type === 'button' || el.type === 'container') && (
         <Field label="Fill">
           <Color
             label="Fill"
@@ -282,11 +357,12 @@ function Canvas({
   } | null>(null)
   const [offset, offsetTo] = useState<{ id: string; x: number; y: number } | null>(null)
   const [portrait, orient] = useState(false)
-  function start(e: PointerEvent<HTMLButtonElement>, el: UIElement) {
+  function start(e: PointerEvent<HTMLElement>, el: UIElement) {
     if (e.button !== 0) return
     const rect = stage.current?.getBoundingClientRect()
     if (!rect?.width || !rect.height) return
     select(el.id)
+    if (el.parentId) return
     e.currentTarget.setPointerCapture(e.pointerId)
     drag.current = {
       id: el.id,
@@ -314,6 +390,73 @@ function Canvas({
     drag.current = null
     offsetTo(null)
   }
+  function renderItem(el: UIElement): React.ReactNode {
+    const pos = offset?.id === el.id ? offset : el
+    const style: CSSProperties = {
+      ...anchorStyle(el.anchor, pos.x, pos.y),
+      color: el.color || 'white',
+      backgroundColor: el.background,
+      width: el.width ? el.width + '%' : undefined,
+      height: el.height ? el.height + '%' : undefined,
+      fontSize: 'calc(' + Math.max(1, el.fontSize || 16) + ' * var(--hud-pixel))',
+      textAlign: el.align || 'left',
+      opacity: el.visible === false ? 0.35 : 1,
+      zIndex: el.zIndex || 0,
+    }
+    const asset = el.type === 'image' && project.assets.find((a) => a.id === el.asset)
+    if (el.type === 'container')
+      return (
+        <div
+          key={el.id}
+          className={'hud-grid-box' + (selected === el.id ? ' selected' : '')}
+          style={{ ...style, ...containerStyle(el, 'var(--hud-pixel)') }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) select(el.id)
+          }}
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) start(e, el)
+          }}
+          onPointerMove={(e) => {
+            if (drag.current) offsetTo(position(e))
+          }}
+          onPointerUp={finish}
+        >
+          {items.filter((child) => child.parentId === el.id).map(renderItem)}
+          {Array.isArray(project.settings.variables?.[el.itemsVariable]) &&
+            (project.settings.variables[el.itemsVariable] as unknown[]).map((v, i) => (
+              <span key={i}>{translation(project, String(v ?? ''))}</span>
+            ))}
+        </div>
+      )
+    return (
+      <button
+        key={el.id}
+        title={el.text || el.type}
+        aria-label={'Select ' + (el.text || el.type)}
+        className={'hud-item ' + el.type + (selected === el.id ? ' selected' : '')}
+        style={el.parentId ? { ...style, ...gridItemStyle } : style}
+        onClick={() => select(el.id)}
+        onPointerDown={(e) => start(e, el)}
+        onPointerMove={(e) => {
+          if (drag.current) offsetTo(position(e))
+        }}
+        onPointerUp={finish}
+        onPointerCancel={() => {
+          drag.current = null
+          offsetTo(null)
+        }}
+      >
+        {asset ? (
+          <img src={asset.data} alt="" />
+        ) : el.type === 'progress' ? (
+          <progress value={50} max={100} />
+        ) : (
+          translation(project, el.text || labels[el.type])
+        )}
+        {el.type === 'counter' ? ' 0' : ''}
+      </button>
+    )
+  }
   return (
     <div className="hud-design">
       <div className="hud-design-head">
@@ -336,49 +479,7 @@ function Canvas({
           ref={stage}
         >
           {screen.safeArea !== false && <div className="hud-safe-area" aria-hidden />}
-          {items.map((el) => {
-            const pos = offset?.id === el.id ? offset : el
-            const style: CSSProperties = {
-              ...anchorStyle(el.anchor, pos.x, pos.y),
-              color: el.color || 'white',
-              backgroundColor: el.background,
-              width: el.width ? el.width + '%' : undefined,
-              height: el.height ? el.height + '%' : undefined,
-              fontSize: 'calc(' + Math.max(1, el.fontSize || 16) + ' * var(--hud-pixel))',
-              textAlign: el.align || 'left',
-              opacity: el.visible === false ? 0.35 : 1,
-              zIndex: el.zIndex || 0,
-            }
-            const asset = el.type === 'image' && project.assets.find((a) => a.id === el.asset)
-            return (
-              <button
-                key={el.id}
-                title={el.text || el.type}
-                aria-label={'Select ' + (el.text || el.type)}
-                className={'hud-item ' + el.type + (selected === el.id ? ' selected' : '')}
-                style={style}
-                onClick={() => select(el.id)}
-                onPointerDown={(e) => start(e, el)}
-                onPointerMove={(e) => {
-                  if (drag.current) offsetTo(position(e))
-                }}
-                onPointerUp={finish}
-                onPointerCancel={() => {
-                  drag.current = null
-                  offsetTo(null)
-                }}
-              >
-                {asset ? (
-                  <img src={asset.data} alt="" />
-                ) : el.type === 'progress' ? (
-                  <progress value={50} max={100} />
-                ) : (
-                  translation(project, el.text || labels[el.type])
-                )}
-                {el.type === 'counter' ? ' 0' : ''}
-              </button>
-            )
-          })}
+          {items.filter((el) => !el.parentId).map(renderItem)}
         </div>
       </div>
     </div>
@@ -435,6 +536,7 @@ export default function InterfaceForm({
   }
   function add() {
     const item = createElement(screen.id, kind, items.length)
+    if (element?.type === 'container' && kind !== 'container') item.parentId = element.id
     edit((n) => {
       ensureScreen(n, screen)
       n.ui.push(item)
@@ -473,6 +575,10 @@ export default function InterfaceForm({
     edit((n) => {
       ensureScreen(n, screen)
       n.ui.push(el)
+      if (el.type === 'container') {
+        const children = n.ui.filter((child) => child.parentId === element.id)
+        n.ui.push(...children.map((child) => ({ ...structuredClone(child), id: uid('ui'), parentId: el.id })))
+      }
     })
     select(el.id)
   }
@@ -596,6 +702,7 @@ export default function InterfaceForm({
                   edit((n) => {
                     ensureScreen(n, screen)
                     n.ui = n.ui.filter((el) => el.id !== element.id)
+                    for (const child of n.ui) if (child.parentId === element.id) delete child.parentId
                   })
                   select('')
                 }}
@@ -605,6 +712,7 @@ export default function InterfaceForm({
             </div>
             <ElementProperties
               p={p}
+              items={items}
               el={element}
               windows={screens.filter((s) => s.phase === 'window')}
               patch={(changes) => patchElement(element.id, changes)}

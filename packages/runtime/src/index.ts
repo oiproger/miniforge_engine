@@ -1,6 +1,6 @@
 import { PerspectiveCamera, Object3D, Raycaster, Vector2, Vector3 } from 'three'
 import { createWorld } from '../../graphics/src'
-import { instantiatePrefab, makePrefab, subtree } from '../../project-schema/src'
+import { needsPhysics, instantiatePrefab, makePrefab, subtree } from '../../project-schema/src'
 import { bindRule } from '../../behaviors/src/rules'
 import type { Component, Entity, Project, Vec3 } from '../../project-schema/src'
 import { behavior } from '../../behaviors/src'
@@ -52,6 +52,8 @@ export async function startGame(
     pitch = 0,
     jumpTime = 0,
     jumpHeld = false,
+    verticalSpeed = 0,
+    grounded = true,
     groundY = 0
   let disposed = false,
     busy = false,
@@ -252,7 +254,15 @@ export async function startGame(
     const nodes = scene.entities.slice(offset)
     try {
       world.addEntities(nodes)
-      for (const e of nodes) physics?.add(e)
+      for (const e of nodes) {
+        physics?.add(e)
+        if (physics && e.components.some((c) => c.type === 'collider' && c.shape === 'mesh')) {
+          const sim = physics
+          void world.ready().then(() => {
+            if (!disposed && sim === physics && scene.entities.includes(e)) sim.add(e)
+          })
+        }
+      }
       for (const e of nodes) install(e)
       startEntities(nodes.map((e) => e.id))
       return root.id
@@ -502,11 +512,8 @@ export async function startGame(
       if (reset) phase = 'menu'
       await world.ready()
       if (generation !== revision || disposed) return
-      if (
-        options.physics ||
-        scene.entities.some((e) => e.components.some((c) => c.enabled !== false && c.type === 'body'))
-      ) {
-        if (!options.physics) throw Error('A physics body requires the Rapier module in this build')
+      if (options.physics || needsPhysics(scene.entities)) {
+        if (!options.physics) throw Error('This scene requires the Rapier module in this build')
         const result = await options.physics(world, scene)
         if (generation !== revision || disposed) {
           result.dispose()
@@ -515,6 +522,8 @@ export async function startGame(
         physics = result
       }
       for (const entity of [...scene.entities]) install(entity)
+      grounded = true
+      verticalSpeed = 0
       jumpTime = 0
       jumpHeld = false
       if (player) groundY = (player as Actor).object.getWorldPosition(point).y
@@ -651,21 +660,38 @@ export async function startGame(
     }
     node.getWorldPosition(playerPoint)
     const jumping = input.pressed('Jump')
-    if (!jumpTime && jumping && !jumpHeld) jumpTime = dt
+    const pressedJump = jumping && !jumpHeld
     jumpHeld = jumping
-    if (jumpTime > 0) {
-      const fraction = Math.min(1, jumpTime / 0.58)
-      playerPoint.y = groundY + 4 * fraction * (1 - fraction) * Number(actor.params.jumpHeight ?? 0.8)
-      jumpTime = fraction === 1 ? 0 : jumpTime + dt
+    const bounds = project.settings.bounds || [-Infinity, Infinity, -Infinity, Infinity]
+    const nx = Math.min(bounds[1], Math.max(bounds[0], playerPoint.x + x * step))
+    const nz = Math.min(bounds[3], Math.max(bounds[2], playerPoint.z + z * step))
+    if (grounded && pressedJump)
+      verticalSpeed = Math.sqrt(2 * 16 * Math.max(0, actor.params.jumpHeight ?? 0.8))
+    verticalSpeed = Math.max(-40, verticalSpeed - 16 * dt)
+    const movement = physics?.moveCharacter?.(actor.entity.id, [
+      nx - playerPoint.x,
+      verticalSpeed * dt,
+      nz - playerPoint.z,
+    ])
+    let next: Set<string>
+    if (movement) {
+      playerPoint.add(point.fromArray(movement.delta))
+      grounded = movement.grounded
+      if (grounded || (verticalSpeed > 0 && movement.delta[1] + 0.001 < verticalSpeed * dt)) verticalSpeed = 0
+      next = new Set(movement.contacts)
+    } else {
+      if (!jumpTime && pressedJump) jumpTime = dt
+      if (jumpTime > 0) {
+        const fraction = Math.min(1, jumpTime / 0.58)
+        playerPoint.y = groundY + 4 * fraction * (1 - fraction) * Number(actor.params.jumpHeight ?? 0.8)
+        jumpTime = fraction === 1 ? 0 : jumpTime + dt
+      }
+      const hitX = x ? blocked(nx, playerPoint.z, actor) : undefined
+      if (!hitX) playerPoint.x = nx
+      const hitZ = z ? blocked(playerPoint.x, nz, actor) : undefined
+      if (!hitZ) playerPoint.z = nz
+      next = new Set([hitX, hitZ].filter((id): id is string => !!id))
     }
-    const bounds: Vec3 | number[] = project.settings.bounds || [-Infinity, Infinity, -Infinity, Infinity]
-    const nx = Math.min(bounds[1], Math.max(bounds[0], playerPoint.x + x * step)),
-      nz = Math.min(bounds[3], Math.max(bounds[2], playerPoint.z + z * step))
-    const hitX = x ? blocked(nx, playerPoint.z, actor) : undefined
-    if (!hitX) playerPoint.x = nx
-    const hitZ = z ? blocked(playerPoint.x, nz, actor) : undefined
-    if (!hitZ) playerPoint.z = nz
-    const next = new Set([hitX, hitZ].filter((id): id is string => !!id))
     for (const id of next) if (!contacts.has(id)) contact(actor.entity.id, id, true, false)
     point.copy(playerPoint)
     node.parent?.worldToLocal(point)
