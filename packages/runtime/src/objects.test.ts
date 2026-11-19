@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { Group, Scene } from 'three'
+import { SceneNode as Group, SceneNode as Scene } from '../../graphics/src/scene'
 import { makeEntity, makePrefab, makeProject } from '../../project-schema/src'
 import type { Entity, Project } from '../../project-schema/src'
 import type { GameAPI } from './types'
@@ -30,7 +30,7 @@ vi.mock('../../graphics/src', () => ({
       updateAnimations() {},
       removeEntities(ids: string[]) {
         for (const id of ids) {
-          objects.get(id)?.removeFromParent()
+          objects.get(id)?.detach()
           objects.delete(id)
         }
       },

@@ -1,5 +1,6 @@
 import R from '@dimforge/rapier3d-compat'
-import { Matrix4, Quaternion, Vector3, type Mesh, type Object3D } from 'three'
+import { mat4, vec3 } from 'gl-matrix'
+import { Vector3, type SceneNode } from '../../graphics/src/scene'
 import type { Entity, Scene } from '../../project-schema/src'
 import type { RenderWorld } from '../../graphics/src'
 import type { PhysicsSession } from './types'
@@ -13,40 +14,28 @@ export default async function createPhysics(
     queue = new R.EventQueue(true)
   const bodies = new Map<string, R.RigidBody>(),
     owners = new Map<number, string>()
-  const pos = new Vector3(),
-    rot = new Quaternion()
+  const pos = new Vector3()
   const controllers = new Map<string, R.KinematicCharacterController>()
-  function triangleCollider(node: Object3D) {
-    // Bake child transforms and world scale into vertices; Rapier applies the rigid pose.
-    node.updateWorldMatrix(true, true)
-    const inverse = new Matrix4()
-      .compose(
-        node.getWorldPosition(new Vector3()),
-        node.getWorldQuaternion(new Quaternion()),
-        new Vector3(1, 1, 1),
-      )
-      .invert()
-    const vertex = new Vector3()
+  function triangleCollider(node: SceneNode) {
+    const world = node.worldMatrix()
+    const pose = mat4.fromRotationTranslation(
+      mat4.create(),
+      node.worldRotation(),
+      node.getWorldPosition(pos).toArray(),
+    )
+    const local = mat4.multiply(mat4.create(), mat4.invert(pose, pose)!, world)
     const positions: number[] = [],
       indices: number[] = []
-    function append(obj: Object3D) {
-      if (obj !== node && obj.userData.entityId) return
-      const mesh = obj as Mesh
-      if (mesh.isMesh) {
-        const geo = mesh.geometry,
-          attr = geo.getAttribute('position')
-        const transform = new Matrix4().multiplyMatrices(inverse, obj.matrixWorld),
-          start = positions.length / 3
-        for (let i = 0; i < attr.count; i++) {
-          vertex.fromBufferAttribute(attr, i).applyMatrix4(transform)
-          positions.push(vertex.x, vertex.y, vertex.z)
-        }
-        for (let i = 0; i < (geo.index?.count ?? attr.count); i++)
-          indices.push(start + (geo.index?.getX(i) ?? i))
+    const v = vec3.create()
+    for (const surface of node.surfaces) {
+      const start = positions.length / 3
+      for (let i = 0; i < surface.positions.length; i += 3) {
+        vec3.set(v, surface.positions[i], surface.positions[i + 1], surface.positions[i + 2])
+        vec3.transformMat4(v, v, local)
+        positions.push(v[0], v[1], v[2])
       }
-      obj.children.forEach(append)
+      for (const index of surface.indices) indices.push(start + index)
     }
-    append(node)
     return indices.length
       ? R.ColliderDesc.trimesh(
           new Float32Array(positions),
@@ -54,6 +43,10 @@ export default async function createPhysics(
           R.TriMeshFlags.FIX_INTERNAL_EDGES,
         )
       : undefined
+  }
+  function rotation(node: SceneNode) {
+    const [x, y, z, w] = node.worldRotation()
+    return { x, y, z, w }
   }
   function add(e: Entity) {
     const node = view.objects.get(e.id)
@@ -86,7 +79,7 @@ export default async function createPhysics(
           ? R.RigidBodyDesc.dynamic()
           : R.RigidBodyDesc.fixed()
     node.getWorldPosition(pos)
-    node.getWorldQuaternion(rot)
+    const rot = rotation(node)
     const rigid = world.createRigidBody(desc.setTranslation(pos.x, pos.y, pos.z).setRotation(rot))
     if (character) {
       const controller = world.createCharacterController(0.01)
@@ -180,7 +173,7 @@ export default async function createPhysics(
         if (body.isEnabled() && body.isKinematic()) {
           const node = view.objects.get(id)!
           body.setNextKinematicTranslation(node.getWorldPosition(pos))
-          body.setNextKinematicRotation(node.getWorldQuaternion(rot))
+          body.setNextKinematicRotation(rotation(node))
         }
       world.step(queue)
       for (const [id, body] of bodies)
@@ -189,13 +182,11 @@ export default async function createPhysics(
             p = body.translation(),
             q = body.rotation()
           pos.set(p.x, p.y, p.z)
-          rot.set(q.x, q.y, q.z, q.w)
+          node.setWorldRotation(q)
           if (node.parent) {
             node.parent.worldToLocal(pos)
-            rot.premultiply(node.parent.getWorldQuaternion(new Quaternion()).invert())
           }
           node.position.copy(pos)
-          node.quaternion.copy(rot)
         }
       const collisions: [string, string, boolean, boolean][] = []
       queue.drainCollisionEvents((a, b, enter) => {

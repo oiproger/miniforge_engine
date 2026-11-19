@@ -1,145 +1,84 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as T from 'three'
-import { createWorld } from './index'
-import { makeVaultDoor } from '../../../templates/vault-door'
+import { afterEach, expect, test, vi } from 'vitest'
 import { makeEntity, makeProject } from '../../project-schema/src'
+import { makeVaultDoor } from '../../../templates/vault-door'
+import { createWorld } from './index'
+import { createDevice } from './device.generated'
 
-// Substitute the GPU boundary only. Geometry, glTF parsing, instancing and animation use Three.js.
-vi.mock('three', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('three')>()),
-  WebGLRenderer: class {
-    shadowMap = {}
-    domElement = { style: {}, remove() {} }
-    setPixelRatio() {}
-    setSize() {}
-    dispose() {}
-    forceContextLoss() {}
-  },
-}))
-
-function modelData() {
-  const frames = new Float32Array([0, 1, 0, 0, 0, 2, 0, 0])
-  const uri = 'data:application/octet-stream;base64,' + Buffer.from(frames.buffer).toString('base64')
-  const gltf = {
-    asset: { version: '2.0' },
-    scene: 0,
-    scenes: [{ nodes: [0] }],
-    nodes: [{ name: 'Door' }],
-    buffers: [{ byteLength: frames.byteLength, uri }],
-    bufferViews: [
-      { buffer: 0, byteLength: 8 },
-      { buffer: 0, byteOffset: 8, byteLength: 24 },
-    ],
-    accessors: [
-      { bufferView: 0, componentType: 5126, count: 2, type: 'SCALAR', min: [0], max: [1] },
-      { bufferView: 1, componentType: 5126, count: 2, type: 'VEC3' },
-    ],
-    animations: [
-      {
-        name: 'Open',
-        channels: [{ sampler: 0, target: { node: 0, path: 'translation' } }],
-        samplers: [{ input: 0, output: 1, interpolation: 'LINEAR' }],
-      },
-    ],
+vi.mock('./device.generated', async (original) => {
+  const real = await original<typeof import('./device.generated')>()
+  return {
+    createDevice: () => ({
+      ...real.createDevice(null),
+      canvas: { style: {}, dataset: {} },
+      setWhiteSprite: () => {},
+    }),
   }
-  return 'data:model/gltf+json;base64,' + Buffer.from(JSON.stringify(gltf)).toString('base64')
-}
-
-const host = { clientWidth: 640, clientHeight: 360, appendChild() {} } as unknown as HTMLElement
-beforeEach(() => {
-  vi.stubGlobal('window', { devicePixelRatio: 1 })
-  vi.stubGlobal(
-    'ResizeObserver',
-    class {
-      observe() {}
-      disconnect() {}
-    },
-  )
-  if (!globalThis.ProgressEvent) vi.stubGlobal('ProgressEvent', class {})
 })
 afterEach(() => vi.unstubAllGlobals())
-
-describe('render world', () => {
-  it('resolves embedded glTF clips and advances only playing, active instances', async () => {
-    const project = makeProject(),
-      e = makeEntity('Gate')
-    project.assets.push({ id: 'model', name: 'Gate.gltf', type: 'model', data: modelData(), properties: {} })
-    e.components = [
-      { type: 'mesh', shape: 'model', asset: 'model' },
-      { type: 'animation', clip: 'Open', loop: false, autoplay: false },
-    ]
-    const world = createWorld(host, project)
-    world.addEntities([e])
-    await world.ready()
-    const door = world.objects.get(e.id)!.getObjectByName('Door')!
-    expect(world.animationClips(e.id)).toEqual(['Open'])
-    world.updateAnimations(0.25)
-    expect(door.position.x).toBe(0)
-    expect(world.playAnimation(e.id, 'Missing')).toBe(false)
-    expect(world.playAnimation(e.id, 'Open', false, 2)).toBe(true)
-    world.updateAnimations(0.25)
-    expect(door.position.x).toBeCloseTo(1)
-    world.setEntityActive(e.id, false)
-    world.updateAnimations(0.25)
-    expect(door.position.x).toBeCloseTo(1)
-    world.setEntityActive(e.id, true)
-    world.updateAnimations(0.25)
-    expect(door.position.x).toBeCloseTo(2)
-    world.stopAnimation(e.id)
-    expect(door.position.x).toBe(0)
-    world.removeEntities([e.id])
-    expect(world.animationClips(e.id)).toEqual([])
-    world.dispose()
-  })
-  it('plays the authored vault gate and delivers a single completion event for both hinges', async () => {
-    const project = makeProject(),
-      gate = makeEntity('Vault Gate')
-    const asset = makeVaultDoor()
-    project.assets.push(asset)
-    gate.components = [
-      { type: 'mesh', shape: 'model', asset: asset.id },
-      { type: 'animation', clip: 'Open', loop: false, autoplay: false, speed: 1 },
-    ]
-    project.scenes[0].entities.push(gate)
-    const finished = vi.fn()
-    const world = createWorld(host, project, undefined, { onAnimationFinished: finished })
-    await world.ready()
-    const hinges = ['West_hinge', 'East_hinge'].map(
-      (name) => world.objects.get(gate.id)!.getObjectByName(name)!,
-    )
-    expect(world.playAnimation(gate.id, 'Open')).toBe(true)
-    world.updateAnimations(0.45)
-    expect(hinges[0].quaternion.y).toBeLessThan(-0.1)
-    expect(hinges[1].quaternion.y).toBeGreaterThan(0.1)
-    expect(finished).not.toHaveBeenCalled()
-    world.updateAnimations(0.46)
-    await Promise.resolve()
-    expect(finished).toHaveBeenCalledExactlyOnceWith(gate.id, 'Open')
-    world.dispose()
-  })
-  it('restores batched subtrees when deactivated and removes nested spawned objects', () => {
-    const project = makeProject(),
-      parent = makeEntity('Parent'),
-      children = Array.from({ length: 4 }, () => makeEntity('Block', 'box'))
-    for (const child of children) child.parent = parent.id
-    project.scenes[0].entities.push(parent, ...children)
-    const world = createWorld(host, project)
-    expect(world.scene.getObjectsByProperty('type', 'Mesh').some((m) => m instanceof T.InstancedMesh)).toBe(
-      true,
-    )
-    world.setEntityActive(parent.id, false)
-    expect(world.objects.get(parent.id)?.visible).toBe(false)
-    expect(world.objects.get(children[0].id)?.children[0]).toBeInstanceOf(T.Mesh)
-    const marker = makeEntity('Marker')
-    marker.parent = parent.id
-    marker.components = [{ type: 'sprite', color: '#fad738', width: 2, height: 0.5, opacity: 0.4 }]
-    world.addEntities([marker])
-    const sprite = world.objects.get(marker.id)!.children[0] as T.Sprite
-    expect(sprite).toBeInstanceOf(T.Sprite)
-    expect(sprite.material.opacity).toBe(0.4)
-    expect(sprite.scale.toArray()).toEqual([2, 0.5, 1])
-    world.removeEntities([parent.id])
-    expect(world.objects.size).toBe(0)
-    world.dispose()
-  })
+const host = {} as HTMLElement
+test('native glTF loader applies both hinge poses to the authored vault door', async () => {
+  const d = createDevice(null),
+    model = await d.loadGLTF(makeVaultDoor().data)
+  try {
+    const obj = model.createObject()
+    obj.play('Open', false)
+    obj.setAnimationTime(0.45)
+    const angles = obj.parts.map((p) => p.rotation3D.y)
+    expect(Math.min(...angles)).toBeLessThan(-0.1)
+    expect(Math.max(...angles)).toBeGreaterThan(0.1)
+    obj.destroy()
+  } finally {
+    model.dispose()
+    d.dispose()
+  }
+})
+test('inactive models pause and a non-looping clip emits completion once', async () => {
+  vi.stubGlobal('window', { devicePixelRatio: 1 })
+  const p = makeProject(),
+    gate = makeEntity('Gate'),
+    asset = makeVaultDoor()
+  p.assets.push(asset)
+  gate.components = [
+    { type: 'mesh', shape: 'model', asset: asset.id },
+    { type: 'animation', autoplay: false },
+  ]
+  p.scenes[0].entities.push(gate)
+  const finish = vi.fn(),
+    w = createWorld(host, p, undefined, { onAnimationFinished: finish })
+  try {
+    await w.ready()
+    expect(w.animationClips(gate.id)).toEqual(['Open'])
+    expect(w.playAnimation(gate.id, 'Missing')).toBe(false)
+    expect(w.playAnimation(gate.id, 'Open', false)).toBe(true)
+    w.setEntityActive(gate.id, false)
+    w.updateAnimations(2)
+    expect(finish).not.toHaveBeenCalled()
+    w.setEntityActive(gate.id, true)
+    w.updateAnimations(0.45)
+    expect(finish).not.toHaveBeenCalled()
+    w.updateAnimations(0.46)
+    w.updateAnimations(1)
+    expect(finish).toHaveBeenCalledExactlyOnceWith(gate.id, 'Open')
+  } finally {
+    w.dispose()
+  }
+})
+test('scene hierarchy propagates visibility and removes spawned subtrees', () => {
+  vi.stubGlobal('window', { devicePixelRatio: 1 })
+  const project = makeProject(),
+    parent = makeEntity('Parent'),
+    child = makeEntity('Box', 'box')
+  child.parent = parent.id
+  const w = createWorld(host, project)
+  try {
+    w.addEntities([parent, child])
+    w.setEntityActive(parent.id, false)
+    expect(w.objects.get(child.id)?.active).toBe(false)
+    w.setEntityActive(parent.id, true)
+    expect(w.objects.get(child.id)?.active).toBe(true)
+    w.removeEntities([parent.id])
+    expect(w.objects.size).toBe(0)
+  } finally {
+    w.dispose()
+  }
 })

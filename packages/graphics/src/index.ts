@@ -1,560 +1,467 @@
+import type * as L from 'littlejsengine'
+import { createDevice } from './device.generated'
+import { SceneNode, SceneCamera, Vector3, type Triangles } from './scene'
 import { terrainGeometry } from './terrain'
-import type { Terrain } from '../../project-schema/src/terrain'
-import * as T from 'three'
-import type { Project, Entity, Vec3, Component } from '../../project-schema/src'
+import type { Project, Entity, Component, Terrain } from '../../project-schema/src'
 
-export type ViewCamera = T.PerspectiveCamera | T.OrthographicCamera
-export interface RenderWorld {
-  renderer: T.WebGLRenderer
-  scene: T.Scene
-  camera: ViewCamera
-  objects: Map<string, T.Object3D>
-  load(project: Project, sceneId?: string): void
-  addEntities(entities: Entity[]): void
-  removeEntities(ids: string[]): void
-  setEntityActive(id: string, active: boolean): void
-  animationClips(id: string): string[]
-  playAnimation(id: string, clip?: string, loop?: boolean, speed?: number): boolean
-  stopAnimation(id: string): void
-  updateAnimations(delta: number): void
-  setCamera(camera: ViewCamera): void
-  resize(): void
-  render(): void
-  dispose(): void
-  ready(): Promise<void>
-}
-
-interface MaterialSettings {
-  color?: string
-  roughness?: number
-  metalness?: number
-  emissive?: string
-  opacity?: number
-  doubleSided?: boolean
-  unlit?: boolean
-  flatShading?: boolean
-  map?: string
-  normalMap?: string
-  emissiveMap?: string
-  alphaTest?: number
-  tiling?: number[]
-  offset?: number[]
-  shader?: string
-}
-
+export type RenderWorld = ReturnType<typeof createWorld>
 export function createWorld(
   container: HTMLElement,
-  project: Project,
+  initial: Project,
   sceneId?: string,
   options: { editor?: boolean; onAnimationFinished?: (id: string, clip: string) => void } = {},
-): RenderWorld {
-  const renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
-  renderer.shadowMap.type = T.PCFShadowMap
-  renderer.domElement.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;outline:none'
-  container.appendChild(renderer.domElement)
-  const scene = new T.Scene()
-  const content = new T.Group()
-  scene.add(content)
-  const objects = new Map<string, T.Object3D>()
-  const geometry = new Map<string, T.BufferGeometry>()
-  const materials = new Map<string, T.Material>()
-  const textures = new Set<T.Texture>()
-  const shadows = new Set<T.LightShadow>()
-  const animatedMaterials = new Set<T.ShaderMaterial>()
-  const batches = new Set<T.InstancedMesh>()
-  const batchSources = new Map<T.InstancedMesh, { parent: T.Object3D; mesh: T.Mesh }[]>()
-  const players = new Map<
-    string,
-    { mixer: T.AnimationMixer; clips: T.AnimationClip[]; root: T.Object3D; settings?: Component }
-  >()
-  let addEntities: (entities: Entity[]) => void = () => {}
-  function releasePlayer(id: string) {
-    const player = players.get(id)
-    if (!player) return
-    player.mixer.stopAllAction()
-    player.mixer.uncacheRoot(player.root)
-    players.delete(id)
+) {
+  const d = createDevice(container),
+    r = d.r,
+    canvas = d.canvas
+  canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;outline:none'
+  canvas.dataset.renderer = 'littlejs-render3d'
+  const objects = new Map<string, SceneNode>(),
+    roots = new Map<string, L.EngineObject3D>()
+  const owners = new Map<L.EngineObject, SceneNode>(),
+    meshes = new Map<string, L.Mesh>()
+  const sceneLights = new Map<string, Component>()
+  let grid: L.EngineObject3D | undefined,
+    editorTime = performance.now()
+  const players = new Map<string, L.GLTFObject>(),
+    models = new Map<string, Promise<L.GLTFModel>>()
+  const textures = new Map<string, Promise<L.TextureInfo>>(),
+    shaders = new Map<string, L.Shader>()
+  const camera = new SceneCamera(),
+    info = { render: { calls: 0, triangles: 0 }, memory: { textures: 0 } }
+  const renderer = { domElement: canvas, info }
+  let exposure = 1,
+    ambient = 1
+  let project = initial,
+    pending: Promise<unknown>[] = [],
+    generation = 0,
+    ratio = 1,
+    disposed = false
+  const v = (p: { x: number; y: number; z: number }) => d.vec3(p.x, p.y, p.z)
+  const color = (hex: string, alpha = 1) => {
+    const c = new d.Color().setHex(hex)
+    c.a = alpha
+    return c
   }
-  function playAnimation(id: string, requestedClip?: string, loop?: boolean, speed?: number) {
-    const player = players.get(id)
-    if (!player) return false
-    const name = requestedClip || player.settings?.clip || ''
-    const repeats = loop ?? player.settings?.loop ?? true
-    const rate = speed ?? player.settings?.speed ?? 1
-    const clip = name ? player.clips.find((clip) => clip.name === name) : player.clips[0]
-    if (!clip) return false
-    player.mixer.stopAllAction()
-    const action = player.mixer.clipAction(clip).reset()
-    action.setLoop(repeats ? T.LoopRepeat : T.LoopOnce, repeats ? Infinity : 1)
-    action.clampWhenFinished = !repeats
-    action.timeScale = Number.isFinite(rate) ? rate : 1
-    if (action.timeScale < 0) action.time = clip.duration
-    action.play()
+  function owner(o: L.EngineObject): SceneNode | undefined {
+    for (let p: L.EngineObject | undefined = o; p; p = p.parent) {
+      const n = owners.get(p)
+      if (n) return n
+    }
+  }
+  const hidden = (o: L.EngineObject) => owner(o)?.active === false
+  function primitive(c: Component) {
+    const key = JSON.stringify([c.shape, c.segments, c.radiusBottom, c.radiusTop, c.material])
+    let mesh = meshes.get(key)
+    if (mesh) return mesh
+    const n = Math.max(3, Math.min(96, c.segments ?? 12))
+    switch (c.shape) {
+      case 'plane':
+        mesh = d.buildGrid(d.vec2(1), 1)
+        break
+      case 'sphere':
+        mesh = d.buildSphere(1, n, Math.max(4, n >> 1), true)
+        break
+      case 'icosahedron':
+        mesh = d.buildSphere(1, 5, 3, false)
+        break
+      case 'capsule':
+        mesh = d.buildCapsule(0.5, 1, n)
+        break
+      case 'cone':
+      case 'cylinder':
+        mesh = d.buildLathe(
+          [
+            [c.radiusBottom ?? 0.5, -0.5],
+            [c.shape === 'cone' ? 0 : (c.radiusTop ?? 0.5), 0.5],
+          ],
+          n,
+          false,
+        )
+        break
+      default:
+        mesh = d.buildBox()
+    }
+    applySurface(mesh, c.material)
+    meshes.set(key, mesh)
+    return mesh
+  }
+  function surface(mesh: L.Mesh): Triangles {
+    const positions: number[] = [],
+      indices: number[] = []
+    if (mesh.vertexData) {
+      for (let i = 0; i < mesh.vertexCount; i++) {
+        const k = i * 9
+        positions.push(mesh.vertexData[k], mesh.vertexData[k + 1], mesh.vertexData[k + 2])
+      }
+      const packed = mesh.vertexIndices
+      if (packed)
+        for (let i = 0; i < packed.length; i += 3) indices.push(packed[i], packed[i + 2], packed[i + 1])
+    } else {
+      for (const p of mesh.points) positions.push(p.x, p.y, p.z)
+      const tri = mesh.getTriangles()
+      for (let i = 0; i < tri.indices.length; i += 3)
+        indices.push(
+          tri.vertices[tri.indices[i]],
+          tri.vertices[tri.indices[i + 2]],
+          tri.vertices[tri.indices[i + 1]],
+        )
+    }
+    return { positions, indices }
+  }
+  function texture(id: string) {
+    const asset = project.assets.find((a) => a.id === id && a.type === 'texture')
+    if (!asset) return
+    let promise = textures.get(id)
+    if (!promise) {
+      const gen = generation
+      promise = (async () => {
+        const img = new Image()
+        img.src = asset.data
+        await img.decode()
+        return new d.TextureInfo(img, gen === generation, true, false)
+      })()
+      textures.set(id, promise)
+    }
+    return promise
+  }
+  function applySurface(mesh: L.Mesh, id: string) {
+    const p = project.assets.find((a) => a.id === id)?.properties
+    if (!p) return
+    if (p.doubleSided) mesh.doubleSided = true
+    if (p.flatShading) mesh.computeNormals(false)
+    if (p.tiling || p.offset)
+      for (const uv of new Set(mesh.uvs)) {
+        uv.set(
+          uv.x * (p.tiling?.[0] ?? 1) + (p.offset?.[0] ?? 0),
+          uv.y * (p.tiling?.[1] ?? 1) + (p.offset?.[1] ?? 0),
+        )
+      }
+  }
+  function material(obj: L.EngineObject3D, id: string, fallback = '#a7adad') {
+    const p = project.assets.find((a) => a.id === id)?.properties ?? {}
+    obj.color = color(p.color ?? fallback, p.opacity ?? 1)
+    obj.transparent = obj.color.a < 1
+    obj.specular = 1 - (p.roughness ?? 0.86)
+    obj.reflectivity = p.metalness ?? 0
+    obj.emissive = p.unlit ? 1 : 0
+    obj.emissiveMapColor = color(p.emissive ?? '#ffffff')
+    if (p.emissive && p.emissive !== '#000000' && !p.emissiveMap) obj.emissiveMap = d.whiteTexture()
+    for (const key of ['map', 'normalMap', 'emissiveMap'] as const) {
+      const promise = texture(p[key])
+      if (promise)
+        pending.push(
+          promise.then((t) => {
+            if (!obj.destroyed) {
+              if (key === 'map') d.setTexture(obj, t)
+              else obj[key] = t
+            }
+          }),
+        )
+    }
+    const shader = project.assets.find((a) => a.type === 'shader' && a.id === p.shader)
+    if (shader) {
+      if (!shaders.has(shader.id)) shaders.set(shader.id, new d.Shader(shader.data, shader.properties.vertex))
+      obj.shader = shaders.get(shader.id)
+    } else if (p.alphaTest > 0) {
+      const cutoff = Math.min(1, Number(p.alphaTest)).toFixed(5),
+        key = 'cutoff:' + cutoff
+      if (!shaders.has(key))
+        shaders.set(
+          key,
+          new d.Shader(
+            'void mainImage(out vec4 c,vec2 uv){c=texture(iChannel0,uv);if(c.a<' + cutoff + ')discard;}',
+          ),
+        )
+      obj.shader = shaders.get(key)
+    }
+  }
+  function playAnimation(id: string, clip?: string, loop = true, speed = 1) {
+    const model = players.get(id),
+      a = model?.model.getAnimation(clip || 0)
+    if (!model || !a) return false
+    model.play(a.name, loop, speed)
     return true
   }
-  function restoreBatches(nodes: Set<T.Object3D>) {
-    for (const [batch, sources] of batchSources) {
-      if (!sources.some((source) => nodes.has(source.parent))) continue
-      for (const source of sources) source.parent.add(source.mesh)
-      batch.removeFromParent()
-      batch.dispose()
-      batches.delete(batch)
-      batchSources.delete(batch)
-    }
-  }
-  function removeEntities(ids: string[]) {
-    const removal = new Set<T.Object3D>()
-    for (const id of ids) objects.get(id)?.traverse((node) => removal.add(node))
-    restoreBatches(removal)
-    for (const node of removal) {
-      if(node instanceof T.Mesh && node.userData.terrain && geometry.delete(node.geometry.uuid))node.geometry.dispose()
-      if (node.userData.importedRoot) disposeTree(node)
-      if (node instanceof T.DirectionalLight && shadows.delete(node.shadow)) node.shadow.dispose()
-      if (node.userData.entityId && objects.get(node.userData.entityId) === node) {
-        releasePlayer(node.userData.entityId)
-        objects.delete(node.userData.entityId)
-        node.removeFromParent()
-      }
-    }
-  }
-  const started = performance.now()
-  let camera: ViewCamera = new T.PerspectiveCamera(42, 1, 0.05, 1000)
-  let generation = 0
-  let pending: Promise<void>[] = []
-  let orthoHeight = 12
-  let disposed = false
-  let cachedWidth = 0,
-    cachedHeight = 0
-  function resize() {
-    const w = Math.max(1, container.clientWidth),
-      h = Math.max(1, container.clientHeight)
-    if (w !== cachedWidth || h !== cachedHeight) {
-      renderer.setSize(w, h, false)
-      cachedWidth = w
-      cachedHeight = h
-    }
-    if (camera instanceof T.PerspectiveCamera) camera.aspect = w / h
-    else {
-      const halfHeight = (camera.userData.viewHeight ?? orthoHeight) / 2
-      const aspect = w / h
-      const portraitScale = Math.min(1, aspect)
-      camera.left = (-halfHeight * aspect) / portraitScale
-      camera.right = -camera.left
-      camera.top = halfHeight / portraitScale
-      camera.bottom = -camera.top
-    }
-    camera.updateProjectionMatrix()
-  }
-  function disposeTree(root: T.Object3D) {
-    root.traverse((o) => {
-      if (!(o instanceof T.Mesh)) return
-      o.geometry.dispose()
-      for (const mat of Array.isArray(o.material) ? o.material : [o.material]) {
-        for (const v of Object.values(mat)) if (v instanceof T.Texture) v.dispose()
-        mat.dispose()
-      }
-    })
-  }
-  function clear() {
-    generation++
-    for (const child of content.children)
-      child.traverse((n) => {
-        if (n.userData.importedRoot) disposeTree(n)
-      })
-    batches.forEach((batch) => batch.dispose())
-    batches.clear()
-    batchSources.clear()
-    for (const id of players.keys()) releasePlayer(id)
-    content.clear()
-    objects.clear()
-    geometry.forEach((g) => g.dispose())
-    geometry.clear()
-    materials.forEach((m) => m.dispose())
-    materials.clear()
-    textures.forEach((t) => t.dispose())
-    textures.clear()
-    shadows.forEach((s) => s.dispose())
-    shadows.clear()
-    pending = []
-    animatedMaterials.clear()
-  }
-
-  function load(next: Project, id?: string) {
-    clear()
-    const version = generation
-    const current =
-      next.scenes.find((s) => s.id === id) ??
-      next.scenes.find((s) => s.id === next.activeScene) ??
-      next.scenes[0]
-    if (!current) return
-    const env = current.environment as Record<string, unknown>
-    scene.background = new T.Color(String(env.background ?? '#202731'))
-    scene.fog =
-      Number(env.fogDensity) > 0
-        ? new T.FogExp2(String(env.fogColor ?? env.background ?? '#202731'), Number(env.fogDensity))
-        : null
-    renderer.shadowMap.enabled = env.shadows !== false
-    renderer.toneMapping = env.toneMapping === 'none' ? T.NoToneMapping : T.ACESFilmicToneMapping
-    renderer.toneMappingExposure = Number(env.exposure ?? 1.1)
-    renderer.setPixelRatio(
-      Math.max(
-        0.25,
-        Math.min(window.devicePixelRatio || 1, Number(env.pixelRatioLimit ?? 1.6)) *
-          Number(env.resolutionScale ?? 1),
-      ),
-    )
-    const assets = new Map(next.assets.map((a) => [a.id, a]))
-    function texture(id: string | undefined, srgb: boolean, p: MaterialSettings) {
-      const a = id && assets.get(id)
-      if (!a || !a.data) return null
-      const tex = new T.TextureLoader().load(a.data)
-      if (srgb) tex.colorSpace = T.SRGBColorSpace
-      tex.wrapS = tex.wrapT = T.RepeatWrapping
-      tex.repeat.set(p.tiling?.[0] ?? 1, p.tiling?.[1] ?? 1)
-      tex.offset.set(p.offset?.[0] ?? 0, p.offset?.[1] ?? 0)
-      textures.add(tex)
-      return tex
-    }
-    function material(id: string | undefined) {
-      const key = id || '__default'
-      if (materials.has(key)) return materials.get(key)!
-      const p: MaterialSettings = (id && assets.get(id)?.properties) || {}
-      const base = {
-        color: p.color ?? '#a7adad',
-        map: texture(p.map, true, p),
-        side: p.doubleSided ? T.DoubleSide : T.FrontSide,
-        opacity: p.opacity ?? 1,
-        transparent: (p.opacity ?? 1) < 1,
-        alphaTest: p.alphaTest ?? 0,
-      }
-      const shader = p.shader && assets.get(p.shader)
-      if (shader && shader.type === 'shader' && shader.data && shader.properties.vertex) {
-        const mat = new T.ShaderMaterial({
-          vertexShader: shader.properties.vertex,
-          fragmentShader: shader.data,
-          uniforms: { uTime: { value: 0 }, uColor: { value: new T.Color(base.color) } },
-          transparent: base.transparent,
-          side: base.side,
-        })
-        animatedMaterials.add(mat)
-        materials.set(key, mat)
-        return mat
-      }
-      const mat = p.unlit
-        ? new T.MeshBasicMaterial(base)
-        : new T.MeshStandardMaterial({
-            ...base,
-            roughness: p.roughness ?? 0.87,
-            metalness: p.metalness ?? 0,
-            flatShading: p.flatShading ?? true,
-            normalMap: texture(p.normalMap, false, p),
-            emissive: p.emissive ?? '#000000',
-            emissiveMap: texture(p.emissiveMap, true, p),
+  function addEntities(entities: Entity[]) {
+    for (const e of entities) {
+      if (objects.has(e.id)) throw Error('Duplicate scene entity ' + e.id)
+      const n = new SceneNode(e.id),
+        root = new d.EngineObject3D()
+      objects.set(e.id, n)
+      roots.set(e.id, root)
+      owners.set(root, n)
+      n.position.fromArray(e.transform.position)
+      n.rotation.fromArray(e.transform.rotation)
+      n.scale.fromArray(e.transform.scale)
+      n.visible = e.active
+      for (const c of e.components.filter((c) => c.enabled !== false)) {
+        if (c.type === 'terrain') {
+          const g = terrainGeometry(c as Terrain)
+          n.surfaces.push(g)
+          const points = nativePoints(g.positions),
+            uv = Array.from({ length: points.length }, (_, i) => d.vec2(g.uv[i * 2], g.uv[i * 2 + 1]))
+          g.layers.forEach((indices, i) => {
+            if (!indices.length) return
+            const mesh = new d.Mesh().addTriangles(points, indices, undefined, uv).computeNormals(true)
+            applySurface(mesh, i ? c.paintMaterial : c.baseMaterial)
+            meshes.set(e.id + '/terrain/' + i, mesh)
+            const obj = new d.EngineObject3D(d.vec3(), mesh)
+            root.addChild(obj)
+            material(obj, i ? c.paintMaterial : c.baseMaterial, i ? '#a78357' : '#718753')
           })
-      materials.set(key, mat)
-      return mat
-    }
-    let lights = 0
-    let chosenCamera:
-      | { entity: Entity; target?: Vec3; projection: string; fov?: number; size?: number }
-      | undefined
-    addEntities = (entities) => {
-      const unique = new Set(entities.map((e) => e.id))
-      if (unique.size !== entities.length || entities.some((e) => objects.has(e.id)))
-        throw Error('Duplicate scene entity ID')
-      for (const entity of entities) {
-        const group = new T.Group()
-        group.userData.entityId = entity.id
-        group.name = entity.name
-        group.visible = entity.active
-        group.position.fromArray(entity.transform.position)
-        group.rotation.set(...entity.transform.rotation)
-        group.scale.fromArray(entity.transform.scale)
-        objects.set(entity.id, group)
-        for (const c of entity.components) {
-          if (c.enabled === false) continue
-          if (c.type === 'terrain') {
-            const ground = terrainGeometry(c as Terrain)
-            geometry.set(ground.uuid, ground)
-            const surface = (id: string, painted: boolean) => {
-              if (id) return material(id)
-              const key = painted ? '__terrainSoil' : '__terrainGrass'
-              if (!materials.has(key)) materials.set(key, new T.MeshStandardMaterial({color: painted ? '#a78357' : '#718753'}))
-              return materials.get(key)!
-            }
-            const mesh = new T.Mesh(ground, [surface(c.baseMaterial,false),surface(c.paintMaterial,true)])
-            mesh.userData.terrain = true
-            mesh.receiveShadow = mesh.castShadow = true
-            group.add(mesh)
-          } else if (c.type === 'mesh') {
-            if (c.shape === 'model') {
-              const asset = c.asset && assets.get(c.asset)
-              if (asset?.data)
-                pending.push(
-                  import('three/addons/loaders/GLTFLoader.js')
-                    .then(async ({ GLTFLoader }) => {
-                      const result = await new GLTFLoader().loadAsync(asset.data)
-                      if (generation !== version || disposed || objects.get(entity.id) !== group) {
-                        disposeTree(result.scene)
-                        return
-                      }
-                      result.scene.userData.importedRoot = true
-                      result.scene.traverse((obj) => {
-                        if (obj instanceof T.Mesh) obj.castShadow = obj.receiveShadow = true
-                      })
-                      group.add(result.scene)
-                      const player = entity.components.find(
-                        (comp) => comp.type === 'animation' && comp.enabled !== false,
-                      )
-                      if (result.animations.length && !players.has(entity.id)) {
-                        const mixer = new T.AnimationMixer(result.scene)
-                        mixer.addEventListener('finished', ({ action }) => {
-                          const clip = action.getClip().name
-                          // A completion rule can destroy the scene. Finish the mixer update first.
-                          queueMicrotask(() => {
-                            if (players.get(entity.id)?.mixer === mixer)
-                              options.onAnimationFinished?.(entity.id, clip)
-                          })
-                        })
-                        players.set(entity.id, {
-                          root: result.scene,
-                          clips: result.animations,
-                          mixer,
-                          settings: player,
-                        })
-                        if (player && player.autoplay !== false)
-                          playAnimation(entity.id, player.clip, player.loop !== false, player.speed)
-                      }
-                    })
-                    .catch((err) => {
-                      console.warn('Model load failed', asset.name, err)
-                    }),
-                )
-              continue
-            }
-            const n = Math.max(3, Math.min(96, Number(c.segments) || 12))
-            const key = [c.shape, n, c.radiusTop, c.radiusBottom].join('|')
-            let geo = geometry.get(key)
-            if (!geo) {
-              switch (c.shape) {
-                case 'plane':
-                  geo = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
-                  break
-                case 'sphere':
-                  geo = new T.SphereGeometry(0.5, n, Math.max(4, Math.floor(n / 2)))
-                  break
-                case 'capsule':
-                  geo = new T.CapsuleGeometry(0.25, 0.5, 4, n)
-                  break
-                case 'icosahedron':
-                  geo = new T.IcosahedronGeometry(0.5, 0)
-                  break
-                case 'cone':
-                  geo = new T.ConeGeometry(c.radiusBottom ?? 0.5, 1, n)
-                  break
-                case 'cylinder':
-                  geo = new T.CylinderGeometry(c.radiusTop ?? 0.5, c.radiusBottom ?? 0.5, 1, n)
-                  break
-                default:
-                  geo = new T.BoxGeometry(1, 1, 1)
-              }
-              geometry.set(key, geo)
-            }
-            const mesh = new T.Mesh(geo, material(c.material))
-            mesh.castShadow = mesh.receiveShadow = true
-            group.add(mesh)
-          } else if (c.type === 'sprite') {
-            const key = JSON.stringify(['sprite', c.texture, c.color, c.opacity])
-            let mat = materials.get(key) as T.SpriteMaterial | undefined
-            if (!mat) {
-              mat = new T.SpriteMaterial({
-                map: texture(c.texture, true, {}),
-                color: c.color ?? '#ffffff',
-                opacity: c.opacity ?? 1,
-                transparent: true,
-                depthWrite: false,
-              })
-              materials.set(key, mat)
-            }
-            const sprite = new T.Sprite(mat)
-            sprite.scale.set(c.width ?? 1, c.height ?? 1, 1)
-            group.add(sprite)
-          } else if (c.type === 'light') {
-            let light: T.Light
-            if (c.kind === 'ambient')
-              light = new T.HemisphereLight(
-                c.color,
-                '#857962',
-                c.intensity * (Number(env.ambient ?? 1.5) / 1.5),
-              )
-            else if (c.kind === 'point') light = new T.PointLight(c.color, c.intensity)
-            else if (c.kind === 'spot') light = new T.SpotLight(c.color, c.intensity)
-            else {
-              const sun = new T.DirectionalLight(c.color, c.intensity)
-              sun.castShadow = true
-              const size = env.shadowQuality === 'low' ? 512 : env.shadowQuality === 'high' ? 2048 : 1024
-              sun.shadow.mapSize.set(size, size)
-              Object.assign(sun.shadow.camera, {
-                left: -11,
-                right: 11,
-                top: 11,
-                bottom: -11,
-                near: 0.1,
-                far: 85,
-              })
-              sun.shadow.normalBias = 0.018
-              sun.shadow.bias = -0.0002
-              shadows.add(sun.shadow)
-              light = sun
-            }
-            group.add(light)
-            lights++
-          } else if (c.type === 'camera' && !chosenCamera && entity.active) {
-            chosenCamera = { entity, projection: c.projection, target: c.target, fov: c.fov, size: c.size }
+        } else if (c.type === 'mesh' && c.shape === 'model') {
+          const a = project.assets.find((a) => a.id === c.asset)
+          if (!a) continue
+          const gen = generation
+          if (!models.has(a.id)) models.set(a.id, d.loadGLTF(a.data))
+          pending.push(
+            models.get(a.id)!.then((model) => {
+              if (gen !== generation || objects.get(e.id) !== n) return
+              const obj = model.createObject()
+              root.addChild(obj)
+              players.set(e.id, obj)
+              if (e.components.some((c) => c.type === 'collider' && c.shape === 'mesh'))
+                n.surfaces.push(surface(model.mesh))
+              const anim = e.components.find((c) => c.type === 'animation' && c.enabled !== false)
+              if (anim && anim.autoplay !== false)
+                playAnimation(e.id, anim.clip, anim.loop !== false, anim.speed)
+            }),
+          )
+        } else if (c.type === 'mesh') {
+          const mesh = primitive(c),
+            obj = new d.EngineObject3D(d.vec3(), mesh)
+          root.addChild(obj)
+          material(obj, c.material)
+          if (e.components.some((c) => c.type === 'collider' && c.shape === 'mesh'))
+            n.surfaces.push(surface(mesh))
+        } else if (c.type === 'sprite') {
+          const obj = new d.EngineObject3D()
+          root.addChild(obj)
+          obj.size3D = d.vec3(c.width ?? 1, c.height ?? 1, 1)
+          obj.transparent = true
+          obj.emissive = 1
+          obj.color = color(c.color ?? '#ffffff', c.opacity ?? 1)
+          const tex = texture(c.texture)
+          if (tex)
+            pending.push(
+              tex.then((t) => {
+                if (!obj.destroyed) d.setTexture(obj, t)
+              }),
+            )
+          else d.setWhiteSprite(obj)
+        } else if (c.type === 'light') {
+          const tint = color(c.color ?? '#ffffff')
+          if (c.kind === 'ambient' || c.kind === 'directional') sceneLights.set(n.id, c)
+          else {
+            const light = new d.Light3D(d.vec3(), c.range ?? 12, tint, c.intensity ?? 1)
+            root.addChild(light)
+            if (c.kind === 'spot') light.coneAngle = c.angle ?? 0.6
           }
         }
       }
-      for (const entity of entities) {
-        ;((entity.parent && objects.get(entity.parent)) || content).add(objects.get(entity.id)!)
-      }
     }
-    addEntities(current.entities)
-    // Keep interactive subtrees as normal objects. Scripts can access arbitrary scene nodes.
-    if (
-      !options.editor &&
-      !current.entities.some((e) => e.components.some((c) => c.type === 'script' || c.kind === 'spawn'))
-    ) {
-      const movable = new Set(
-        current.entities
-          .filter((e) => e.components.some((c) => c.type === 'behavior' || c.type === 'body' || (c.type === 'collider' && c.shape === 'mesh')))
-          .map((e) => e.id),
-      )
-      const groups = new Map<string, T.Mesh<T.BufferGeometry, T.Material>[]>()
-      content.updateMatrixWorld(true)
-      for (const obj of objects.values()) {
-        let node: T.Object3D | null = obj
-        while (node && node.visible && !movable.has(node.userData.entityId)) node = node.parent
-        if (node) continue
-        for (const mesh of obj.children) {
-          if (
-            !(mesh instanceof T.Mesh) ||
-            Array.isArray(mesh.material) ||
-            mesh.material.transparent ||
-            mesh.material instanceof T.ShaderMaterial
-          )
-            continue
-          const key = mesh.geometry.uuid + mesh.material.uuid
-          if (!groups.has(key)) groups.set(key, [])
-          groups.get(key)!.push(mesh)
-        }
-      }
-      for (const meshes of groups.values()) {
-        if (meshes.length < 3) continue
-        const first = meshes[0],
-          batch = new T.InstancedMesh(first.geometry, first.material, meshes.length)
-        batch.castShadow = batch.receiveShadow = true
-        batchSources.set(
-          batch,
-          meshes.map((mesh) => ({ parent: mesh.parent!, mesh })),
-        )
-        batch.userData.entityIds = meshes.map((mesh, i) => {
-          const id = mesh.parent!.userData.entityId
-          batch.setMatrixAt(i, mesh.matrixWorld)
-          mesh.removeFromParent()
-          return id
-        })
-        batch.computeBoundingSphere()
-        content.add(batch)
-        batches.add(batch)
-      }
-    }
-    if (!lights) {
-      content.add(new T.HemisphereLight('#fff4db', '#72818c', 1.7))
-      const key = new T.DirectionalLight('#fff0d3', 2.3)
-      key.position.set(-5, 10, 6)
-      content.add(key)
-    }
-    if (!options.editor) {
-      const c = chosenCamera as
-        | { entity: Entity; target?: Vec3; projection: string; fov?: number; size?: number }
-        | undefined
-      orthoHeight = c?.size ?? 12
-      camera =
-        c?.projection === 'perspective'
-          ? new T.PerspectiveCamera(c.fov ?? 45, 1, 0.05, 2000)
-          : new T.OrthographicCamera(-8, 8, 6, -6, 0.05, 2000)
-      if (c) {
-        const source = objects.get(c.entity.id)!
-        source.getWorldPosition(camera.position)
-        if (c.target) camera.lookAt(...c.target)
-        else source.getWorldQuaternion(camera.quaternion)
-      } else {
-        camera.position.set(12, 11, 15)
-        camera.lookAt(0, 0.25, 0)
-      }
-    }
-    resize()
-    scene.updateMatrixWorld(true)
+    for (const e of entities) if (e.parent) objects.get(e.parent)?.add(objects.get(e.id)!)
   }
-  load(project, sceneId)
-  const observer = new ResizeObserver(resize)
-  observer.observe(container)
+  function nativePoints(positions: number[]) {
+    const pts: L.Vector3[] = []
+    for (let i = 0; i < positions.length; i += 3) pts.push(d.vec3(...positions.slice(i, i + 3)))
+    return pts
+  }
+  function removeEntities(ids: string[]) {
+    function remove(n: SceneNode) {
+      for (const child of [...n.children]) remove(child)
+      const root = roots.get(n.id)
+      if (root) {
+        root.destroy()
+        owners.delete(root)
+      }
+      for (const i of [0, 1]) {
+        const key = n.id + '/terrain/' + i
+        meshes.get(key)?.dispose()
+        meshes.delete(key)
+      }
+      sceneLights.delete(n.id)
+      players.delete(n.id)
+      roots.delete(n.id)
+      objects.delete(n.id)
+      n.detach()
+    }
+    for (const id of ids) {
+      const n = objects.get(id)
+      if (n) remove(n)
+    }
+  }
+  function clear() {
+    generation++
+    grid?.destroy()
+    grid = undefined
+    removeEntities([...objects.keys()])
+    meshes.forEach((m) => m.dispose())
+    meshes.clear()
+    models.forEach(
+      (p) =>
+        void p.then(
+          (m) => m.dispose(),
+          () => {},
+        ),
+    )
+    models.clear()
+    textures.forEach(
+      (p) =>
+        void p.then(
+          (t) => t.destroyWebGLTexture(),
+          () => {},
+        ),
+    )
+    textures.clear()
+    shaders.forEach((shader) => shader.dispose())
+    shaders.clear()
+    pending = []
+  }
+  function load(p: Project, id?: string) {
+    clear()
+    project = p
+    const scene = p.scenes.find((s) => s.id === (id ?? p.activeScene)) ?? p.scenes[0],
+      env = scene.environment
+    exposure = env.exposure ?? 1
+    ambient = env.ambient ?? 1
+    d.background(env.background)
+    r.shadows = env.shadows !== false
+    r.ambientColor = color('#c8cfda').scale(ambient * 0.5 * exposure)
+    r.shadowMapSize = env.shadowQuality === 'high' ? 2048 : env.shadowQuality === 'low' ? 512 : 1024
+    r.setFog(0, env.fogDensity > 0 ? 1.8 / env.fogDensity : 0, color(env.fogColor || env.background))
+    r.sunDirection = d.vec3(-4, 8, 6)
+    r.sunColor = color('#fff3d9')
+    ratio = Math.min(window.devicePixelRatio || 1, env.pixelRatioLimit ?? 1.6) * (env.resolutionScale ?? 1)
+    addEntities(scene.entities)
+    if (!options.editor) {
+      const entity = scene.entities.find(
+        (e) => e.active && e.components.some((c) => c.type === 'camera' && c.enabled !== false),
+      )
+      const c = entity?.components.find((c) => c.type === 'camera' && c.enabled !== false)
+      camera.height = c?.projection === 'perspective' ? 0 : (c?.size ?? 12) / (c?.zoom ?? 1)
+      camera.fov = c?.fov ?? 45
+      if (entity) {
+        objects.get(entity.id)!.getWorldPosition(camera.position)
+        const [x, y, z, w] = objects.get(entity.id)!.worldRotation()
+        camera.setWorldRotation({ x, y, z, w })
+      } else camera.position.set(12, 11, 15)
+      if (c?.target || !entity) camera.lookAt(new Vector3().fromArray(c?.target ?? [0, 0.25, 0]))
+    }
+  }
+  function sync() {
+    for (const [id, obj] of roots) {
+      const n = objects.get(id)!
+      obj.pos3D.set(n.position.x, n.position.y, n.position.z)
+      obj.rotation3D.set(n.rotation.x, n.rotation.y, n.rotation.z)
+      obj.scale3D.set(n.scale.x, n.scale.y, n.scale.z)
+      const parent = n.parent && roots.get(n.parent.id)
+      if (parent && obj.parent !== parent) parent.addChild(obj)
+    }
+    r.ambientColor = color('#c8cfda').scale(ambient * 0.36 * exposure)
+    r.sunColor = color('#fff3d9').scale(0.6 * exposure)
+    r.sunDirection = d.vec3(-4, 8, 6)
+    for (const [id, light] of sceneLights) {
+      const n = objects.get(id)!
+      if (!n.active) continue
+      const tint = color(light.color ?? '#ffffff')
+      if (light.kind === 'ambient')
+        r.ambientColor = tint.scale((light.intensity ?? 1) * 0.26 * ambient * exposure)
+      else {
+        const pos = n.getWorldPosition(new Vector3())
+        r.sunColor = tint.scale((light.intensity ?? 1) * 0.29 * exposure)
+        if (pos.x || pos.y || pos.z) r.sunDirection = v(pos)
+      }
+    }
+    r.camera.pos = v(camera.position)
+    r.camera.rotation = v(camera.rotation)
+    r.camera.fov = (camera.fov * Math.PI) / 180
+    r.camera.orthographic =
+      camera.height / Math.min(1, (container.clientWidth || 1) / (container.clientHeight || 1))
+  }
+  function render() {
+    if (disposed) return
+    if (options.editor) {
+      const now = performance.now()
+      d.tick(Math.min(0.1, (now - editorTime) / 1000))
+      editorTime = now
+    }
+    sync()
+    info.render.calls = d.render(
+      Math.max(1, container.clientWidth),
+      Math.max(1, container.clientHeight),
+      ratio,
+      hidden,
+    )
+    info.memory.textures = textures.size
+    info.render.triangles = d.triangles()
+  }
+  load(initial, sceneId)
   return {
-    scene,
     renderer,
     objects,
-    get camera() {
-      return camera
-    },
+    camera,
     load,
-    addEntities(entities) {
-      addEntities(entities)
-      scene.updateMatrixWorld(true)
-    },
+    render,
+    addEntities,
     removeEntities,
-    setEntityActive(id, active) {
-      const group = objects.get(id)
-      if (!group || group.visible === active) return
-      const nodes = new Set<T.Object3D>()
-      group.traverse((node) => nodes.add(node))
-      restoreBatches(nodes)
-      group.visible = active
-    },
-    animationClips(id) {
-      return players.get(id)?.clips.map((clip) => clip.name) ?? []
-    },
-    playAnimation,
-    stopAnimation(id) {
-      players.get(id)?.mixer.stopAllAction()
-    },
-    updateAnimations(delta) {
-      if (!Number.isFinite(delta) || delta <= 0) return
-      for (const [id, player] of players) {
-        let node: T.Object3D | null = objects.get(id) ?? null
-        while (node?.visible) node = node.parent
-        if (!node) player.mixer.update(delta)
+    ready: () => Promise.all(pending).then(() => {}),
+    setGrid(enabled: boolean, height: number) {
+      if (!enabled) {
+        if (grid) grid.color.a = 0
+        return
       }
+      if (!grid) {
+        const mesh = d.buildGrid(d.vec2(140), 1)
+        meshes.set('__editorGrid', mesh)
+        grid = new d.EngineObject3D(d.vec3(), mesh)
+        grid.transparent = true
+        grid.emissive = 1
+        grid.castShadow = false
+        grid.receiveShadow = false
+        const shader = new d.Shader(
+          'void mainImage(out vec4 c,vec2 uv){vec2 p=worldPos.xz;vec2 g=abs(fract(p+.5)-.5)/max(fwidth(p),vec2(.001));float a=(1.-min(1.,min(g.x,g.y)))*exp(-length(p)*.04);if(a<.015)discard;c=vec4(.52,.60,.64,a*.38);}',
+        )
+        shaders.set('__editorGrid', shader)
+        grid.shader = shader
+      }
+      grid.color.a = 1
+      grid.pos3D.y = height
     },
-    resize,
-    setCamera(value) {
-      camera = value
-      resize()
+    setEntityActive(id: string, on: boolean) {
+      const n = objects.get(id)
+      if (n) n.visible = on
     },
-    render() {
-      for (const material of animatedMaterials)
-        material.uniforms.uTime.value = (performance.now() - started) / 1000
-      renderer.render(scene, camera)
+    pick(x: number, y: number) {
+      sync()
+      const hit = d.pick(d.vec2(x, y), (o) => o === grid || hidden(o))
+      return hit && owner(hit.object)?.id
     },
-    ready() {
-      return Promise.all(pending).then(() => undefined)
+    projectPoint(p: Vector3) {
+      return r.worldToScreen(v(p), d.vec2(container.clientWidth, container.clientHeight))
+    },
+    raycast(origin: Vector3, dir: Vector3, max: number) {
+      sync()
+      const hit = d.pick(new d.Ray3D(v(origin), v(dir).normalize()), (o) => o === grid || hidden(o))
+      return hit && hit.distance <= max ? owner(hit.object)?.id : undefined
+    },
+    animationClips: (id: string) => players.get(id)?.model.animations.map((a) => a.name) ?? [],
+    playAnimation,
+    stopAnimation: (id: string) => players.get(id)?.stop(),
+    updateAnimations(dt: number) {
+      d.tick(dt)
+      for (const [id, obj] of players)
+        if (objects.get(id)?.active && obj.animationPlaying) {
+          obj.update()
+          if (!obj.animationPlaying && obj.animation) options.onAnimationFinished?.(id, obj.animation.name)
+        }
     },
     dispose() {
+      if (disposed) return
       disposed = true
-      observer.disconnect()
       clear()
-      renderer.dispose()
-      renderer.forceContextLoss()
-      renderer.domElement.remove()
+      d.dispose()
     },
   }
 }

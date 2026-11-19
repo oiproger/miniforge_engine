@@ -1,3 +1,4 @@
+import {prepareDevice} from '../graphics/device.mjs'
 import { build } from 'esbuild'
 import {writeScriptAPI} from './script-api.mjs'
 import { mkdir } from 'node:fs/promises'
@@ -7,6 +8,7 @@ import path from 'node:path'
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const out = path.join(root, 'apps/editor/public/engine')
 await mkdir(out, { recursive: true })
+await prepareDevice()
 await writeScriptAPI(root,out)
 const base = {
   absWorkingDir: root,
@@ -35,7 +37,7 @@ void boot(startGame,new URLSearchParams(location.search).get('mock')==='1'?mock:
   })
   const forbidden = Object.keys(result.metafile.inputs).filter(
     (name) =>
-      /node_modules\/(react(-dom)?|monaco-editor|typescript)\//.test(name) || name.includes('apps/editor/'),
+      /node_modules\/(react(-dom)?|monaco-editor|typescript)\//.test(name) || name.includes('apps/editor/') || /node_modules\/three\//.test(name),
   )
   if (forbidden.length) throw new Error('Editor dependency in runtime: ' + forbidden.join(', '))
 }

@@ -5,3 +5,4 @@ playwright-report/
 target/
 *.tsbuildinfo
 apps/editor/public/engine/
+packages/graphics/src/device.generated.js

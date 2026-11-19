@@ -24,7 +24,7 @@ export default function (api: GameAPI) {
 | API | Назначение |
 | --- | --- |
 | `entity`, `project` | Данные сущности и проекта |
-| `object`, `transform` | Текущий Three.js Object3D. Локальная позиция, масштаб, вращение в радианах |
+| `object`, `transform` | Узел сцены Miniforge (SceneNode). Локальная позиция, масштаб, вращение в радианах |
 | `find(id)`, `component(type)` | Найти объект сцены или включённый компонент |
 | `time`, `input.move`, `input.pressed(action)` | Секунды симуляции, направление XZ, состояние клавиши или действия |
 | `events.on(name, fn)`, `events.emit(name, data)` | Подписка с функцией отписки и отправка события |

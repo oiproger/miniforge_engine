@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { Group, Vector3 } from 'three'
+import { SceneNode as Group, Vector3 } from '../../graphics/src/scene'
 import { makeEntity, makeScene } from '../../project-schema/src'
 import createPhysics from './physics'
 
@@ -66,7 +66,6 @@ test('spawned collider can be disabled, reenabled, destroyed and its ID reused',
 })
 
 test('character climbs a low step and a triangle slope but stops at a tall wall', async () => {
-  const { Mesh, BoxGeometry } = await import('three')
   const scene = makeScene(),
     objects = new Map<string, Group>()
   function object(
@@ -90,9 +89,8 @@ test('character climbs a low step and a triangle slope but stops at a tall wall'
   floor.e.properties.floor = true
   object('Step', 1, 0.09, [{ type: 'collider', size: [1, 0.18, 3] }])
   const ramp = object('Ramp', 2.5, 0.38, [{ type: 'collider', shape: 'mesh' }])
-  const mesh = new Mesh(new BoxGeometry(2.4, 0.1, 3))
-  mesh.rotation.z = 0.28
-  ramp.node.add(mesh)
+  ramp.node.rotation.z=.28
+  ramp.node.surfaces.push({positions:[-1.2,.05,-1.5,1.2,.05,-1.5,-1.2,.05,1.5,1.2,.05,1.5],indices:[0,2,1,1,2,3]})
   const wall = object('Wall', 4.2, 1, [{ type: 'collider', size: [0.25, 2, 4] }])
   const sim = await createPhysics({ objects }, scene)
   let peak = 0,
@@ -113,14 +111,12 @@ test('character climbs a low step and a triangle slope but stops at a tall wall'
     expect(node.position.x).toBeLessThan(4)
   } finally {
     sim.dispose()
-    mesh.geometry.dispose()
   }
 })
 
 test('a character lands below its spawn height on sculpted terrain and cannot climb a steep face', async () => {
   const { makeTerrain } = await import('../../project-schema/src')
   const { terrainGeometry } = await import('../../graphics/src/terrain')
-  const { Mesh } = await import('three')
   const scene = makeScene(),
     ground = makeEntity('Terrain'),
     player = makeEntity('Climber')
@@ -132,7 +128,7 @@ test('a character lands below its spawn height on sculpted terrain and cannot cl
   const surface = new Group(),
     node = new Group(),
     geo = terrainGeometry(t)
-  surface.add(new Mesh(geo))
+  surface.surfaces.push(geo)
   node.position.set(-1, 2, 0)
   scene.entities = [ground, player]
   const sim = await createPhysics(
@@ -158,6 +154,5 @@ test('a character lands below its spawn height on sculpted terrain and cannot cl
     expect(node.position.y).toBeLessThan(-0.7)
   } finally {
     sim.dispose()
-    geo.dispose()
   }
 })

@@ -1,4 +1,4 @@
-import { Vector3 } from 'three'
+import { Vector3 } from '../../graphics/src/scene'
 import { behaviorParams } from './catalog'
 import type { GameAPI } from '../../runtime/src/types'
 import type { ScriptLifecycle } from '../../runtime/src/lifecycle'

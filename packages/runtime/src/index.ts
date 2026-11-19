@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Object3D, Raycaster, Vector2, Vector3 } from 'three'
+import { SceneNode, Vector3 } from '../../graphics/src/scene'
 import { createWorld } from '../../graphics/src'
 import { needsPhysics, instantiatePrefab, makePrefab, subtree } from '../../project-schema/src'
 import { bindRule } from '../../behaviors/src/rules'
@@ -11,10 +11,10 @@ import type { GameAPI, GameOptions, GameSession, PhysicsSession } from './types'
 export type { GameAPI, GameOptions, GameSession, ScriptFactory } from './types'
 export type { ScriptLifecycle } from './lifecycle'
 
-const visible = (obj: Object3D | null): boolean => !obj || (obj.visible && visible(obj.parent))
+const visible = (obj: SceneNode | null): boolean => !obj || (obj.visible && visible(obj.parent))
 interface Actor {
   entity: Entity
-  object: Object3D
+  object: SceneNode
   params: Record<string, any>
 }
 
@@ -40,8 +40,7 @@ export async function startGame(
       (id) => active(id),
     )
   const signal = new AbortController(),
-    vars: Record<string, any> = {},
-    ray = new Raycaster()
+    vars: Record<string, any> = {}
   const point = new Vector3(),
     playerPoint = new Vector3()
   const mode = project.settings.mode === 'collectathon'
@@ -328,7 +327,7 @@ export async function startGame(
         void load(id, false).catch((err) => emit('scene.error', String(err)))
     })
   }
-  function register(entity: Entity, object: Object3D, c: Component) {
+  function register(entity: Entity, object: SceneNode, c: Component) {
     const generation = revision
     const alive = () =>
       !disposed &&
@@ -403,9 +402,7 @@ export async function startGame(
       physics: {
         raycast: (origin, direction, length) => {
           if (physics) return physics.raycast(origin, direction, length)
-          ray.set(origin, direction)
-          ray.far = length
-          return hitEntity()
+          return world.raycast(origin,direction,length)
         },
       },
       save: { get: (key) => platform.loadData(key), set: (key, value) => platform.saveData(key, value) },
@@ -528,7 +525,8 @@ export async function startGame(
       jumpHeld = false
       if (player) groundY = (player as Actor).object.getWorldPosition(point).y
       if (firstPerson) {
-        world.setCamera(new PerspectiveCamera(70, 1, 0.05, 200))
+        world.camera.height=0
+        world.camera.fov=70
         for (const child of player!.object.children) child.visible = false
       }
       if (clicker) {
@@ -573,19 +571,6 @@ export async function startGame(
       if (generation === revision) busy = false
     }
   }
-  function hitEntity() {
-    const hits = ray.intersectObjects(world.scene.children, true)
-    for (const hit of hits) {
-      if (!visible(hit.object)) continue
-      if (hit.instanceId !== undefined && hit.object.userData.entityIds)
-        return String(hit.object.userData.entityIds[hit.instanceId])
-      let node: Object3D | null = hit.object
-      while (node) {
-        if (node.userData.entityId) return String(node.userData.entityId)
-        node = node.parent
-      }
-    }
-  }
   window.addEventListener(
     'mousemove',
     (e) => {
@@ -608,15 +593,7 @@ export async function startGame(
         }
       }
       const rect = world.renderer.domElement.getBoundingClientRect()
-      ray.far = Infinity
-      ray.setFromCamera(
-        new Vector2(
-          ((e.clientX - rect.left) / rect.width) * 2 - 1,
-          1 - ((e.clientY - rect.top) / rect.height) * 2,
-        ),
-        world.camera,
-      )
-      const id = hitEntity()
+      const id=world.pick(e.clientX-rect.left,e.clientY-rect.top)
       if (id) {
         lifecycle.call('onPointerClick', id)
         emit('pointer.click', id)
@@ -699,11 +676,11 @@ export async function startGame(
     if (firstPerson) {
       world.camera.position.copy(playerPoint)
       world.camera.position.y += 1
-      world.camera.rotation.set(pitch, yaw, 0, 'YXZ')
+      world.camera.rotation.set(pitch, yaw, 0)
     }
     if (runner) {
       world.camera.position.set(playerPoint.x, playerPoint.y + 6, playerPoint.z + 7)
-      world.camera.lookAt(playerPoint.x, 0, playerPoint.z - 2)
+      world.camera.lookAt(new Vector3(playerPoint.x, 0, playerPoint.z - 2))
     }
     if (!firstPerson && (x || z)) node.rotation.y = Math.atan2(x, z)
     if (!physics)

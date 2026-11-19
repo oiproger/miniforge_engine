@@ -1,4 +1,4 @@
-import type { Object3D, Vector3 } from 'three'
+import type { SceneNode, Vector3 } from '../../graphics/src/scene'
 import type { Component, Entity, Project, Scene, Vec3 } from '../../project-schema/src'
 import type { RenderWorld } from '../../graphics/src'
 import type { PlatformAdapter } from '../../platform-sdk/src'
@@ -16,8 +16,8 @@ export interface PhysicsSession {
 }
 export interface GameAPI {
   entity: Entity
-  object: Object3D
-  transform: Object3D
+  object: SceneNode
+  transform: SceneNode
   params: Record<string, any>
   input: Input
   events: Pick<Events, 'on' | 'emit'>
@@ -25,7 +25,7 @@ export interface GameAPI {
   vars: Record<string, any>
   time: number
   project: Project
-  find(id: string): Object3D | undefined
+  find(id: string): SceneNode | undefined
   spawnPrefab(assetId: string, position?: Vec3, parent?: string | null): string
   destroy(id: string): void
   setActive(id: string, active: boolean): void

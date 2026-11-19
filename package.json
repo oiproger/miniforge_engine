@@ -10,7 +10,7 @@
     "build": "pnpm prepare:runtime && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "node packages/graphics/device.mjs && vitest run",
     "test:e2e": "playwright test",
     "export:demo": "pnpm prepare:runtime && tsx packages/exporter/cli.ts",
     "desktop:editor": "node apps/editor-desktop/build.mjs editor",
@@ -19,12 +19,13 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
     "fflate": "^0.8.2",
+    "gl-matrix": "3.4.4",
+    "littlejsengine": "1.30.1",
     "lucide-react": "^0.577.0",
     "monaco-editor": "^0.55.1",
     "pnpm": "^12.21.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "three": "^0.184.0",
     "typescript": "~5.9.3"
   },
   "devDependencies": {
@@ -33,7 +34,6 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/three": "^0.184.0",
     "@vitejs/plugin-react": "^5",
     "esbuild": "^0.27.0",
     "eslint": "^9",

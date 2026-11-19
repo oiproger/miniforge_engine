@@ -1,96 +1,60 @@
-import { useEffect, useState } from 'react'
-import * as T from 'three'
+import { useState, useEffect } from 'react'
 import { Box, FileCode2, FileJson, Music2, Braces } from 'lucide-react'
-import type { Asset, Entity, Project } from '../../../packages/project-schema/src'
+import { createWorld, type RenderWorld } from '../../../packages/graphics/src'
+import { Vector3 } from '../../../packages/graphics/src/scene'
+import {
+  makeEntity,
+  makeProject,
+  type Project,
+  type Asset,
+  type Entity,
+} from '../../../packages/project-schema/src'
 
-let renderer: T.WebGLRenderer | undefined
+let preview: RenderWorld | undefined
 const cache = new Map<string, string>()
 function render(asset: Asset, project: Project) {
-  const key =
-    asset.id +
-    asset.data +
-    JSON.stringify(asset.properties) +
-    project.assets
-      .filter((a) => a.type === 'material')
-      .map((a) => a.properties.color)
-      .join()
+  const key = JSON.stringify([
+    asset,
+    project.assets.filter((a) => a.type === 'material').map((a) => a.properties),
+  ])
   if (cache.has(key)) return cache.get(key)
-  renderer ??= new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
-  renderer.setSize(160, 104)
-  renderer.setClearColor(0, 0)
-  const group = new T.Group(),
-    scene = new T.Scene()
-  scene.add(group)
-  const nodes: Entity[] = asset.type === 'prefab' ? JSON.parse(asset.data) : []
-  const objects = new Map<string, T.Group>()
-  const shapes: Record<string, () => T.BufferGeometry> = {
-    icosahedron: () => new T.IcosahedronGeometry(0.5, 0),
-    sphere: () => new T.SphereGeometry(0.5, 10, 7),
-    cone: () => new T.ConeGeometry(0.5, 1, 7),
-    cylinder: () => new T.CylinderGeometry(0.5, 0.5, 1, 12),
-    capsule: () => new T.CapsuleGeometry(0.3, 0.4),
-    plane: () => new T.BoxGeometry(1, 0.03, 1),
+  const sample = makeProject('Thumbnail'),
+    scene = sample.scenes[0]
+  sample.assets = project.assets
+  scene.environment.background = '#25292c'
+  scene.environment.shadows = false
+  const entities: Entity[] =
+    asset.type === 'prefab' ? JSON.parse(asset.data) : [makeEntity('Material', 'sphere')]
+  if (!entities.length) return
+  if (asset.type === 'material') entities[0].components[0].material = asset.id
+  entities[0].transform.position = [0, 0, 0]
+  scene.entities = entities
+  if (!preview) {
+    const host = document.createElement('div')
+    host.style.cssText = 'position:fixed;left:-1000px;top:0;width:160px;height:104px;pointer-events:none'
+    document.body.append(host)
+    preview = createWorld(host, sample, undefined, { editor: true })
+  } else preview.load(sample)
+  const points = [...preview.objects.values()].map((n) => ({
+    p: n.getWorldPosition(new Vector3()),
+    s: n.getWorldScale(new Vector3()),
+  }))
+  const center = new Vector3(),
+    size = new Vector3()
+  for (const axis of ['x', 'y', 'z'] as const) {
+    const min = Math.min(...points.map((v) => v.p[axis] - Math.abs(v.s[axis]) * 0.5)),
+      max = Math.max(...points.map((v) => v.p[axis] + Math.abs(v.s[axis]) * 0.5))
+    center[axis] = (min + max) / 2
+    size[axis] = max - min
   }
-  function mesh(shape: string, color: string) {
-    return new T.Mesh(
-      shapes[shape]?.() ?? new T.BoxGeometry(),
-      new T.MeshStandardMaterial({ color, flatShading: true, roughness: 0.76 }),
-    )
-  }
-  if (asset.type === 'material') group.add(mesh('sphere', asset.properties.color))
-  for (const e of nodes) {
-    const o = new T.Group()
-    objects.set(e.id, o)
-    if (e !== nodes[0]) o.position.fromArray(e.transform.position)
-    o.scale.fromArray(e.transform.scale)
-    o.rotation.set(...e.transform.rotation)
-    for (const c of e.components.filter((c) => c.type === 'mesh'))
-      o.add(mesh(c.shape, project.assets.find((a) => a.id === c.material)?.properties.color ?? '#b9c5d0'))
-  }
-  for (const e of nodes) (objects.get(e.parent ?? '') ?? group).add(objects.get(e.id)!)
-  const bounds = new T.Box3().setFromObject(group)
-  if (bounds.isEmpty()) return
-  const center = bounds.getCenter(new T.Vector3()),
-    cam = new T.OrthographicCamera(-1, 1, 1, -1, 0.01, 1000)
-  const dir = new T.Vector3(3, 2.1, 4).normalize()
-  cam.position.copy(center).addScaledVector(dir, 100)
-  cam.lookAt(center)
-  cam.updateMatrixWorld()
-  const viewBox = new T.Box3()
-  group.traverse((o) => {
-    if (o instanceof T.Mesh) {
-      const positions = o.geometry.attributes.position
-      for (let i = 0; i < positions.count; i++)
-        viewBox.expandByPoint(
-          new T.Vector3()
-            .fromBufferAttribute(positions, i)
-            .applyMatrix4(o.matrixWorld)
-            .applyMatrix4(cam.matrixWorldInverse),
-        )
-    }
-  })
-  const size = viewBox.getSize(new T.Vector3()),
-    half = Math.max(size.y / 2, size.x / 3.08) * 1.15 || 1
-  cam.top = half
-  cam.bottom = -half
-  cam.right = half * 1.54
-  cam.left = -cam.right
-  cam.updateProjectionMatrix()
-  scene.add(new T.HemisphereLight(0xffffff, 0x858ba3, 2))
-  const light = new T.DirectionalLight(0xffeccf, 2.6)
-  light.position.set(3, 5, 3)
-  scene.add(light)
-  renderer.render(scene, cam)
-  const result = renderer.domElement.toDataURL()
-  scene.traverse((o) => {
-    if (o instanceof T.Mesh) {
-      o.geometry.dispose()
-      o.material.dispose()
-    }
-  })
+  preview.camera.height = Math.max(size.y, (size.x + size.z) * 0.65, 1) * 1.45
+  preview.camera.position.copy(center).add(new Vector3(8, 6, 10))
+  preview.camera.lookAt(center)
+  preview.render()
+  const url = preview.renderer.domElement.toDataURL()
   if (cache.size > 256) cache.clear()
-  cache.set(key, result)
-  return result
+  cache.set(key, url)
+  return url
 }
 export function Thumb({ asset, project }: { asset: Asset; project: Project }) {
   const [url, set] = useState<string>()
