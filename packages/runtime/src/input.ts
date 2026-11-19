@@ -12,6 +12,10 @@ export class Input {
     Jump: ['Space'],
     Interact: ['KeyE'],
     Attack: ['KeyF'],
+    Sprint: ['ShiftLeft', 'ShiftRight'],
+    Crouch: ['ControlLeft', 'KeyC'],
+    Flashlight: ['KeyL'],
+    Phone: ['Tab', 'KeyP'],
     Pause: ['Escape'],
   }
   constructor(

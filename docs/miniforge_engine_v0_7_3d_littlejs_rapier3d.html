@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Miniforge Engine v0.7 — Лёгкий 3D-движок на LittleJS + Rapier3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --panel: #111720;
+      --panel-2: #161f2b;
+      --border: rgba(255, 255, 255, 0.09);
+      --amber: #ff8c32;
+      --amber-soft: #ffb84d;
+      --cyan: #58d8ff;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: #e6edf5;
+      overflow-x: hidden;
+    }
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    }
+    .forge-grid-bg {
+      background-image:
+        radial-gradient(circle at 18% 12%, rgba(255, 140, 50, 0.14), transparent 42%),
+        radial-gradient(circle at 82% 18%, rgba(88, 216, 255, 0.11), transparent 38%),
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 42px 42px, 42px 42px;
+    }
+    .glass-card {
+      background: linear-gradient(180deg, rgba(22, 31, 43, 0.88), rgba(14, 20, 29, 0.92));
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+    .forge-glow {
+      box-shadow: 0 0 28px rgba(255, 140, 50, 0.22);
+    }
+    .viewport-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: grab;
+    }
+    .viewport-canvas:active {
+      cursor: grabbing;
+    }
+    .tab-btn.active {
+      background: rgba(255, 140, 50, 0.18);
+      border-color: rgba(255, 140, 50, 0.6);
+      color: #ffca80;
+    }
+    .example-tab.active {
+      background: linear-gradient(90deg, rgba(255, 140, 50, 0.22), rgba(88, 216, 255, 0.12));
+      border-color: rgba(255, 140, 50, 0.65);
+      color: #fff;
+    }
+    .doc-nav-btn.active {
+      background: rgba(88, 216, 255, 0.14);
+      border-color: rgba(88, 216, 255, 0.45);
+      color: #8ee6ff;
+    }
+    #toast {
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+  </style>
+</head>
+<body class="forge-grid-bg min-h-screen antialiased selection:bg-amber-500/30 selection:text-amber-200">
+
+  <!-- Sticky Navigation -->
+  <header class="sticky top-0 z-40 border-b border-white/10 bg-[#0a0e14]/85 backdrop-blur-md">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+      <a href="#overview" class="flex items-center gap-2.5 text-white no-underline">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-orange-500/25">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-950">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+        </span>
+        <span class="flex flex-col leading-none">
+          <span class="text-sm font-extrabold tracking-wider uppercase">Miniforge</span>
+          <span class="font-mono text-[10px] text-amber-400">ENGINE v0.7 · LITTLEJS 3D</span>
+        </span>
+      </a>
+
+      <nav class="hidden items-center gap-6 text-sm font-medium text-slate-300 md:flex">
+        <a href="#overview" class="transition hover:text-amber-300">Обзор</a>
+        <a href="#features" class="transition hover:text-amber-300">Возможности</a>
+        <a href="#platforms" class="transition hover:text-amber-300">Платформы</a>
+        <a href="#examples" class="transition hover:text-cyan-300">3D Examples</a>
+        <a href="#docs" class="transition hover:text-amber-300">Документация & API</a>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <a href="#examples" class="hidden rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-xs font-bold text-slate-950 shadow-md shadow-orange-500/20 transition hover:brightness-110 sm:inline-flex">
+          Запустить 3D-демки
+        </a>
+        <button id="mobileMenuBtn" type="button" aria-label="Открыть меню" class="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 p-2 text-slate-200 md:hidden">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobileMenu" class="hidden border-t border-white/10 bg-[#0d121a] px-4 py-3 md:hidden">
+      <div class="flex flex-col gap-2 text-sm text-slate-200">
+        <a href="#overview" class="rounded px-2 py-1.5 hover:bg-white/5">Обзор</a>
+        <a href="#features" class="rounded px-2 py-1.5 hover:bg-white/5">Возможности</a>
+        <a href="#platforms" class="rounded px-2 py-1.5 hover:bg-white/5">Платформы</a>
+        <a href="#examples" class="rounded px-2 py-1.5 text-cyan-300 hover:bg-white/5">3D Examples</a>
+        <a href="#docs" class="rounded px-2 py-1.5 hover:bg-white/5">Документация & API</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section with Live Embedded 3D Demo -->
+  <section id="overview" class="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 lg:pt-14">
+    <div class="grid items-center gap-8 lg:grid-cols-12">
+      <div class="lg:col-span-5">
+        <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-mono text-xs text-amber-300">
+          <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+          v0.7 · LittleJS 1.30.1 + Rapier3D + Tauri
+        </div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-white sm:text-5xl leading-[1.08]">
+          Карманная кузница <span class="bg-gradient-to-r from-amber-400 via-orange-400 to-cyan-300 bg-clip-text text-transparent">3D-игр</span> для веба и десктопа
+        </h1>
+        <p class="mt-4 text-sm leading-relaxed text-slate-300 sm:text-base">
+          Визуальный 3D-редактор и модульный TypeScript-движок для стилизованных инди-проектов, Яндекс.Игр, Poki и десктопа. Запекание света с <code class="text-amber-300">emissive</code>, объёмный свет в тумане, редактор 3D-частиц, террейн во вьюпорте, glTF-скиннинг, A* NavGrid и нативный HTML/CSS HUD — в ультралёгком билде.
+        </p>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="#examples" class="forge-glow inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:brightness-110">
+            Смотреть 3D Examples
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </a>
+          <a href="#docs" class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-cyan-400/40 hover:bg-cyan-500/10">
+            Справочник GameAPI
+          </a>
+        </div>
+
+        <div class="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div class="rounded-xl border border-white/10 bg-[#111720]/80 p-3">
+            <div class="font-mono text-lg font-bold text-amber-400">~1.5 MB</div>
+            <div class="text-[11px] text-slate-400">Лёгкий веб-билд</div>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-[#111720]/80 p-3">
+            <div class="font-mono text-lg font-bold text-cyan-300">WebGL2</div>
+            <div class="text-[11px] text-slate-400">AO · Bloom · ACES</div>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-[#111720]/80 p-3">
+            <div class="font-mono text-lg font-bold text-emerald-400">60 FPS</div>
+            <div class="text-[11px] text-slate-400">Даже на Intel HD</div>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-[#111720]/80 p-3">
+            <div class="font-mono text-lg font-bold text-purple-300">20+</div>
+            <div class="text-[11px] text-slate-400">3D-компонентов</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Interactive Hero 3D Viewport -->
+      <div class="lg:col-span-7">
+        <div class="glass-card relative overflow-hidden rounded-2xl border border-white/15">
+          <!-- Mini Editor Header -->
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#0d121a] px-3.5 py-2">
+            <div class="flex items-center gap-2">
+              <span class="h-2.5 w-2.5 rounded-full bg-rose-500/80"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-amber-400/80"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80"></span>
+              <span class="ml-1 font-mono text-xs text-slate-300">Live 3D Scene · LittleJS / Miniforge Showcase</span>
+            </div>
+            <div class="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+              <span id="heroFps" class="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-300">60 FPS</span>
+              <span class="hidden sm:inline">Перетаскивай мышью / колесо для зума</span>
+            </div>
+          </div>
+
+          <!-- 3D Canvas Container -->
+          <div id="heroViewportWrap" class="relative h-[340px] w-full bg-[#090d12] sm:h-[410px]">
+            <canvas id="heroCanvas" class="viewport-canvas"></canvas>
+
+            <!-- Floating Controls inside Hero Viewport -->
+            <div class="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2">
+              <div class="pointer-events-auto flex flex-wrap gap-1.5 rounded-xl border border-white/10 bg-[#0b1017]/80 p-1.5 backdrop-blur-md">
+                <button id="heroDayBtn" type="button" class="rounded-lg border border-amber-400/40 bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 transition hover:bg-amber-500/30">
+                  Ночь / Сумерки
+                </button>
+                <button id="heroGlowBtn" type="button" class="rounded-lg border border-cyan-400/40 bg-cyan-500/20 px-2.5 py-1 text-[11px] font-semibold text-cyan-200 transition hover:bg-cyan-500/30">
+                  Volumetric Glow: ON
+                </button>
+                <button id="heroPtcBtn" type="button" class="rounded-lg border border-orange-400/40 bg-orange-500/20 px-2.5 py-1 text-[11px] font-semibold text-orange-200 transition hover:bg-orange-500/30">
+                  3D Частицы: ON
+                </button>
+                <button id="heroWireBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-300 transition hover:bg-white/10">
+                  Wireframe
+                </button>
+                <button id="heroResetBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-300 transition hover:bg-white/10">
+                  Сброс
+                </button>
+              </div>
+              <div class="hidden rounded-lg border border-white/10 bg-[#0b1017]/80 px-2.5 py-1 font-mono text-[10px] text-slate-400 backdrop-blur-md sm:block">
+                GL2 · Realtime Lights · Particles · Water
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+    <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div>
+        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-amber-400">Арсенал v0.7</div>
+        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Все ключевые возможности движка</h2>
+      </div>
+      <div id="featureFilters" class="flex flex-wrap gap-2">
+        <button type="button" data-cat="all" class="tab-btn active rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition">Все</button>
+        <button type="button" data-cat="graphics" class="tab-btn rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition">3D и Графика</button>
+        <button type="button" data-cat="editor" class="tab-btn rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition">Редактор</button>
+        <button type="button" data-cat="ai" class="tab-btn rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition">Физика и AI</button>
+        <button type="button" data-cat="ui" class="tab-btn rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition">UI и Ввод</button>
+      </div>
+    </div>
+
+    <div id="featuresGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+  </section>
+
+  <!-- Platforms Section -->
+  <section id="platforms" class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+    <div class="mb-8">
+      <div class="font-mono text-xs font-semibold uppercase tracking-widest text-cyan-400">Кроссплатформенный экспорт</div>
+      <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Один проект — любые площадки</h2>
+      <p class="mt-2 max-w-2xl text-sm text-slate-400">Единый слой <code class="text-cyan-300">PlatformAdapter</code> и <code class="text-cyan-300">SaveSystem</code> автоматически адаптируют облачные сохранения, рекламу, язык и управление под целевую платформу.</p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="glass-card rounded-2xl p-5">
+        <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-300 font-mono text-sm font-bold">WEB</div>
+        <h3 class="text-base font-bold text-white">HTML5 / itch.io</h3>
+        <p class="mt-1.5 text-xs leading-relaxed text-slate-400">Автономный ZIP-архив без тяжёлых WASM-гигантов. Мгновенный запуск в любом браузере.</p>
+        <div class="mt-3 font-mono text-[11px] text-cyan-300">WebGL2 · ~1.5 MB</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5">
+        <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300 font-mono text-sm font-bold">YA</div>
+        <h3 class="text-base font-bold text-white">Яндекс.Игры</h3>
+        <p class="mt-1.5 text-xs leading-relaxed text-slate-400">Встроенный адаптер Yandex SDK: облачные сейвы, язык игрока, rewarded/interstitial реклама, пауза.</p>
+        <div class="mt-3 font-mono text-[11px] text-amber-300">Cloud Sync · Ready API</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5">
+        <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300 font-mono text-sm font-bold">PK</div>
+        <h3 class="text-base font-bold text-white">Poki</h3>
+        <p class="mt-1.5 text-xs leading-relaxed text-slate-400">Поддержка Poki SDK (`gameplayStart`, `commercialBreak`, `rewardedBreak`) и авто-мут аудио.</p>
+        <div class="mt-3 font-mono text-[11px] text-emerald-300">Poki SDK Profile</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5">
+        <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/15 text-purple-300 font-mono text-sm font-bold">PC</div>
+        <h3 class="text-base font-bold text-white">Desktop (Tauri)</h3>
+        <p class="mt-1.5 text-xs leading-relaxed text-slate-400">Нативные бинарники Windows, macOS и Linux с прямым сохранением на диск по <kbd class="rounded bg-white/10 px-1">Ctrl+S</kbd>.</p>
+        <div class="mt-3 font-mono text-[11px] text-purple-300">Win · macOS · Linux</div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5">
+        <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/15 text-rose-300 font-mono text-sm font-bold">MOB</div>
+        <h3 class="text-base font-bold text-white">Mobile Touch</h3>
+        <p class="mt-1.5 text-xs leading-relaxed text-slate-400">Настраиваемые виртуальные джойстики, кнопки и двусторонняя эмуляция мышь &harr; тач как в Godot.</p>
+        <div class="mt-3 font-mono text-[11px] text-rose-300">Multi-Touch · api.touch</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dedicated Examples Section: 5 Interactive 3D Demos -->
+  <section id="examples" class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+    <div class="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+      <div>
+        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-amber-400">Интерактивная лаборатория</div>
+        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">3D Examples — живые демки LittleJS &amp; Miniforge</h2>
+        <p class="mt-1.5 text-sm text-slate-400">Переключай сцены, крути камеру, лепи террейн, спавнь частицы и кликай по полу для A*-маршрута NPC прямо в браузере.</p>
+      </div>
+      <button id="toggleCodeBtn" type="button" class="inline-flex items-center gap-2 self-start rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 font-mono text-xs font-semibold text-cyan-300 transition hover:bg-cyan-500/15 sm:self-auto">
+        &lt;/&gt; Показать код GameAPI
+      </button>
+    </div>
+
+    <div class="grid gap-5 lg:grid-cols-12">
+      <!-- Example Switcher Sidebar -->
+      <div class="flex flex-col gap-2 lg:col-span-4" id="exampleTabs">
+        <button type="button" data-demo="fog" class="example-tab active flex flex-col rounded-xl border border-white/10 bg-[#111720] p-3.5 text-left transition hover:border-amber-400/40">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white">1. Volumetric Fog &amp; Dynamic Lights</span>
+            <span class="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] text-amber-300">LittleJS 3D</span>
+          </div>
+          <span class="mt-1 text-xs text-slate-400">Мягкое свечение света в тумане (<code class="text-slate-300">glow</code> / <code class="text-slate-300">glowFalloff</code>), движущиеся фонари и прожектор.</span>
+        </button>
+
+        <button type="button" data-demo="particles" class="example-tab flex flex-col rounded-xl border border-white/10 bg-[#111720] p-3.5 text-left transition hover:border-amber-400/40">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white">2. 3D Particle Editor Live</span>
+            <span class="rounded bg-orange-500/20 px-1.5 py-0.5 font-mono text-[10px] text-orange-300">v0.5 VFX</span>
+          </div>
+          <span class="mt-1 text-xs text-slate-400">Пресеты: пар, огонь, искры, снег, дождь, пыль. Живые слайдеры скорости, разброса, гравитации и Burst.</span>
+        </button>
+
+        <button type="button" data-demo="terrain" class="example-tab flex flex-col rounded-xl border border-white/10 bg-[#111720] p-3.5 text-left transition hover:border-amber-400/40">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white">3. Viewport Terrain &amp; Splat Layers</span>
+            <span class="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300">v0.6 Sculpt</span>
+          </div>
+          <span class="mt-1 text-xs text-slate-400">Кликай по 3D-земле: лепи рельеф и рисуй 4 материалами с настройкой мягкого/жёсткого края.</span>
+        </button>
+
+        <button type="button" data-demo="nav" class="example-tab flex flex-col rounded-xl border border-white/10 bg-[#111720] p-3.5 text-left transition hover:border-amber-400/40">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white">4. NavGrid A* &amp; Animated NPC</span>
+            <span class="rounded bg-cyan-500/20 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v0.7 AI</span>
+          </div>
+          <span class="mt-1 text-xs text-slate-400">Кликни по любой точке двора — NPC построит сглаженный A*-путь и обойдёт стены и закрытые ворота.</span>
+        </button>
+
+        <button type="button" data-demo="water" class="example-tab flex flex-col rounded-xl border border-white/10 bg-[#111720] p-3.5 text-left transition hover:border-amber-400/40">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white">5. Water, Reflections &amp; Emissive</span>
+            <span class="rounded bg-purple-500/20 px-1.5 py-0.5 font-mono text-[10px] text-purple-300">Shaders</span>
+          </div>
+          <span class="mt-1 text-xs text-slate-400">Анимированные волны воды, зеркальные сферы, неоновые emissive-блоки и смена времени суток.</span>
+        </button>
+      </div>
+
+      <!-- Interactive Demo Viewport + Contextual Controls -->
+      <div class="flex flex-col gap-3 lg:col-span-8">
+        <div class="glass-card overflow-hidden rounded-2xl border border-white/15">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#0d121a] px-4 py-2.5">
+            <div>
+              <h3 id="demoTitle" class="text-sm font-bold text-white">1. Volumetric Fog &amp; Dynamic Lights</h3>
+              <p id="demoHint" class="text-[11px] text-slate-400">Перетаскивай для вращения камеры, колёсико — масштаб.</p>
+            </div>
+            <span id="demoStat" class="rounded bg-white/5 px-2 py-0.5 font-mono text-[11px] text-cyan-300">60 FPS</span>
+          </div>
+
+          <div class="relative h-[360px] w-full bg-[#090d12] sm:h-[420px]">
+            <canvas id="exampleCanvas" class="viewport-canvas"></canvas>
+          </div>
+
+          <!-- Dynamic Demo Control Bar -->
+          <div id="demoControls" class="flex flex-wrap items-center gap-3 border-t border-white/10 bg-[#0d121a] px-4 py-3 text-xs text-slate-200"></div>
+        </div>
+
+        <!-- Collapsible Miniforge GameAPI Code Panel -->
+        <div id="demoCodeBox" class="glass-card hidden overflow-hidden rounded-2xl border border-cyan-500/25">
+          <div class="flex items-center justify-between border-b border-white/10 bg-[#0d121a] px-4 py-2">
+            <span class="font-mono text-xs text-cyan-300">Miniforge GameAPI Script (TypeScript)</span>
+            <button id="copyDemoCodeBtn" type="button" class="rounded-md border border-white/15 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-slate-200 transition hover:bg-white/15">
+              Копировать
+            </button>
+          </div>
+          <pre id="demoCodePre" class="max-h-56 overflow-auto p-4 font-mono text-xs leading-relaxed text-amber-100/90"></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Documentation & GameAPI Section -->
+  <section id="docs" class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+    <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div>
+        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-cyan-400">Полный справочник</div>
+        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Документация и GameAPI v0.7</h2>
+      </div>
+      <div class="relative w-full sm:w-80">
+        <input id="docSearch" type="search" placeholder="Поиск по методам (crossfade, nav, terrain...)" class="w-full rounded-xl border border-white/15 bg-[#111720] px-4 py-2 text-xs text-white placeholder-slate-400 outline-none focus:border-cyan-400/60" />
+      </div>
+    </div>
+
+    <div class="grid gap-5 lg:grid-cols-12">
+      <aside id="docSidebar" class="flex flex-row gap-1.5 overflow-x-auto pb-1 lg:col-span-3 lg:flex-col lg:overflow-visible"></aside>
+      <div id="docContent" class="glass-card rounded-2xl p-5 sm:p-6 lg:col-span-9"></div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="mt-10 border-t border-white/10 bg-[#080b10] py-8">
+    <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-slate-400 sm:flex-row sm:px-6">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-white">MINIFORGE ENGINE v0.7</span>
+        <span>·</span>
+        <span>LittleJS 1.30.1 · Rapier3D · React · TypeScript · Tauri</span>
+      </div>
+      <div class="flex gap-4">
+        <a href="#overview" class="hover:text-amber-300">Наверх</a>
+        <a href="#examples" class="hover:text-cyan-300">3D Examples</a>
+        <a href="#docs" class="hover:text-amber-300">API Docs</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="pointer-events-none fixed bottom-5 right-5 z-50 translate-y-3 rounded-xl border border-cyan-400/40 bg-[#111822]/95 px-4 py-2.5 text-xs font-semibold text-cyan-200 opacity-0 shadow-xl backdrop-blur-md">
+    Скопировано в буфер обмена
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // === Toast Helper (no alert/confirm) ===
+      let toastTimer = null;
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.remove('opacity-0', 'translate-y-3');
+        el.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          el.classList.remove('opacity-100', 'translate-y-0');
+          el.classList.add('opacity-0', 'translate-y-3');
+        }, 2000);
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => showToast('Код скопирован')).catch(() => fallbackCopy(text));
+        } else {
+          fallbackCopy(text);
+        }
+      }
+      function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); showToast('Код скопирован'); } catch (e) { showToast('Выделите и скопируйте вручную'); }
+        document.body.removeChild(ta);
+      }
+
+      // === Mobile Menu ===
+      const mobileBtn = document.getElementById('mobileMenuBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      if (mobileBtn && mobileMenu) {
+        mobileBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+        mobileMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+      }
+
+      // === Features Data ===
+      const FEATURES = [
+        { cat: 'graphics', tag: 'LittleJS 1.30.1', title: 'Запекание света + Emissive & Cubemaps', desc: 'Глобальное и зональное (Bake Zone) запекание освещения с учётом emissive-мешей как источников света, плюс запечённые и realtime cubemap-отражения.' },
+        { cat: 'graphics', tag: 'WebGL2 Post-FX', title: 'Постобработка и Volumetric Glow', desc: 'AO, DoF, Bloom, ACES Filmic, Vignette, Chromatic, Film Grain, CRT Scanlines и нативное свечение света сквозь туман (glow / glowFalloff / flare / gel).' },
+        { cat: 'graphics', tag: 'v0.5 VFX', title: '3D-частицы, Билборды и Декали', desc: 'Отдельный 3D Particle Editor с 7 пресетами, камера-ориентированные билборды со спрайтовыми атласами и декали с динамическим api.decals.spawn().' },
+        { cat: 'editor', tag: 'v0.6 Terrain', title: 'Террейн во вьюпорте + N слоёв', desc: 'Прямая лепка и покраска в 3D-вьюпорте с конформным 3D-кольцом кисти, неограниченные слои материалов и ползунок мягкости Hard ↔ Soft на каждый слой.' },
+        { cat: 'editor', tag: 'Godot-style', title: 'Script Workspace & Поиск компонентов', desc: 'Вкладка Script с Monaco, Ctrl+H, встроенной справкой API, сворачиваемыми Project Settings и списком Add Component с иконками и поиском.' },
+        { cat: 'ai', tag: 'v0.7 Skinning', title: 'glTF Скелетные анимации и Кости', desc: 'Плавный кроссфейд между клипами (api.animation.crossfade), пауза/перемотка, чтение костей и getBonePosition для предметов в руках NPC.' },
+        { cat: 'ai', tag: 'v0.7 Navigation', title: 'NavGrid + A* и Off-Mesh Links', desc: 'Запекаемая навигационная сетка по террейну и коллайдерам, сглаживание пути, динамические препятствия, Nav Agent (NPC) и связи для лестниц/дверей.' },
+        { cat: 'ai', tag: 'Rapier3D', title: '3D-физика, RaycastHit и Твины', desc: 'Полная физика Rapier3D (импульсы, силы, триггеры, character controller, raycastHit с нормалью) и Godot-style createTween() для плавных анимаций.' },
+        { cat: 'ui', tag: 'HTML / Touch', title: 'HTML/CSS HUD + Тач-контроллеры', desc: 'Монтирование любых HTML-виджетов (api.ui.mount), 3D→2D проекция worldToScreen, виртуальные джойстики/кнопки и эмуляция мышь ↔ тач как в Godot.' },
+      ];
+
+      function renderFeatures(cat) {
+        const grid = document.getElementById('featuresGrid');
+        if (!grid) return;
+        const list = cat === 'all' ? FEATURES : FEATURES.filter((f) => f.cat === cat);
+        grid.innerHTML = list.map((f) => `
+          <article class="glass-card flex flex-col justify-between rounded-2xl p-5 transition hover:border-amber-400/35">
+            <div>
+              <span class="inline-block rounded-md border border-amber-400/25 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-amber-300">${f.tag}</span>
+              <h3 class="mt-3 text-base font-bold text-white">${f.title}</h3>
+              <p class="mt-2 text-xs leading-relaxed text-slate-400">${f.desc}</p>
+            </div>
+          </article>
+        `).join('');
+      }
+      renderFeatures('all');
+      document.getElementById('featureFilters')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-cat]');
+        if (!btn) return;
+        document.querySelectorAll('#featureFilters .tab-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderFeatures(btn.dataset.cat);
+      });
+
+      // === Documentation Data ===
+      const DOCS = [
+        {
+          id: 'camera',
+          title: 'Camera & Projections',
+          summary: 'Управление камерой, тряска (shake) и двусторонняя проекция 3D ↔ 2D экрана для HTML-маркеров.',
+          items: [
+            { sig: 'api.camera.worldToScreen(pos: Vec3)', desc: 'Проецирует 3D-точку в CSS-пиксели { x, y, visible, depth } для привязки HTML-подсказок.' },
+            { sig: 'api.camera.screenToRay(x: number, y: number)', desc: 'Возвращает нормализованный 3D-луч { origin, direction } из экранных координат.' },
+            { sig: 'api.camera.shake(intensity, duration?)', desc: 'Запускает затухающую тряску камеры.' },
+            { sig: 'api.camera.lookAt(target: Vec3)', desc: 'Мгновенно разворачивает камеру на точку.' },
+          ],
+          code: `const p = api.camera.worldToScreen(door.position);\nmarkerEl.style.display = p.visible ? 'block' : 'none';\nmarkerEl.style.transform = \`translate(\${p.x}px, \${p.y}px)\`;`,
+        },
+        {
+          id: 'vfx',
+          title: 'Particles, Billboards & Decals',
+          summary: 'Управление 3D-частицами, спрайтовыми билбордами и динамическими декалями поверх геометрии.',
+          items: [
+            { sig: 'api.particles.burst(id, count?) / play / stop / setRate / setColors', desc: 'Управляет 3D-эмиттером частиц, созданным в Particle Editor.' },
+            { sig: 'api.billboards.setFrame(id, frame) / setOpacity / setSize', desc: 'Переключает кадры спрайтового атласа и прозрачность 3D-билборда.' },
+            { sig: 'api.decals.spawn({ position, normal, size, color, opacity, lifetime })', desc: 'Спавнит декаль (след, пятно, лужу) с автоисчезновением.' },
+          ],
+          code: `api.particles.burst('pipe_steam', 30);\nconst hit = api.physics.raycastHit(api.camera.position, api.camera.forward, 8);\nif (hit) api.decals.spawn({ position: hit.point, normal: hit.normal, size: [0.5, 0.5], lifetime: 15 });`,
+        },
+        {
+          id: 'anim',
+          title: 'Animation & Bones (glTF)',
+          summary: 'Нативный скиннинг LittleJS 1.30.1 с кроссфейдом клипов и чтением мировых координат костей.',
+          items: [
+            { sig: 'api.animation.crossfade(id, clip, duration?, loop?, speed?)', desc: 'Плавный переход к новому клипу без рывков.' },
+            { sig: 'api.animation.pause(id) / resume(id) / setTime(id, sec)', desc: 'Полный контроль таймлайна скелетной анимации.' },
+            { sig: 'api.animation.bones(id) / getBonePosition(id, boneName)', desc: 'Список костей и точная 3D-позиция кости для крепления предметов в руках.' },
+          ],
+          code: `api.animation.crossfade('npc_guard', 'Walk', 0.25, true, 1.0);\nconst hand = api.animation.getBonePosition('npc_guard', 'RightHand');\nif (hand) lantern.position.fromArray(hand);`,
+        },
+        {
+          id: 'nav',
+          title: 'NavGrid & A* Pathfinding',
+          summary: 'Быстрый поиск пути A* по запечённой сетке, Off-Mesh Links для лестниц и автономный Nav Agent.',
+          items: [
+            { sig: 'api.nav.findPath(start, goal, { smooth?, zoneId? })', desc: 'Строит сглаженный маршрут Vec3[] с обходом стен и крутых склонов.' },
+            { sig: 'api.nav.moveAgent(entityId, goal, { speed, walkClip, idleClip })', desc: 'Ведёт NPC по A*-пути с автоповоротом и кроссфейдом Walk/Idle.' },
+            { sig: 'api.nav.setObstacle(center, radius, blocked) / setAreaCost / setLinkEnabled', desc: 'Динамически закрывает двери, меняет стоимость снега/грязи и включает лестницы.' },
+          ],
+          code: `api.nav.setObstacle([4, 0, -2], 1.2, true); // закрыли ворота\napi.nav.moveAgent('npc_dvornik', [10, 0, -6], { walkClip: 'Walk', idleClip: 'Idle' });\napi.events.on('nav.arrived', ({ id }) => console.log(id, 'пришёл на точку'));`,
+        },
+        {
+          id: 'lights',
+          title: 'Lights, Baking & Post-FX',
+          summary: 'Объёмный свет в тумане, запекание света с emissive, cubemap-отражения и WebGL2 постобработка.',
+          items: [
+            { sig: 'api.lights.setGlow(id, glow, falloff?) / setShadowLight / setGel', desc: 'Свечение света в тумане, выбор активного теневого прожектора и гобо-текстуры.' },
+            { sig: 'api.graphics.bakeLighting(zoneId?) / setReflections(mode, res)', desc: 'Запекает свет (включая emissive) и отражения глобально или по Bake Zone.' },
+            { sig: 'api.graphics.setPostProcess({ bloom, ao, dof, toneMapping, grain })', desc: 'Настраивает WebGL2-постобработку в реальном времени.' },
+          ],
+          code: `api.environment.setFog(0.045, '#19222d');\napi.lights.setGlow('streetlamp_01', 1.8, 1.2);\napi.graphics.setPostProcess({ bloom: 0.45, toneMapping: 'aces', vignette: 0.25 });`,
+        },
+        {
+          id: 'touch',
+          title: 'Touch, HUD & SaveSystem',
+          summary: 'Виртуальные тач-контроллеры, эмуляция мышь ↔ тач, HTML HUD и облачные сохранения.',
+          items: [
+            { sig: 'api.touch.setVisible / addJoystick / addButton / setEmulation', desc: 'Управление виртуальным геймпадом и Godot-эмуляцией мыши и тача.' },
+            { sig: 'api.ui.mount(id, html, css?) / setBlur(id, px)', desc: 'Монтирует произвольный HTML/CSS интерфейс (телефон, инвентарь) в Shadow DOM.' },
+            { sig: 'api.saveSystem.save(slot) / load(slot) / downloadJSON(slot)', desc: 'Полные сейвы сцены + WorldState в JSON и облако Яндекс/Poki.' },
+          ],
+          code: `api.touch.setEmulation({ emulateTouchFromMouse: true, emulateMouseFromTouch: true });\nconst hud = api.ui.mount('phone', '<button id="call">Позвонить</button>');\nhud.querySelector('#call')?.addEventListener('click', () => api.events.emit('phone.call'));`,
+        },
+      ];
+
+      let activeDocId = DOCS[0].id;
+      function renderDocs(filterText = '') {
+        const q = filterText.trim().toLowerCase();
+        const sidebar = document.getElementById('docSidebar');
+        const content = document.getElementById('docContent');
+        if (!sidebar || !content) return;
+
+        const matching = DOCS.filter((d) =>
+          !q ||
+          d.title.toLowerCase().includes(q) ||
+          d.summary.toLowerCase().includes(q) ||
+          d.items.some((it) => it.sig.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q))
+        );
+        if (matching.length && !matching.some((d) => d.id === activeDocId)) {
+          activeDocId = matching[0].id;
+        }
+
+        sidebar.innerHTML = matching.map((d) => `
+          <button type="button" data-doc="${d.id}" class="doc-nav-btn ${d.id === activeDocId ? 'active' : ''} shrink-0 rounded-xl border border-white/10 bg-[#111720] px-3.5 py-2.5 text-left text-xs font-semibold text-slate-300 transition hover:border-cyan-400/35">
+            ${d.title}
+          </button>
+        `).join('') || '<div class="p-2 text-xs text-slate-500">Ничего не найдено</div>';
+
+        const doc = matching.find((d) => d.id === activeDocId) || matching[0];
+        if (!doc) {
+          content.innerHTML = '<p class="text-sm text-slate-400">По запросу «' + filterText + '» ничего не найдено.</p>';
+          return;
+        }
+        content.innerHTML = `
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 class="text-lg font-bold text-white">${doc.title}</h3>
+              <p class="mt-1 text-xs text-slate-400">${doc.summary}</p>
+            </div>
+            <button type="button" id="copyDocSnippetBtn" class="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 font-mono text-[11px] text-cyan-300 transition hover:bg-cyan-500/15">Копировать пример</button>
+          </div>
+          <div class="mt-5 space-y-2.5">
+            ${doc.items.map((it) => `
+              <div class="rounded-xl border border-white/10 bg-[#0c1118] p-3">
+                <div class="font-mono text-xs font-semibold text-amber-300">${it.sig}</div>
+                <div class="mt-1 text-xs text-slate-300">${it.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="mt-5">
+            <div class="mb-1.5 font-mono text-[11px] uppercase tracking-wider text-slate-400">Пример использования</div>
+            <pre class="overflow-x-auto rounded-xl border border-white/10 bg-[#080c12] p-3.5 font-mono text-xs leading-relaxed text-cyan-100/90">${doc.code.replace(/</g, '&lt;')}</pre>
+          </div>
+        `;
+        document.getElementById('copyDocSnippetBtn')?.addEventListener('click', () => copyText(doc.code));
+      }
+      renderDocs();
+      document.getElementById('docSidebar')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-doc]');
+        if (!btn) return;
+        activeDocId = btn.dataset.doc;
+        renderDocs(document.getElementById('docSearch')?.value || '');
+      });
+      document.getElementById('docSearch')?.addEventListener('input', (e) => renderDocs(e.target.value));
+
+      // =========================================================================
+      // SHARED HELPER: Radial Glow Canvas Texture (no external texture paths!)
+      // =========================================================================
+      function makeGlowTexture(innerHex, outerRgba) {
+        const c = document.createElement('canvas');
+        c.width = 64; c.height = 64;
+        const ctx = c.getContext('2d');
+        const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+        g.addColorStop(0, innerHex);
+        g.addColorStop(0.45, outerRgba);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 64, 64);
+        return new THREE.CanvasTexture(c);
+      }
+
+      // =========================================================================
+      // 1. HERO LIVE 3D DIORAMA (Embedded on Main Page)
+      // =========================================================================
+      function initHero3D() {
+        const canvas = document.getElementById('heroCanvas');
+        if (!canvas || typeof THREE === 'undefined') return;
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const scene = new THREE.Scene();
+        const nightBg = new THREE.Color(0x0b1018);
+        const dayBg = new THREE.Color(0x7aa0bd);
+        scene.background = nightBg.clone();
+        scene.fog = new THREE.FogExp2(0x0b1018, 0.045);
+
+        const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 120);
+        let orbitYaw = 0.65, orbitPitch = 0.42, orbitDist = 11.5;
+        let isNight = true, showGlow = true, showParticles = true, wireframe = false;
+
+        // Lighting
+        const hemi = new THREE.HemisphereLight(0x6b92b8, 0x1b2028, 0.55);
+        scene.add(hemi);
+        const sun = new THREE.DirectionalLight(0xffe1b0, 0.9);
+        sun.position.set(8, 13, 6);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(1024, 1024);
+        scene.add(sun);
+
+        const lampLight = new THREE.PointLight(0xff9c42, 2.8, 14, 1.5);
+        lampLight.position.set(-2.4, 3.6, -1.2);
+        lampLight.castShadow = true;
+        scene.add(lampLight);
+
+        const cyanLight = new THREE.PointLight(0x4dd6ff, 2.2, 12, 1.6);
+        cyanLight.position.set(2.4, 2.2, 1.8);
+        scene.add(cyanLight);
+
+        // Stylized Forge Diorama Island
+        const meshesToWire = [];
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x26303d, roughness: 0.85, metalness: 0.1 });
+        const ground = new THREE.Mesh(new THREE.BoxGeometry(9, 0.6, 9), baseMat);
+        ground.position.y = -0.3;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        meshesToWire.push(baseMat);
+
+        const grid = new THREE.GridHelper(18, 18, 0x33475c, 0x182330);
+        grid.position.y = 0.01;
+        scene.add(grid);
+
+        // Stylized Concrete Block / Panel Building Fragment
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.9 });
+        meshesToWire.push(wallMat);
+        const bldg = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.4, 2.2), wallMat);
+        bldg.position.set(2.2, 1.7, -2.0);
+        bldg.castShadow = true;
+        bldg.receiveShadow = true;
+        scene.add(bldg);
+
+        // Glowing Windows (Emissive)
+        const winMat = new THREE.MeshStandardMaterial({ color: 0xffd580, emissive: 0xff9b38, emissiveIntensity: 1.5 });
+        for (let wy = 0; wy < 2; wy++) {
+          for (let wx = 0; wx < 2; wx++) {
+            const wMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.65), winMat);
+            wMesh.position.set(1.65 + wx * 1.1, 1.3 + wy * 1.1, -0.89);
+            scene.add(wMesh);
+          }
+        }
+
+        // Streetlamp + Volumetric Fog Glow Cone
+        const poleMat = new THREE.MeshStandardMaterial({ color: 0x333b47, metalness: 0.6, roughness: 0.4 });
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 3.8, 8), poleMat);
+        pole.position.set(-2.4, 1.9, -1.2);
+        pole.castShadow = true;
+        scene.add(pole);
+
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), new THREE.MeshBasicMaterial({ color: 0xffd280 }));
+        bulb.position.set(-2.4, 3.75, -1.2);
+        scene.add(bulb);
+
+        const glowTex = makeGlowTexture('rgba(255,210,130,0.95)', 'rgba(255,140,50,0.35)');
+        const haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffb35c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+        haloSprite.position.set(-2.4, 3.75, -1.2);
+        haloSprite.scale.set(2.8, 2.8, 1);
+        scene.add(haloSprite);
+
+        const volCone = new THREE.Mesh(
+          new THREE.ConeGeometry(1.75, 3.7, 24, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0xffb35c, transparent: true, opacity: 0.14, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        volCone.position.set(-2.4, 1.85, -1.2);
+        scene.add(volCone);
+
+        // Reflective Puddle / Water Patch
+        const waterMat = new THREE.MeshStandardMaterial({ color: 0x1a4e66, metalness: 0.85, roughness: 0.12, transparent: true, opacity: 0.88 });
+        const puddle = new THREE.Mesh(new THREE.CircleGeometry(1.8, 28), waterMat);
+        puddle.rotation.x = -Math.PI / 2;
+        puddle.position.set(-0.6, 0.02, 1.6);
+        puddle.receiveShadow = true;
+        scene.add(puddle);
+
+        // Floating Miniforge Core Prism
+        const prismMat = new THREE.MeshStandardMaterial({ color: 0xff8c32, emissive: 0x8a3200, metalness: 0.55, roughness: 0.2, flatShading: true });
+        meshesToWire.push(prismMat);
+        const prism = new THREE.Mesh(new THREE.OctahedronGeometry(0.85, 0), prismMat);
+        prism.position.set(0, 1.75, 0);
+        prism.castShadow = true;
+        scene.add(prism);
+
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(1.25, 0.04, 10, 48),
+          new THREE.MeshBasicMaterial({ color: 0x58d8ff, transparent: true, opacity: 0.75 })
+        );
+        ring.position.set(0, 1.75, 0);
+        scene.add(ring);
+
+        // 3D Steam & Ember Particles
+        const pCount = 90;
+        const pGeo = new THREE.BufferGeometry();
+        const pPos = new Float32Array(pCount * 3);
+        const pVel = [];
+        for (let i = 0; i < pCount; i++) {
+          pPos[i * 3] = (Math.random() - 0.5) * 4.5;
+          pPos[i * 3 + 1] = Math.random() * 3.8;
+          pPos[i * 3 + 2] = (Math.random() - 0.5) * 4.5;
+          pVel.push(0.35 + Math.random() * 0.65);
+        }
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        const pMat = new THREE.PointsMaterial({
+          size: 0.28,
+          map: glowTex,
+          color: 0xffb366,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const points = new THREE.Points(pGeo, pMat);
+        scene.add(points);
+
+        // Pointer Orbit Controls
+        let dragging = false, lx = 0, ly = 0;
+        canvas.addEventListener('pointerdown', (e) => { dragging = true; lx = e.clientX; ly = e.clientY; canvas.setPointerCapture(e.pointerId); });
+        canvas.addEventListener('pointermove', (e) => {
+          if (!dragging) return;
+          orbitYaw -= (e.clientX - lx) * 0.008;
+          orbitPitch = Math.max(0.12, Math.min(1.35, orbitPitch + (e.clientY - ly) * 0.007));
+          lx = e.clientX; ly = e.clientY;
+        });
+        const endDrag = () => { dragging = false; };
+        canvas.addEventListener('pointerup', endDrag);
+        canvas.addEventListener('pointercancel', endDrag);
+        canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          orbitDist = Math.max(5.5, Math.min(20, orbitDist + e.deltaY * 0.01));
+        }, { passive: false });
+
+        // Hero Toolbar Wiring
+        const dayBtn = document.getElementById('heroDayBtn');
+        const glowBtn = document.getElementById('heroGlowBtn');
+        const ptcBtn = document.getElementById('heroPtcBtn');
+        const wireBtn = document.getElementById('heroWireBtn');
+        const resetBtn = document.getElementById('heroResetBtn');
+
+        dayBtn?.addEventListener('click', () => {
+          isNight = !isNight;
+          scene.background = (isNight ? nightBg : dayBg).clone();
+          scene.fog.color.copy(scene.background);
+          sun.intensity = isNight ? 0.85 : 1.7;
+          hemi.intensity = isNight ? 0.55 : 1.1;
+          lampLight.intensity = isNight ? 2.8 : 0.6;
+          dayBtn.textContent = isNight ? 'Ночь / Сумерки' : 'День / Ясно';
+        });
+        glowBtn?.addEventListener('click', () => {
+          showGlow = !showGlow;
+          volCone.visible = showGlow;
+          haloSprite.visible = showGlow;
+          glowBtn.textContent = showGlow ? 'Volumetric Glow: ON' : 'Volumetric Glow: OFF';
+        });
+        ptcBtn?.addEventListener('click', () => {
+          showParticles = !showParticles;
+          points.visible = showParticles;
+          ptcBtn.textContent = showParticles ? '3D Частицы: ON' : '3D Частицы: OFF';
+        });
+        wireBtn?.addEventListener('click', () => {
+          wireframe = !wireframe;
+          meshesToWire.forEach((m) => { m.wireframe = wireframe; });
+          wireBtn.textContent = wireframe ? 'Wireframe: ON' : 'Wireframe';
+        });
+        resetBtn?.addEventListener('click', () => { orbitYaw = 0.65; orbitPitch = 0.42; orbitDist = 11.5; });
+
+        function resizeHero() {
+          const w = canvas.parentElement.clientWidth || 640;
+          const h = canvas.parentElement.clientHeight || 380;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+        resizeHero();
+        window.addEventListener('resize', resizeHero);
+
+        let last = performance.now(), frames = 0, fpsAcc = 0;
+        const fpsEl = document.getElementById('heroFps');
+        function animateHero(now) {
+          requestAnimationFrame(animateHero);
+          const dt = Math.min(0.05, (now - last) / 1000);
+          last = now;
+          frames++; fpsAcc += dt;
+          if (fpsAcc >= 0.5 && fpsEl) {
+            fpsEl.textContent = Math.round(frames / fpsAcc) + ' FPS';
+            frames = 0; fpsAcc = 0;
+          }
+          if (!dragging) orbitYaw += dt * 0.22;
+          camera.position.set(
+            Math.sin(orbitYaw) * Math.cos(orbitPitch) * orbitDist,
+            Math.sin(orbitPitch) * orbitDist + 0.8,
+            Math.cos(orbitYaw) * Math.cos(orbitPitch) * orbitDist
+          );
+          camera.lookAt(0, 1.3, 0);
+
+          prism.rotation.y += dt * 0.9;
+          prism.rotation.x = Math.sin(now * 0.0012) * 0.25;
+          prism.position.y = 1.75 + Math.sin(now * 0.002) * 0.16;
+          ring.rotation.x = Math.PI * 0.35 + Math.sin(now * 0.001) * 0.25;
+          ring.rotation.z -= dt * 0.7;
+
+          if (showParticles) {
+            const arr = pGeo.attributes.position.array;
+            for (let i = 0; i < pCount; i++) {
+              arr[i * 3 + 1] += pVel[i] * dt;
+              arr[i * 3] += Math.sin(now * 0.0015 + i) * dt * 0.12;
+              if (arr[i * 3 + 1] > 4.2) {
+                arr[i * 3] = (Math.random() - 0.5) * 4.2;
+                arr[i * 3 + 1] = 0.05;
+                arr[i * 3 + 2] = (Math.random() - 0.5) * 4.2;
+              }
+            }
+            pGeo.attributes.position.needsUpdate = true;
+          }
+          renderer.render(scene, camera);
+        }
+        requestAnimationFrame(animateHero);
+      }
+
+      // =========================================================================
+      // 2. EXAMPLES LAB: 5 INTERACTIVE 3D DEMOS
+      // =========================================================================
+      const DEMO_META = {
+        fog: {
+          title: '1. Volumetric Fog & Dynamic Lights (LittleJS 3D)',
+          hint: 'Перетаскивай для вращения. Меняй плотность тумана, силу свечения (glow) и палитру огней.',
+          code: `// Miniforge v0.7 — Volumetric Fog Glow (LittleJS Light3D)\napi.environment.setFog(0.055, '#111924');\napi.lights.setGlow('lantern_amber', 2.0, 1.2);\napi.lights.setGlow('beacon_cyan', 1.6, 1.4);\napi.lights.setShadowLight('spot_main');`,
+        },
+        particles: {
+          title: '2. 3D Particle Editor Live',
+          hint: 'Выбирай пресеты (Steam, Fire, Sparks, Snow, Rain, Dust), крути Rate/Gravity и жми Burst!',
+          code: `// Miniforge v0.7 — 3D Particle System\napi.particles.play('chimney_steam');\napi.particles.setRate('chimney_steam', 45);\napi.particles.setColors('chimney_steam', '#ffd875', '#ff4411');\napi.particles.burst('chimney_steam', 40);`,
+        },
+        terrain: {
+          title: '3. Interactive Viewport Terrain & Multi-Material Splat',
+          hint: 'ЛКМ по террейну — лепить или красить выбранным материалом! ПКМ — вращать камеру.',
+          code: `// Miniforge v0.7 — Multi-Material Terrain\n// В редакторе: выдели Terrain -> Terrain Brush: ON\n// + Add Layer в Inspector для неограниченных материалов\n// Ползунок Hard <-> Soft управляет мягкостью границы каждого слоя`,
+        },
+        nav: {
+          title: '4. NavGrid A* Pathfinding & Animated NPC',
+          hint: 'Кликни ЛКМ по полу двора — NPC построит сглаженный A*-маршрут и пойдёт к цели!',
+          code: `// Miniforge v0.7 — NavGrid + A* + glTF Crossfade\napi.nav.setObstacle([0, 0, 0], 1.5, gateClosed);\napi.nav.moveAgent('npc_worker', targetPos, {\n  speed: 3.4, walkClip: 'Walk', idleClip: 'Idle', crossfade: 0.25\n});`,
+        },
+        water: {
+          title: '5. Animated Water, Reflections & Emissive Bake',
+          hint: 'Волны на вершинном меше воды, отражающие сферы и неоновые emissive-колонны.',
+          code: `// Miniforge v0.7 — Water + Cubemap Reflections + Emissive Bake\napi.graphics.setReflections('realtime', 128, 4);\napi.graphics.bakeLighting(); // учитывает emissive-объекты!\napi.materials.setEmissive('neon_pillar', '#58d8ff', 1.8);`,
+        },
+      };
+
+      function initExamplesLab() {
+        const canvas = document.getElementById('exampleCanvas');
+        if (!canvas || typeof THREE === 'undefined') return;
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.shadowMap.enabled = true;
+
+        let currentDemo = 'fog';
+        let activeScene = null;
+        let activeUpdate = null;
+        let activeClick = null;
+        let activeDragPaint = null;
+        let activeHover = null;
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 150);
+        let yaw = 0.7, pitch = 0.52, dist = 13;
+        const target = new THREE.Vector3(0, 0.8, 0);
+        const raycaster = new THREE.Raycaster();
+        const pointerNDC = new THREE.Vector2();
+        const glowTex = makeGlowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.45)');
+
+        function resizeEx() {
+          const w = canvas.parentElement.clientWidth || 640;
+          const h = canvas.parentElement.clientHeight || 380;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+        resizeEx();
+        window.addEventListener('resize', resizeEx);
+
+        function updatePointerNDC(e) {
+          const r = canvas.getBoundingClientRect();
+          pointerNDC.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+          pointerNDC.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+          raycaster.setFromCamera(pointerNDC, camera);
+        }
+
+        let dragMode = null, lx = 0, ly = 0, downX = 0, downY = 0;
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        canvas.addEventListener('pointerdown', (e) => {
+          lx = downX = e.clientX; ly = downY = e.clientY;
+          canvas.setPointerCapture(e.pointerId);
+          updatePointerNDC(e);
+          if (currentDemo === 'terrain' && e.button === 0 && !e.altKey) {
+            dragMode = 'paint';
+            if (activeDragPaint) activeDragPaint(raycaster);
+          } else {
+            dragMode = 'orbit';
+          }
+        });
+        canvas.addEventListener('pointermove', (e) => {
+          updatePointerNDC(e);
+          if (activeHover) activeHover(raycaster);
+          if (dragMode === 'paint' && activeDragPaint) {
+            activeDragPaint(raycaster);
+            return;
+          }
+          if (dragMode === 'orbit') {
+            yaw -= (e.clientX - lx) * 0.008;
+            pitch = Math.max(0.15, Math.min(1.42, pitch + (e.clientY - ly) * 0.007));
+            lx = e.clientX; ly = e.clientY;
+          }
+        });
+        canvas.addEventListener('pointerup', (e) => {
+          if (dragMode === 'orbit' && Math.hypot(e.clientX - downX, e.clientY - downY) < 6 && activeClick) {
+            updatePointerNDC(e);
+            activeClick(raycaster);
+          }
+          dragMode = null;
+        });
+        canvas.addEventListener('pointercancel', () => { dragMode = null; });
+        canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          dist = Math.max(5, Math.min(26, dist + e.deltaY * 0.012));
+        }, { passive: false });
+
+        // --- DEMO 1: Volumetric Fog & Dynamic Lights ---
+        function buildFogDemo(ctrlEl) {
+          const sc = new THREE.Scene();
+          sc.background = new THREE.Color(0x0b1018);
+          sc.fog = new THREE.FogExp2(0x0b1018, 0.055);
+          target.set(0, 1.2, 0); yaw = 0.6; pitch = 0.36; dist = 12.5;
+
+          sc.add(new THREE.HemisphereLight(0x3a516c, 0x0e131b, 0.4));
+          const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshStandardMaterial({ color: 0x1d2530, roughness: 0.85 }));
+          floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; sc.add(floor);
+          sc.add(new THREE.GridHelper(24, 24, 0x2a3b4e, 0x16202b));
+
+          const pillarMat = new THREE.MeshStandardMaterial({ color: 0x384352, roughness: 0.7 });
+          for (let i = 0; i < 6; i++) {
+            const ang = (i / 6) * Math.PI * 2;
+            const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 3.2, 0.9), pillarMat);
+            box.position.set(Math.cos(ang) * 4.6, 1.6, Math.sin(ang) * 4.6);
+            box.castShadow = true; box.receiveShadow = true; sc.add(box);
+          }
+
+          const orbConfigs = [
+            { col: 0xff9b38, r: 3.1, sp: 0.75, y: 2.2, ph: 0 },
+            { col: 0x4dd6ff, r: 2.6, sp: -0.95, y: 1.7, ph: 2.1 },
+            { col: 0x8dff7a, r: 3.5, sp: 0.55, y: 2.7, ph: 4.2 },
+          ];
+          const orbs = orbConfigs.map((cfg) => {
+            const grp = new THREE.Group();
+            const pl = new THREE.PointLight(cfg.col, 2.6, 12, 1.5);
+            const core = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), new THREE.MeshBasicMaterial({ color: cfg.col }));
+            const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: cfg.col, transparent: true, opacity: 0.78, blending: THREE.AdditiveBlending, depthWrite: false }));
+            halo.scale.set(3.2, 3.2, 1);
+            grp.add(pl, core, halo);
+            sc.add(grp);
+            return { grp, pl, halo, cfg };
+          });
+
+          let glowMult = 1.0;
+          ctrlEl.innerHTML = `
+            <label class="flex items-center gap-2">Туман <input id="exFogDens" type="range" min="0.01" max="0.12" step="0.005" value="0.055" class="w-24 accent-amber-400" /></label>
+            <label class="flex items-center gap-2">Glow в тумане <input id="exFogGlow" type="range" min="0.2" max="2.2" step="0.1" value="1.0" class="w-24 accent-cyan-400" /></label>
+            <button id="exFogWarm" type="button" class="rounded-lg border border-amber-400/40 bg-amber-500/15 px-2.5 py-1 text-amber-200">Тёплый фонарь</button>
+            <button id="exFogNeon" type="button" class="rounded-lg border border-cyan-400/40 bg-cyan-500/15 px-2.5 py-1 text-cyan-200">Кибер-туман</button>
+          `;
+          document.getElementById('exFogDens')?.addEventListener('input', (e) => { sc.fog.density = Number(e.target.value); });
+          document.getElementById('exFogGlow')?.addEventListener('input', (e) => {
+            glowMult = Number(e.target.value);
+            orbs.forEach((o) => { o.halo.scale.set(3.2 * glowMult, 3.2 * glowMult, 1); o.pl.intensity = 2.6 * glowMult; });
+          });
+          document.getElementById('exFogWarm')?.addEventListener('click', () => {
+            sc.background.setHex(0x16120f); sc.fog.color.setHex(0x16120f);
+            orbs[0].pl.color.setHex(0xff9933); orbs[0].halo.material.color.setHex(0xff9933);
+          });
+          document.getElementById('exFogNeon')?.addEventListener('click', () => {
+            sc.background.setHex(0x09101a); sc.fog.color.setHex(0x09101a);
+            orbs[0].pl.color.setHex(0xff44aa); orbs[0].halo.material.color.setHex(0xff44aa);
+          });
+
+          activeScene = sc;
+          activeClick = null; activeDragPaint = null; activeHover = null;
+          activeUpdate = (dt, t) => {
+            orbs.forEach((o) => {
+              const a = t * o.cfg.sp + o.cfg.ph;
+              o.grp.position.set(Math.cos(a) * o.cfg.r, o.cfg.y + Math.sin(t * 1.8 + o.cfg.ph) * 0.45, Math.sin(a) * o.cfg.r);
+            });
+          };
+        }
+
+        // --- DEMO 2: 3D Particle Editor Live ---
+        function buildParticlesDemo(ctrlEl) {
+          const sc = new THREE.Scene();
+          sc.background = new THREE.Color(0x0b1017);
+          target.set(0, 1.5, 0); yaw = 0.55; pitch = 0.32; dist = 10;
+          sc.add(new THREE.GridHelper(14, 14, 0x33475c, 0x17212d));
+
+          const PRESETS = {
+            fire:   { rate: 55, speed: 2.3, spread: 0.45, grav: 0.9,  size: 0.65, col: 0xff8822, add: true,  area: 0.3 },
+            steam:  { rate: 28, speed: 1.5, spread: 0.35, grav: 0.35, size: 0.95, col: 0xcfdbe6, add: false, area: 0.4 },
+            sparks: { rate: 65, speed: 4.5, spread: 1.1,  grav: -7.5, size: 0.28, col: 0xffe066, add: true,  area: 0.1 },
+            snow:   { rate: 50, speed: 1.1, spread: 0.3,  grav: -0.6, size: 0.26, col: 0xe6f2ff, add: false, area: 5.5, top: true },
+            rain:   { rate: 90, speed: 6.5, spread: 0.08, grav: -8.0, size: 0.22, col: 0x7cc8ff, add: false, area: 5.5, top: true },
+            dust:   { rate: 20, speed: 0.35, spread: 1.8, grav: 0.02, size: 0.3,  col: 0xead8b5, add: true,  area: 4.0 },
+          };
+          let cfg = Object.assign({}, PRESETS.fire);
+
+          const maxP = 220;
+          const pGeo = new THREE.BufferGeometry();
+          const posArr = new Float32Array(maxP * 3);
+          pGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+          const pMat = new THREE.PointsMaterial({ size: cfg.size, map: glowTex, color: cfg.col, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+          const pts = new THREE.Points(pGeo, pMat);
+          sc.add(pts);
+
+          const pool = Array.from({ length: maxP }, () => ({ alive: false, x: 0, y: -99, z: 0, vx: 0, vy: 0, vz: 0, age: 0, life: 1 }));
+          function spawnOne() {
+            const slot = pool.find((p) => !p.alive);
+            if (!slot) return;
+            slot.alive = true; slot.age = 0;
+            slot.life = 0.8 + Math.random() * 1.4;
+            slot.x = (Math.random() - 0.5) * cfg.area;
+            slot.z = (Math.random() - 0.5) * cfg.area;
+            slot.y = cfg.top ? 4.8 : 0.15;
+            const dirY = cfg.top ? -1 : 1;
+            slot.vx = (Math.random() - 0.5) * cfg.spread * cfg.speed;
+            slot.vy = dirY * (0.6 + Math.random() * 0.6) * cfg.speed;
+            slot.vz = (Math.random() - 0.5) * cfg.spread * cfg.speed;
+          }
+
+          function applyPreset(name) {
+            cfg = Object.assign({}, PRESETS[name]);
+            pMat.color.setHex(cfg.col);
+            pMat.size = cfg.size;
+            pMat.blending = cfg.add ? THREE.AdditiveBlending : THREE.NormalBlending;
+            pMat.needsUpdate = true;
+            pool.forEach((p) => { p.alive = false; p.y = -99; });
+            const rateEl = document.getElementById('exPtcRate');
+            const gravEl = document.getElementById('exPtcGrav');
+            if (rateEl) rateEl.value = String(cfg.rate);
+            if (gravEl) gravEl.value = String(cfg.grav);
+          }
+
+          ctrlEl.innerHTML = `
+            <div class="flex flex-wrap gap-1.5">
+              ${Object.keys(PRESETS).map((k) => `<button type="button" data-ptc="${k}" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 capitalize hover:border-amber-400/50 hover:text-amber-300">${k}</button>`).join('')}
+            </div>
+            <label class="flex items-center gap-1.5">Rate <input id="exPtcRate" type="range" min="5" max="120" value="55" class="w-20 accent-amber-400" /></label>
+            <label class="flex items-center gap-1.5">Gravity <input id="exPtcGrav" type="range" min="-9" max="3" step="0.3" value="0.9" class="w-20 accent-cyan-400" /></label>
+            <button id="exPtcBurst" type="button" class="rounded-lg bg-amber-500 px-3 py-1 font-bold text-slate-950 hover:brightness-110">Burst!</button>
+          `;
+          ctrlEl.querySelectorAll('button[data-ptc]').forEach((b) => b.addEventListener('click', () => applyPreset(b.dataset.ptc)));
+          document.getElementById('exPtcRate')?.addEventListener('input', (e) => { cfg.rate = Number(e.target.value); });
+          document.getElementById('exPtcGrav')?.addEventListener('input', (e) => { cfg.grav = Number(e.target.value); });
+          document.getElementById('exPtcBurst')?.addEventListener('click', () => { for (let i = 0; i < 45; i++) spawnOne(); });
+
+          let accum = 0;
+          activeScene = sc;
+          activeClick = null; activeDragPaint = null; activeHover = null;
+          activeUpdate = (dt) => {
+            accum += cfg.rate * dt;
+            const n = Math.min(12, Math.floor(accum));
+            accum -= n;
+            for (let i = 0; i < n; i++) spawnOne();
+            for (let i = 0; i < maxP; i++) {
+              const p = pool[i];
+              if (!p.alive) { posArr[i * 3 + 1] = -99; continue; }
+              p.age += dt;
+              if (p.age >= p.life || p.y < 0) { p.alive = false; posArr[i * 3 + 1] = -99; continue; }
+              p.vy += cfg.grav * dt;
+              p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+              posArr[i * 3] = p.x; posArr[i * 3 + 1] = p.y; posArr[i * 3 + 2] = p.z;
+            }
+            pGeo.attributes.position.needsUpdate = true;
+          };
+        }
+
+        // --- DEMO 3: Interactive Viewport Terrain Sculpt & Multi-Material Splat ---
+        function buildTerrainDemo(ctrlEl) {
+          const sc = new THREE.Scene();
+          sc.background = new THREE.Color(0x101924);
+          target.set(0, 0.4, 0); yaw = 0.72; pitch = 0.56; dist = 14.5;
+
+          sc.add(new THREE.HemisphereLight(0xaad0f5, 0x26313b, 0.8));
+          const dir = new THREE.DirectionalLight(0xfff1d6, 1.15);
+          dir.position.set(7, 12, 6); sc.add(dir);
+
+          const segs = 36, size = 12;
+          const geo = new THREE.PlaneGeometry(size, size, segs, segs);
+          geo.rotateX(-Math.PI / 2);
+          const vCount = geo.attributes.position.count;
+          const colors = new Float32Array(vCount * 3);
+          const layerPalette = [
+            new THREE.Color(0x5d7d47), // Grass
+            new THREE.Color(0x8c6945), // Dirt
+            new THREE.Color(0x4a5159), // Asphalt
+            new THREE.Color(0xdbe6f0), // Snow
+          ];
+          const initHill = () => {
+            const pos = geo.attributes.position;
+            for (let i = 0; i < vCount; i++) {
+              const x = pos.getX(i), z = pos.getZ(i);
+              const h = Math.sin(x * 0.45) * Math.cos(z * 0.45) * 0.75;
+              pos.setY(i, h);
+              const c = layerPalette[0];
+              colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+            }
+            pos.needsUpdate = true;
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geo.computeVertexNormals();
+          };
+          initHill();
+
+          const terrMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: false }));
+          sc.add(terrMesh);
+
+          // 3D Conforming Brush Ring
+          const ringSegs = 32;
+          const ringGeo = new THREE.BufferGeometry();
+          const ringPos = new Float32Array((ringSegs + 1) * 3);
+          ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+          const brushRing = new THREE.Line(ringGeo, new THREE.LineBasicMaterial({ color: 0x58d8ff }));
+          brushRing.visible = false;
+          sc.add(brushRing);
+
+          let mode = 'raise', radius = 1.8, softness = 0.5, activeMat = 1;
+
+          function updateRing(pt) {
+            brushRing.visible = true;
+            brushRing.material.color.setHex(mode === 'paint' ? 0xffb84d : 0x58d8ff);
+            for (let i = 0; i <= ringSegs; i++) {
+              const a = (i / ringSegs) * Math.PI * 2;
+              ringPos[i * 3] = pt.x + Math.cos(a) * radius;
+              ringPos[i * 3 + 1] = pt.y + 0.08;
+              ringPos[i * 3 + 2] = pt.z + Math.sin(a) * radius;
+            }
+            ringGeo.attributes.position.needsUpdate = true;
+          }
+
+          function applyBrush(rc) {
+            const hits = rc.intersectObject(terrMesh);
+            if (!hits.length) return;
+            const pt = hits[0].point;
+            updateRing(pt);
+            const pos = geo.attributes.position;
+            const colAttr = geo.attributes.color;
+            const targetCol = layerPalette[activeMat];
+            for (let i = 0; i < vCount; i++) {
+              const vx = pos.getX(i), vz = pos.getZ(i);
+              const d = Math.hypot(vx - pt.x, vz - pt.z);
+              if (d > radius) continue;
+              const norm = 1 - d / radius;
+              if (mode === 'raise' || mode === 'lower') {
+                pos.setY(i, pos.getY(i) + (mode === 'raise' ? 1 : -1) * Math.pow(norm, 1.3) * 0.14);
+              } else if (mode === 'paint') {
+                const exp = 0.2 + softness * 2.2;
+                const w = Math.min(1, Math.pow(norm, exp) * 0.45);
+                colAttr.setXYZ(
+                  i,
+                  colAttr.getX(i) + (targetCol.r - colAttr.getX(i)) * w,
+                  colAttr.getY(i) + (targetCol.g - colAttr.getY(i)) * w,
+                  colAttr.getZ(i) + (targetCol.b - colAttr.getZ(i)) * w
+                );
+              }
+            }
+            pos.needsUpdate = true;
+            colAttr.needsUpdate = true;
+            geo.computeVertexNormals();
+          }
+
+          ctrlEl.innerHTML = `
+            <select id="exTerrMode" class="rounded-lg border border-white/15 bg-[#111720] px-2.5 py-1 text-white">
+              <option value="raise">Raise (Поднять)</option>
+              <option value="lower">Lower (Опустить)</option>
+              <option value="paint">Paint Material</option>
+            </select>
+            <select id="exTerrMat" class="rounded-lg border border-amber-400/35 bg-[#111720] px-2.5 py-1 text-amber-200">
+              <option value="0">Слой 0: Трава</option>
+              <option value="1" selected>Слой 1: Грязь</option>
+              <option value="2">Слой 2: Асфальт</option>
+              <option value="3">Слой 3: Снег</option>
+            </select>
+            <label class="flex items-center gap-1.5">Радиус <input id="exTerrR" type="range" min="0.8" max="4" step="0.2" value="1.8" class="w-20 accent-cyan-400" /></label>
+            <label class="flex items-center gap-1.5">Hard↔Soft <input id="exTerrSoft" type="range" min="0" max="1" step="0.05" value="0.5" class="w-20 accent-amber-400" /></label>
+            <button id="exTerrReset" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 hover:bg-white/15">Сброс</button>
+          `;
+          document.getElementById('exTerrMode')?.addEventListener('change', (e) => { mode = e.target.value; });
+          document.getElementById('exTerrMat')?.addEventListener('change', (e) => { activeMat = Number(e.target.value); mode = 'paint'; const m = document.getElementById('exTerrMode'); if (m) m.value = 'paint'; });
+          document.getElementById('exTerrR')?.addEventListener('input', (e) => { radius = Number(e.target.value); });
+          document.getElementById('exTerrSoft')?.addEventListener('input', (e) => { softness = Number(e.target.value); });
+          document.getElementById('exTerrReset')?.addEventListener('click', initHill);
+
+          activeScene = sc;
+          activeDragPaint = applyBrush;
+          activeHover = (rc) => {
+            const hits = rc.intersectObject(terrMesh);
+            if (hits.length) updateRing(hits[0].point);
+            else brushRing.visible = false;
+          };
+          activeClick = null;
+          activeUpdate = () => {};
+        }
+
+        // --- DEMO 4: NavGrid A* Pathfinding & Animated NPC ---
+        function buildNavDemo(ctrlEl) {
+          const sc = new THREE.Scene();
+          sc.background = new THREE.Color(0x0c131c);
+          target.set(0, 0.5, 0); yaw = 0.52; pitch = 0.68; dist = 15.5;
+
+          sc.add(new THREE.HemisphereLight(0x95b8d8, 0x1a232e, 0.85));
+          const sun = new THREE.DirectionalLight(0xffe9c2, 1.0);
+          sun.position.set(6, 12, 5); sc.add(sun);
+
+          const N = 12, cell = 1.0;
+          const half = (N * cell) / 2;
+          const floor = new THREE.Mesh(new THREE.PlaneGeometry(N * cell, N * cell), new THREE.MeshStandardMaterial({ color: 0x1c2531, roughness: 0.9 }));
+          floor.rotation.x = -Math.PI / 2; sc.add(floor);
+          sc.add(new THREE.GridHelper(N * cell, N, 0x33475c, 0x1d2b3a));
+
+          // Walls grid (1 = blocked)
+          const grid = Array.from({ length: N }, () => Array(N).fill(0));
+          const wallCoords = [
+            [5, 1], [5, 2], [5, 3], [5, 4], [5, 7], [5, 8], [5, 9], [5, 10],
+            [2, 5], [3, 5], [8, 5], [9, 5],
+          ];
+          const wallMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
+          wallCoords.forEach(([gx, gz]) => {
+            grid[gz][gx] = 1;
+            const m = new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.4, 0.92), wallMat);
+            m.position.set(gx - half + 0.5, 0.7, gz - half + 0.5);
+            sc.add(m);
+          });
+
+          // Toggleable Gate at (5,5) and (5,6)
+          let gateClosed = false;
+          const gateMat = new THREE.MeshStandardMaterial({ color: 0xd97706, emissive: 0x552200, roughness: 0.5 });
+          const gateMesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.3, 1.95), gateMat);
+          gateMesh.position.set(5 - half + 0.5, 0.65, 5.5 - half + 0.5);
+          gateMesh.visible = false;
+          sc.add(gateMesh);
+
+          // NPC Agent
+          const npc = new THREE.Group();
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 1.1, 10), new THREE.MeshStandardMaterial({ color: 0x58d8ff, roughness: 0.4 }));
+          body.position.y = 0.55;
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffd1a3 }));
+          head.position.y = 1.3;
+          npc.add(body, head);
+          npc.position.set(1.5 - half, 0, 1.5 - half);
+          sc.add(npc);
+
+          // Path line
+          const pathMat = new THREE.LineBasicMaterial({ color: 0xffb84d });
+          let pathLine = null;
+          let waypoints = [];
+          let wpIdx = 0;
+
+          function aStar(sx, sz, gx, gz) {
+            if (grid[gz][gx]) return [];
+            const key = (x, z) => x + ',' + z;
+            const open = [{ x: sx, z: sz, g: 0, f: Math.hypot(gx - sx, gz - sz) }];
+            const came = new Map();
+            const gMap = new Map([[key(sx, sz), 0]]);
+            const closed = new Set();
+            const dirs = [[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,1.41],[-1,1,1.41],[1,-1,1.41],[-1,-1,1.41]];
+            while (open.length) {
+              open.sort((a, b) => a.f - b.f);
+              const cur = open.shift();
+              if (cur.x === gx && cur.z === gz) {
+                const res = [];
+                let k = key(gx, gz);
+                let cx = gx, cz = gz;
+                while (k) {
+                  res.push(new THREE.Vector3(cx - half + 0.5, 0.12, cz - half + 0.5));
+                  const prev = came.get(k);
+                  if (!prev) break;
+                  cx = prev[0]; cz = prev[1]; k = key(cx, cz);
+                }
+                return res.reverse();
+              }
+              const ck = key(cur.x, cur.z);
+              if (closed.has(ck)) continue;
+              closed.add(ck);
+              for (const [dx, dz, cost] of dirs) {
+                const nx = cur.x + dx, nz = cur.z + dz;
+                if (nx < 0 || nx >= N || nz < 0 || nz >= N || grid[nz][nx]) continue;
+                if (dx && dz && (grid[cur.z][nx] || grid[nz][cur.x])) continue;
+                const nk = key(nx, nz);
+                if (closed.has(nk)) continue;
+                const ng = cur.g + cost;
+                if (ng < (gMap.get(nk) ?? 1e9)) {
+                  gMap.set(nk, ng);
+                  came.set(nk, [cur.x, cur.z]);
+                  open.push({ x: nx, z: nz, g: ng, f: ng + Math.hypot(gx - nx, gz - nz) });
+                }
+              }
+            }
+            return [];
+          }
+
+          function routeTo(wx, wz) {
+            const sx = Math.max(0, Math.min(N - 1, Math.floor(npc.position.x + half)));
+            const sz = Math.max(0, Math.min(N - 1, Math.floor(npc.position.z + half)));
+            const gx = Math.max(0, Math.min(N - 1, Math.floor(wx + half)));
+            const gz = Math.max(0, Math.min(N - 1, Math.floor(wz + half)));
+            const pts = aStar(sx, sz, gx, gz);
+            if (!pts.length) { showToast('Путь заблокирован!'); return; }
+            waypoints = pts; wpIdx = 0;
+            if (pathLine) sc.remove(pathLine);
+            pathLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), pathMat);
+            sc.add(pathLine);
+          }
+
+          ctrlEl.innerHTML = `
+            <button id="exNavGate" type="button" class="rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-1 font-semibold text-amber-200">Ворота: Открыты</button>
+            <button id="exNavRand" type="button" class="rounded-lg border border-cyan-400/40 bg-cyan-500/15 px-3 py-1 font-semibold text-cyan-200">Отправить NPC в случайную точку</button>
+            <span class="text-slate-400">Или кликни ЛКМ по любой клетке пола</span>
+          `;
+          document.getElementById('exNavGate')?.addEventListener('click', (e) => {
+            gateClosed = !gateClosed;
+            grid[5][5] = gateClosed ? 1 : 0;
+            grid[6][5] = gateClosed ? 1 : 0;
+            gateMesh.visible = gateClosed;
+            e.target.textContent = gateClosed ? 'Ворота: Закрыты (Обход!)' : 'Ворота: Открыты';
+          });
+          document.getElementById('exNavRand')?.addEventListener('click', () => {
+            for (let t = 0; t < 20; t++) {
+              const rx = Math.floor(Math.random() * N), rz = Math.floor(Math.random() * N);
+              if (!grid[rz][rx]) { routeTo(rx - half + 0.5, rz - half + 0.5); break; }
+            }
+          });
+
+          // Initial route demo
+          routeTo(9.5 - half, 9.5 - half);
+
+          activeScene = sc;
+          activeDragPaint = null; activeHover = null;
+          activeClick = (rc) => {
+            const hits = rc.intersectObject(floor);
+            if (hits.length) routeTo(hits[0].point.x, hits[0].point.z);
+          };
+          activeUpdate = (dt, t) => {
+            if (wpIdx < waypoints.length) {
+              const tgt = waypoints[wpIdx];
+              const dx = tgt.x - npc.position.x, dz = tgt.z - npc.position.z;
+              const d = Math.hypot(dx, dz);
+              if (d < 0.12) { wpIdx++; }
+              else {
+                const sp = Math.min(d, 3.6 * dt);
+                npc.position.x += (dx / d) * sp;
+                npc.position.z += (dz / d) * sp;
+                npc.position.y = Math.abs(Math.sin(t * 10)) * 0.08;
+              }
+            } else {
+              npc.position.y = 0;
+            }
+          };
+        }
+
+        // --- DEMO 5: Water, Reflections & Emissive ---
+        function buildWaterDemo(ctrlEl) {
+          const sc = new THREE.Scene();
+          sc.background = new THREE.Color(0x0a1320);
+          sc.fog = new THREE.FogExp2(0x0a1320, 0.035);
+          target.set(0, 0.9, 0); yaw = 0.65; pitch = 0.35; dist = 12;
+
+          sc.add(new THREE.HemisphereLight(0x6bb0e0, 0x101c28, 0.65));
+          const sun = new THREE.DirectionalLight(0xffddb0, 1.2);
+          sun.position.set(8, 11, 5); sc.add(sun);
+
+          const wGeo = new THREE.PlaneGeometry(16, 16, 36, 36);
+          wGeo.rotateX(-Math.PI / 2);
+          const wMat = new THREE.MeshStandardMaterial({ color: 0x145e78, metalness: 0.78, roughness: 0.16, flatShading: true });
+          const water = new THREE.Mesh(wGeo, wMat);
+          sc.add(water);
+
+          const chrome = new THREE.Mesh(
+            new THREE.SphereGeometry(1.1, 28, 24),
+            new THREE.MeshStandardMaterial({ color: 0xdce8f5, metalness: 0.95, roughness: 0.06 })
+          );
+          chrome.position.set(0, 1.5, 0);
+          sc.add(chrome);
+
+          const neonCols = [0xff8c32, 0x58d8ff, 0x8dff7a, 0xff5599];
+          neonCols.forEach((c, idx) => {
+            const ang = (idx / 4) * Math.PI * 2 + 0.4;
+            const pillar = new THREE.Mesh(
+              new THREE.BoxGeometry(0.45, 2.8, 0.45),
+              new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 1.4 })
+            );
+            pillar.position.set(Math.cos(ang) * 3.8, 1.2, Math.sin(ang) * 3.8);
+            sc.add(pillar);
+            const pl = new THREE.PointLight(c, 1.8, 9);
+            pl.position.set(Math.cos(ang) * 3.8, 2.2, Math.sin(ang) * 3.8);
+            sc.add(pl);
+          });
+
+          let waveAmp = 0.24, autoOrbit = true;
+          ctrlEl.innerHTML = `
+            <label class="flex items-center gap-2">Высота волн <input id="exWaveAmp" type="range" min="0" max="0.6" step="0.03" value="0.24" class="w-24 accent-cyan-400" /></label>
+            <button id="exWaveOrb" type="button" class="rounded-lg border border-cyan-400/40 bg-cyan-500/15 px-3 py-1 text-cyan-200">Авто-орбита: ON</button>
+          `;
+          document.getElementById('exWaveAmp')?.addEventListener('input', (e) => { waveAmp = Number(e.target.value); });
+          document.getElementById('exWaveOrb')?.addEventListener('click', (e) => {
+            autoOrbit = !autoOrbit;
+            e.target.textContent = autoOrbit ? 'Авто-орбита: ON' : 'Авто-орбита: OFF';
+          });
+
+          activeScene = sc;
+          activeClick = null; activeDragPaint = null; activeHover = null;
+          activeUpdate = (dt, t) => {
+            if (autoOrbit && !dragMode) yaw += dt * 0.25;
+            const pos = wGeo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+              const x = pos.getX(i), z = pos.getZ(i);
+              pos.setY(i, Math.sin(x * 0.75 + t * 2.1) * Math.cos(z * 0.65 + t * 1.5) * waveAmp);
+            }
+            pos.needsUpdate = true;
+            wGeo.computeVertexNormals();
+            chrome.position.y = 1.5 + Math.sin(t * 1.8) * 0.14;
+          };
+        }
+
+        function switchDemo(key) {
+          currentDemo = key;
+          const meta = DEMO_META[key];
+          document.getElementById('demoTitle').textContent = meta.title;
+          document.getElementById('demoHint').textContent = meta.hint;
+          document.getElementById('demoCodePre').textContent = meta.code;
+          document.querySelectorAll('#exampleTabs .example-tab').forEach((b) => {
+            b.classList.toggle('active', b.dataset.demo === key);
+          });
+          const ctrlEl = document.getElementById('demoControls');
+          if (key === 'fog') buildFogDemo(ctrlEl);
+          else if (key === 'particles') buildParticlesDemo(ctrlEl);
+          else if (key === 'terrain') buildTerrainDemo(ctrlEl);
+          else if (key === 'nav') buildNavDemo(ctrlEl);
+          else if (key === 'water') buildWaterDemo(ctrlEl);
+        }
+
+        document.getElementById('exampleTabs')?.addEventListener('click', (e) => {
+          const btn = e.target.closest('button[data-demo]');
+          if (btn) switchDemo(btn.dataset.demo);
+        });
+        document.getElementById('toggleCodeBtn')?.addEventListener('click', () => {
+          document.getElementById('demoCodeBox')?.classList.toggle('hidden');
+        });
+        document.getElementById('copyDemoCodeBtn')?.addEventListener('click', () => {
+          copyText(DEMO_META[currentDemo].code);
+        });
+
+        switchDemo('fog');
+
+        let last = performance.now(), frames = 0, fpsAcc = 0, elapsed = 0;
+        const statEl = document.getElementById('demoStat');
+        function animateEx(now) {
+          requestAnimationFrame(animateEx);
+          const dt = Math.min(0.05, (now - last) / 1000);
+          last = now; elapsed += dt;
+          frames++; fpsAcc += dt;
+          if (fpsAcc >= 0.5 && statEl) {
+            statEl.textContent = Math.round(frames / fpsAcc) + ' FPS';
+            frames = 0; fpsAcc = 0;
+          }
+          camera.position.set(
+            target.x + Math.sin(yaw) * Math.cos(pitch) * dist,
+            target.y + Math.sin(pitch) * dist,
+            target.z + Math.cos(yaw) * Math.cos(pitch) * dist
+          );
+          camera.lookAt(target);
+          if (activeUpdate) activeUpdate(dt, elapsed);
+          if (activeScene) renderer.render(activeScene, camera);
+        }
+        requestAnimationFrame(animateEx);
+      }
+
+      window.addEventListener('load', () => {
+        initHero3D();
+        initExamplesLab();
+      });
+    })();
+  </script>
+</body>
+</html>

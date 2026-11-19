@@ -16,11 +16,31 @@ import {
   Shapes,
   PackagePlus,
   Check,
+  Waves,
+  Sparkles,
+  Flame,
+  Image,
+  Stamp,
+  Layers,
+  Mountain,
+  Film,
+  GitBranch,
+  Search,
+  Square,
+  Sliders,
+  Compass,
+  Route,
+  Trash2,
 } from 'lucide-react'
 import {
   getScene,
   uid,
   makePrefab,
+  makeParticleAsset,
+  PARTICLE_PRESETS,
+  makeNavZone,
+  bakeNavZone,
+  type NavZone,
   type Project,
   type Asset,
   type Component,
@@ -28,38 +48,47 @@ import {
 } from '../../../packages/project-schema/src'
 import ScriptParams from './ScriptParams'
 import { TerrainEditor } from './TerrainEditor'
+import type { TerrainBrushConfig } from '../../../packages/editor-tools/src'
 import { makeTerrain, type Terrain } from '../../../packages/project-schema/src/terrain'
 import { VisualFields } from './VisualFields'
 import { Section, Field, Numeric, Color } from './Fields'
 import './authoring.css'
 
-import {behaviorDefaults, eventNames} from '../../../packages/behaviors/src/catalog'
-import {RuleFields} from './RuleFields'
-export {behaviorDefaults}
-const names: Record<string, string> = {
-  mesh: 'Mesh Renderer',
-  behavior: 'Behavior',
-  rule: 'Event Rule',
-  light: 'Light',
-  camera: 'Camera',
-  collider: 'Collider',
-  body: 'Physics Body',
-  script: 'Script',
-  audio: 'Audio Source',
-  animation: 'Animation Player',
-  sprite: 'Billboard Sprite',
-  terrain: 'Terrain',
+import { behaviorDefaults, eventNames } from '../../../packages/behaviors/src/catalog'
+import { RuleFields } from './RuleFields'
+export { behaviorDefaults }
+interface ComponentMeta {
+  type: string
+  name: string
+  category: string
+  desc: string
+  icon: typeof Box
+  keywords: string
 }
-const icons = {
-  mesh: Box,
-  light: Sun,
-  camera: Video,
-  collider: Cuboid,
-  body: Box,
-  script: Code2,
-  behavior: Zap,
-  audio: AudioLines,
-}
+const COMPONENT_CATALOG: ComponentMeta[] = [
+  { type: 'mesh', name: 'Mesh Renderer', category: 'Rendering', desc: '3D primitive or imported glTF model', icon: Box, keywords: 'geometry model shape box sphere' },
+  { type: 'particle', name: '3D Particle Emitter', category: 'Effects', desc: 'Steam, smoke, snow, rain, fire & sparks', icon: Flame, keywords: 'vfx emitter smoke fire snow rain sparks steam' },
+  { type: 'billboard', name: '3D Billboard', category: 'Effects', desc: 'Camera-facing 3D sprite with atlas animation', icon: Image, keywords: 'sprite halo foliage sheet' },
+  { type: 'decal', name: '3D Decal', category: 'Effects', desc: 'Surface poster, stain, puddle or footprint', icon: Stamp, keywords: 'sticker poster puddle stain graffiti' },
+  { type: 'light', name: 'Light', category: 'Lighting', desc: 'Point, spot, directional or ambient light', icon: Sun, keywords: 'sun spot point glow flare shadow gobo' },
+  { type: 'volumetric', name: 'Volumetric Light', category: 'Lighting', desc: 'Soft additive light cone / god-rays', icon: Sparkles, keywords: 'fog beam cone godray dust' },
+  { type: 'bakeZone', name: 'Bake & Reflection Zone', category: 'Lighting', desc: 'Local static lightmap & cubemap probe', icon: Layers, keywords: 'probe cubemap reflection lightmap' },
+  { type: 'water', name: 'Water Surface', category: 'Environment', desc: 'Animated GLSL water with waves & foam', icon: Waves, keywords: 'river lake ocean puddle shader' },
+  { type: 'terrain', name: 'Terrain', category: 'Environment', desc: 'Sculptable heightmap & multi-layer ground', icon: Mountain, keywords: 'ground landscape heightmap noise' },
+  { type: 'camera', name: 'Camera', category: 'Camera', desc: 'Perspective or orthographic scene camera', icon: Video, keywords: 'fov view viewport' },
+  { type: 'collider', name: 'Collider', category: 'Physics', desc: 'Collision volume or trigger zone', icon: Cuboid, keywords: 'hitbox trigger collision rapier' },
+  { type: 'body', name: 'Physics Body', category: 'Physics', desc: 'Dynamic, kinematic or static rigid body', icon: CircleDot, keywords: 'rigidbody mass gravity velocity' },
+  { type: 'script', name: 'Script', category: 'Logic', desc: 'TypeScript GameAPI lifecycle behavior', icon: Code2, keywords: 'code ts logic controller' },
+  { type: 'behavior', name: 'Behavior', category: 'Logic', desc: 'Built-in player, NPC, save & gameplay module', icon: Zap, keywords: 'player npc coin hazard save' },
+  { type: 'rule', name: 'Event Rule', category: 'Logic', desc: 'No-code event -> action trigger rule', icon: GitBranch, keywords: 'event trigger action score' },
+  { type: 'audio', name: 'Audio Source', category: 'Audio', desc: '3D spatial or ambient sound emitter', icon: AudioLines, keywords: 'sound music sfx hrtf' },
+  { type: 'animation', name: 'Animation Player', category: 'Animation', desc: 'Play glTF skeletal / transform clips', icon: Film, keywords: 'clip gltf keyframe' },
+  { type: 'navZone', name: 'NavGrid Zone', category: 'Navigation', desc: 'Bakeable A* pathfinding grid + Off-Mesh Links', icon: Compass, keywords: 'navmesh pathfinding astar npc walk' },
+  { type: 'navAgent', name: 'Nav Agent (NPC)', category: 'Navigation', desc: 'Autonomous A* steering + walk/idle crossfade', icon: Route, keywords: 'npc ai pathfinding follow move' },
+  { type: 'sprite', name: 'Legacy Sprite', category: 'Effects', desc: 'Simple 3D sprite quad', icon: Square, keywords: '2d quad' },
+]
+const names: Record<string, string> = Object.fromEntries(COMPONENT_CATALOG.map((c) => [c.type, c.name]))
+const icons: Record<string, typeof Box> = Object.fromEntries(COMPONENT_CATALOG.map((c) => [c.type, c.icon]))
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 export function AssetSelect({
   assets,
@@ -92,13 +121,18 @@ export function Inspector({
   entityId,
   onChange,
   onEditAsset,
+  terrainBrush,
+  onTerrainBrushChange,
 }: {
   project: Project
   entityId: string | null
   onChange: (p: Project) => void
   onEditAsset?: (id: string) => void
+  terrainBrush?: TerrainBrushConfig
+  onTerrainBrushChange?: (patch: Partial<TerrainBrushConfig>) => void
 }) {
   const [adding, showAdd] = useState(false),
+    [compSearch, setCompSearch] = useState(''),
     [feedback, setFeedback] = useState('')
   const scene = getScene(project),
     entity = scene.entities.find((e) => e.id === entityId)
@@ -123,6 +157,43 @@ export function Inspector({
       case 'terrain':
         Object.assign(item, makeTerrain())
         break
+      case 'water':
+        Object.assign(item, {
+          size: 16,
+          segments: 24,
+          depth: 2,
+          deepColor: '#153a4a',
+          shallowColor: '#3c8ea0',
+          waveHeight: 0.14,
+          waveSpeed: 1.4,
+          waveScale: 0.7,
+          opacity: 0.82,
+          fresnelPower: 2.6,
+          foamAmount: 0.35,
+        })
+        break
+      case 'bakeZone':
+        Object.assign(item, {
+          size: [8, 5, 8],
+          bakeLight: true,
+          lightBounce: 0.65,
+          bakeReflections: true,
+          reflectionMode: 'baked',
+          reflectionResolution: 128,
+          updateInterval: 4,
+        })
+        break
+      case 'volumetric':
+        Object.assign(item, {
+          shape: 'cone',
+          color: '#ffe5b4',
+          intensity: 0.42,
+          softness: 2.2,
+          dustSpeed: 0.35,
+          topRadius: 0.2,
+          bottomRadius: 1.6,
+        })
+        break
       case 'animation':
         Object.assign(item, { clip: '', loop: true, autoplay: true, speed: 1, event: '' })
         break
@@ -133,13 +204,18 @@ export function Inspector({
         Object.assign(item, { shape: 'box', material: '' })
         break
       case 'rule':
-        Object.assign(item, { event: 'object.clicked', source: '', tag: '', actions: [{kind:'addVariable', key:'score', value:1}] })
+        Object.assign(item, {
+          event: 'object.clicked',
+          source: '',
+          tag: '',
+          actions: [{ kind: 'addVariable', key: 'score', value: 1 }],
+        })
         break
       case 'behavior':
         Object.assign(item, { kind: 'rotate', params: { ...behaviorDefaults.rotate[1] } })
         break
       case 'light':
-        Object.assign(item, { kind: 'point', color: '#ffffff', intensity: 2 })
+        Object.assign(item, { kind: 'point', color: '#ffffff', intensity: 2, range: 12, angle: 0.6, coneSoftness: 0.25, glow: 0, glowFalloff: 1, flare: 0 })
         break
       case 'camera':
         Object.assign(item, { projection: 'perspective', fov: 50 })
@@ -151,13 +227,71 @@ export function Inspector({
         })
         break
       case 'collider':
-        Object.assign(item, { shape: 'box', trigger: false })
+        Object.assign(item, { shape: 'box', trigger: false, friction: 0.5, restitution: 0.1 })
         break
       case 'body':
-        Object.assign(item, { kind: 'static' })
+        Object.assign(item, {
+          kind: 'static',
+          mass: 1,
+          friction: 0.5,
+          restitution: 0.1,
+          linearDamping: 0.1,
+          angularDamping: 0.1,
+          gravityScale: 1,
+          lockRotation: false,
+        })
         break
       case 'audio':
         Object.assign(item, { asset: '', volume: 1 })
+        break
+      case 'particle':
+        Object.assign(item, {
+          assetId: project.assets.find((a) => a.type === 'particle')?.id || '',
+          preset: 'steam',
+          playing: true,
+        })
+        break
+      case 'billboard':
+        Object.assign(item, {
+          texture: '',
+          color: '#ffffff',
+          width: 1.5,
+          height: 1.5,
+          opacity: 1,
+          lockY: false,
+          additive: false,
+          unlit: true,
+          pixelated: false,
+          atlasCols: 1,
+          atlasRows: 1,
+          atlasFrame: 0,
+          fps: 0,
+        })
+        break
+      case 'decal':
+        Object.assign(item, {
+          texture: '',
+          color: '#ffffff',
+          width: 1.2,
+          height: 1.2,
+          opacity: 0.9,
+          normalOffset: 0.008,
+          blendMode: 'alpha',
+          pixelated: false,
+        })
+        break
+      case 'navZone':
+        Object.assign(item, makeNavZone())
+        break
+      case 'navAgent':
+        Object.assign(item, {
+          speed: 2.8,
+          turnSpeed: 8,
+          stopDistance: 0.35,
+          walkClip: '',
+          idleClip: '',
+          crossfade: 0.2,
+        })
         break
     }
     edit((p) => {
@@ -192,9 +326,16 @@ export function Inspector({
     function parameter(key: string, value: unknown) {
       prop('params', { ...c.params, [key]: value })
     }
-    const num = (label: string, key: string, def: number, min?: number, max?: number) => (
+    const num = (label: string, key: string, def: number, min?: number, max?: number, step?: number) => (
       <Field label={label}>
-        <Numeric label={label} value={c[key] ?? def} min={min} max={max} change={(n) => prop(key, n)} />
+        <Numeric
+          label={label}
+          value={c[key] ?? def}
+          min={min}
+          max={max}
+          step={step}
+          change={(n) => prop(key, n)}
+        />
       </Field>
     )
     const link = (label: string, type: Asset['type'], key: string) => (
@@ -218,9 +359,369 @@ export function Inspector({
           toggle={() => prop('enabled', c.enabled === false)}
           remove={() => editEntity((e) => e.components.splice(i, 1))}
         >
-          {c.type === 'terrain' && <TerrainEditor terrain={c as Terrain} assets={project.assets} change={data=>patch(i,data)} />}
-          {(c.type === 'animation' || c.type === 'sprite') && (
-            <VisualFields c={c} assets={project.assets} modelId={entity?.components.find(part => part.type === 'mesh' && part.shape === 'model')?.asset} change={prop}/>
+          {c.type === 'terrain' && (
+            <TerrainEditor terrain={c as Terrain} assets={project.assets} change={(data) => patch(i, data)} brush={terrainBrush} onBrushChange={onTerrainBrushChange} />
+          )}
+          {c.type === 'water' && (
+            <>
+              {num('Size', 'size', 16, 1, 256, 1)}
+              {num('Segments', 'segments', 24, 4, 64, 2)}
+              {num('Depth (sensor)', 'depth', 2, 0.2, 50, 0.5)}
+              <Field label="Deep color">
+                <Color label="Deep color" value={c.deepColor ?? '#153a4a'} change={(v) => prop('deepColor', v)} />
+              </Field>
+              <Field label="Shallow color">
+                <Color
+                  label="Shallow color"
+                  value={c.shallowColor ?? '#3c8ea0'}
+                  change={(v) => prop('shallowColor', v)}
+                />
+              </Field>
+              {num('Wave height', 'waveHeight', 0.14, 0, 2, 0.02)}
+              {num('Wave speed', 'waveSpeed', 1.4, 0, 10, 0.1)}
+              {num('Wave scale', 'waveScale', 0.7, 0.05, 5, 0.05)}
+              {num('Opacity', 'opacity', 0.82, 0.05, 1, 0.05)}
+              {num('Fresnel power', 'fresnelPower', 2.6, 0.5, 8, 0.1)}
+              {num('Foam amount', 'foamAmount', 0.35, 0, 1, 0.05)}
+            </>
+          )}
+          {c.type === 'bakeZone' && (
+            <>
+              <Field label="Zone size (X/Y/Z)">
+                <div className="mf-pair">
+                  {(['X', 'Y', 'Z'] as const).map((ax, idx) => (
+                    <Numeric
+                      key={ax}
+                      label={'Zone ' + ax}
+                      value={(c.size ?? [8, 5, 8])[idx]}
+                      min={0.5}
+                      max={200}
+                      change={(v) => {
+                        const sz = [...(c.size ?? [8, 5, 8])]
+                        sz[idx] = v
+                        prop('size', sz)
+                      }}
+                    />
+                  ))}
+                </div>
+              </Field>
+              <Field label="Bake lighting">
+                <input type="checkbox" checked={c.bakeLight !== false} onChange={(e) => prop('bakeLight', e.target.checked)} />
+              </Field>
+              {num('Light bounce', 'lightBounce', 0.65, 0, 2, 0.05)}
+              <Field label="Reflections">
+                <input type="checkbox" checked={c.bakeReflections !== false} onChange={(e) => prop('bakeReflections', e.target.checked)} />
+              </Field>
+              {select('Reflection mode', ['baked', 'realtime'], c.reflectionMode ?? 'baked', (v) => prop('reflectionMode', v))}
+              {select('Cubemap size', ['64', '128', '256'], String(c.reflectionResolution ?? 128), (v) => prop('reflectionResolution', Number(v)))}
+              {c.reflectionMode === 'realtime' && num('Update every N frames', 'updateInterval', 4, 1, 60, 1)}
+              <button
+                type="button"
+                className="mf-secondary"
+                onClick={() => prop('lastBaked', new Date().toLocaleTimeString())}
+              >
+                <Sparkles size={12} /> Bake Zone Now {c.lastBaked ? '(' + c.lastBaked + ')' : ''}
+              </button>
+            </>
+          )}
+          {c.type === 'volumetric' && (
+            <>
+              {select('Shape', ['cone', 'box'], c.shape ?? 'cone', (v) => prop('shape', v))}
+              <Field label="Beam color">
+                <Color label="Beam color" value={c.color ?? '#ffe5b4'} change={(v) => prop('color', v)} />
+              </Field>
+              {num('Intensity', 'intensity', 0.42, 0.02, 1.5, 0.05)}
+              {num('Edge softness', 'softness', 2.2, 0.5, 8, 0.1)}
+              {num('Dust speed', 'dustSpeed', 0.35, 0, 5, 0.05)}
+              {(c.shape ?? 'cone') === 'cone' && (
+                <>
+                  {num('Top radius', 'topRadius', 0.2, 0, 10, 0.05)}
+                  {num('Bottom radius', 'bottomRadius', 1.6, 0.1, 20, 0.1)}
+                </>
+              )}
+            </>
+          )}
+          {c.type === 'particle' && (
+          <>
+            <Field label="Particle asset">
+              <AssetSelect
+                label="Particle asset"
+                assets={project.assets}
+                type="particle"
+                value={c.assetId || ''}
+                change={(id) => prop('assetId', id)}
+              />
+            </Field>
+            <div className="mf-row" style={{ gap: 6, marginBottom: 6 }}>
+              {c.assetId ? (
+                <button
+                  type="button"
+                  className="mf-text-action"
+                  onClick={() => onEditAsset?.(c.assetId)}
+                >
+                  <Sliders size={12} /> Open Particle Editor
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="mf-text-action"
+                  onClick={() => {
+                    const created = makeParticleAsset(`${entity?.name || 'Effect'} Particles`, c.preset || 'steam')
+                    edit((p) => {
+                      p.assets.push(created)
+                      const obj = getScene(p).entities.find((e) => e.id === entityId)
+                      if (obj?.components[i]) obj.components[i].assetId = created.id
+                    })
+                    onEditAsset?.(created.id)
+                  }}
+                >
+                  <Flame size={12} /> Create & Edit Particles
+                </button>
+              )}
+            </div>
+            {!c.assetId && (
+              <Field label="Quick preset">
+                <select value={c.preset || 'steam'} onChange={(e) => prop('preset', e.target.value)}>
+                  {Object.keys(PARTICLE_PRESETS).map((k) => (
+                    <option key={k} value={k}>
+                      {titleCase(k)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            <Field label="Playing">
+              <input type="checkbox" checked={c.playing !== false} onChange={(e) => prop('playing', e.target.checked)} />
+            </Field>
+            <Field label="Rate override">
+              <Numeric label="Rate override" value={c.rate ?? 0} min={0} max={200} step={1} change={(n) => prop('rate', n > 0 ? n : undefined)} />
+            </Field>
+          </>
+        )}
+        {c.type === 'billboard' && (
+          <>
+            <Field label="Texture">
+              <AssetSelect label="Billboard texture" assets={project.assets} type="texture" value={c.texture || ''} change={(id) => prop('texture', id)} />
+            </Field>
+            <Field label="Color">
+              <Color label="Billboard color" value={c.color || '#ffffff'} change={(v) => prop('color', v)} />
+            </Field>
+            <Field label="Width">
+              <Numeric label="Billboard width" value={c.width ?? 1.5} min={0.05} step={0.1} change={(n) => prop('width', n)} />
+            </Field>
+            <Field label="Height">
+              <Numeric label="Billboard height" value={c.height ?? 1.5} min={0.05} step={0.1} change={(n) => prop('height', n)} />
+            </Field>
+            <Field label="Opacity">
+              <Numeric label="Billboard opacity" value={c.opacity ?? 1} min={0} max={1} step={0.05} change={(n) => prop('opacity', n)} />
+            </Field>
+            <Field label="Lock Y (cylindrical)">
+              <input type="checkbox" checked={Boolean(c.lockY)} onChange={(e) => prop('lockY', e.target.checked)} />
+            </Field>
+            <Field label="Additive glow">
+              <input type="checkbox" checked={Boolean(c.additive)} onChange={(e) => prop('additive', e.target.checked)} />
+            </Field>
+            <Field label="Unlit">
+              <input type="checkbox" checked={c.unlit !== false} onChange={(e) => prop('unlit', e.target.checked)} />
+            </Field>
+            <Field label="Pixelated">
+              <input type="checkbox" checked={Boolean(c.pixelated)} onChange={(e) => prop('pixelated', e.target.checked)} />
+            </Field>
+            <Field label="Atlas cols / rows">
+              <div className="mf-vec2-inline">
+                <Numeric label="Atlas cols" value={c.atlasCols ?? 1} min={1} max={16} step={1} change={(n) => prop('atlasCols', Math.round(n))} />
+                <Numeric label="Atlas rows" value={c.atlasRows ?? 1} min={1} max={16} step={1} change={(n) => prop('atlasRows', Math.round(n))} />
+              </div>
+            </Field>
+            <Field label="Frame / FPS">
+              <div className="mf-vec2-inline">
+                <Numeric label="Atlas frame" value={c.atlasFrame ?? 0} min={0} step={1} change={(n) => prop('atlasFrame', Math.round(n))} />
+                <Numeric label="Atlas FPS" value={c.fps ?? 0} min={0} max={60} step={1} change={(n) => prop('fps', n)} />
+              </div>
+            </Field>
+          </>
+        )}
+        {c.type === 'decal' && (
+          <>
+            <Field label="Texture">
+              <AssetSelect label="Decal texture" assets={project.assets} type="texture" value={c.texture || ''} change={(id) => prop('texture', id)} />
+            </Field>
+            <Field label="Tint color">
+              <Color label="Decal color" value={c.color || '#ffffff'} change={(v) => prop('color', v)} />
+            </Field>
+            <Field label="Width">
+              <Numeric label="Decal width" value={c.width ?? 1.2} min={0.05} step={0.1} change={(n) => prop('width', n)} />
+            </Field>
+            <Field label="Height">
+              <Numeric label="Decal height" value={c.height ?? 1.2} min={0.05} step={0.1} change={(n) => prop('height', n)} />
+            </Field>
+            <Field label="Opacity">
+              <Numeric label="Decal opacity" value={c.opacity ?? 0.9} min={0} max={1} step={0.05} change={(n) => prop('opacity', n)} />
+            </Field>
+            <Field label="Normal offset">
+              <Numeric label="Normal offset" value={c.normalOffset ?? 0.008} min={0.001} max={0.2} step={0.002} change={(n) => prop('normalOffset', n)} />
+            </Field>
+            <Field label="Blend mode">
+              <select value={c.blendMode || 'alpha'} onChange={(e) => prop('blendMode', e.target.value)}>
+                <option value="alpha">Alpha (Standard)</option>
+                <option value="additive">Additive</option>
+              </select>
+            </Field>
+            <Field label="Pixelated">
+              <input type="checkbox" checked={Boolean(c.pixelated)} onChange={(e) => prop('pixelated', e.target.checked)} />
+            </Field>
+          </>
+        )}
+        {c.type === 'navZone' && (
+          <>
+            <Field label="Zone size (X / Z)">
+              <div className="mf-vec2-inline">
+                <Numeric
+                  label="Nav width"
+                  value={c.size?.[0] ?? 24}
+                  min={2}
+                  max={200}
+                  step={2}
+                  change={(v) => prop('size', [v, c.size?.[1] ?? 24])}
+                />
+                <Numeric
+                  label="Nav depth"
+                  value={c.size?.[1] ?? 24}
+                  min={2}
+                  max={200}
+                  step={2}
+                  change={(v) => prop('size', [c.size?.[0] ?? 24, v])}
+                />
+              </div>
+            </Field>
+            <Field label="Cell size (m)">
+              <Numeric label="Cell size" value={c.cellSize ?? 0.75} min={0.25} max={4} step={0.05} change={(v) => prop('cellSize', v)} />
+            </Field>
+            <Field label="Agent radius">
+              <Numeric label="Agent radius" value={c.agentRadius ?? 0.35} min={0.05} max={3} step={0.05} change={(v) => prop('agentRadius', v)} />
+            </Field>
+            <Field label="Max slope (deg)">
+              <Numeric label="Max slope" value={c.maxSlope ?? 42} min={5} max={85} step={1} change={(v) => prop('maxSlope', v)} />
+            </Field>
+            <Field label="Step height">
+              <Numeric label="Step height" value={c.stepHeight ?? 0.65} min={0.1} max={3} step={0.05} change={(v) => prop('stepHeight', v)} />
+            </Field>
+            <Field label="Show overlay">
+              <input type="checkbox" checked={c.showOverlay !== false} onChange={(e) => prop('showOverlay', e.target.checked)} />
+            </Field>
+            <div className="mf-row" style={{ gap: 6, margin: '6px 0' }}>
+              <button
+                type="button"
+                className="mf-btn"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={() => {
+                  edit((p) => {
+                    const sc = getScene(p)
+                    const ent = sc.entities.find((e) => e.id === entityId)
+                    const nz = ent?.components[i] as NavZone | undefined
+                    if (ent && nz) bakeNavZone(nz, ent.transform, sc)
+                  })
+                }}
+              >
+                <Compass size={13} /> Bake NavGrid ({c.cols ?? 0}×{c.rows ?? 0})
+              </button>
+            </div>
+            <div className="mf-minor-label" style={{ justifyContent: 'space-between' }}>
+              <span>Off-Mesh Links ({(c.links || []).length})</span>
+              <button
+                type="button"
+                className="mf-btn"
+                onClick={() => {
+                  const links = structuredClone(c.links || [])
+                  const pos = entity?.transform.position || [0, 0, 0]
+                  links.push({
+                    id: 'link-' + (links.length + 1),
+                    from: [pos[0], pos[1], pos[2]],
+                    to: [pos[0] + 2, pos[1] + 2, pos[2]],
+                    bidirectional: true,
+                    cost: 1.5,
+                    enabled: true,
+                  })
+                  prop('links', links)
+                }}
+              >
+                <Plus size={11} /> Add Link
+              </button>
+            </div>
+            {(c.links || []).map((lnk: any, li: number) => (
+              <div key={lnk.id || li} style={{ padding: 5, borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                  <input
+                    aria-label="Link ID"
+                    value={lnk.id || ''}
+                    onChange={(e) => {
+                      const links = structuredClone(c.links || [])
+                      links[li].id = e.target.value
+                      prop('links', links)
+                    }}
+                    style={{ flex: 1, fontSize: 11 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => prop('links', (c.links || []).filter((_: any, j: number) => j !== li))}
+                    style={{ background: 'transparent', border: 'none', color: '#e68177', cursor: 'pointer' }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <div style={{ fontSize: 10, color: '#9ab', marginBottom: 2 }}>From (X/Y/Z)</div>
+                <div className="mf-vec3-inline" style={{ marginBottom: 4 }}>
+                  {[0, 1, 2].map((ax) => (
+                    <Numeric key={ax} label={`From ${ax}`} value={lnk.from?.[ax] ?? 0} step={0.5} change={(v) => {
+                      const links = structuredClone(c.links || [])
+                      links[li].from[ax] = v
+                      prop('links', links)
+                    }} />
+                  ))}
+                </div>
+                <div style={{ fontSize: 10, color: '#9ab', marginBottom: 2 }}>To (X/Y/Z)</div>
+                <div className="mf-vec3-inline">
+                  {[0, 1, 2].map((ax) => (
+                    <Numeric key={ax} label={`To ${ax}`} value={lnk.to?.[ax] ?? 0} step={0.5} change={(v) => {
+                      const links = structuredClone(c.links || [])
+                      links[li].to[ax] = v
+                      prop('links', links)
+                    }} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+        {c.type === 'navAgent' && (
+          <>
+            <Field label="Move speed">
+              <Numeric label="Agent speed" value={c.speed ?? 2.8} min={0.1} max={30} step={0.2} change={(v) => prop('speed', v)} />
+            </Field>
+            <Field label="Turn speed">
+              <Numeric label="Turn speed" value={c.turnSpeed ?? 8} min={1} max={30} step={0.5} change={(v) => prop('turnSpeed', v)} />
+            </Field>
+            <Field label="Stop distance">
+              <Numeric label="Stop distance" value={c.stopDistance ?? 0.35} min={0.05} max={5} step={0.05} change={(v) => prop('stopDistance', v)} />
+            </Field>
+            <Field label="Walk clip">
+              <input value={c.walkClip || ''} placeholder="e.g. Walk" onChange={(e) => prop('walkClip', e.target.value)} />
+            </Field>
+            <Field label="Idle clip">
+              <input value={c.idleClip || ''} placeholder="e.g. Idle" onChange={(e) => prop('idleClip', e.target.value)} />
+            </Field>
+            <Field label="Crossfade (s)">
+              <Numeric label="Crossfade" value={c.crossfade ?? 0.2} min={0} max={2} step={0.05} change={(v) => prop('crossfade', v)} />
+            </Field>
+          </>
+        )}
+        {(c.type === 'animation' || c.type === 'sprite') && (
+            <VisualFields
+              c={c}
+              assets={project.assets}
+              modelId={entity?.components.find((part) => part.type === 'mesh' && part.shape === 'model')?.asset}
+              change={prop}
+            />
           )}
           {c.type === 'mesh' && (
             <>
@@ -250,7 +751,25 @@ export function Inspector({
               <Field label="Color">
                 <Color label="Light color" value={c.color} change={(v) => prop('color', v)} />
               </Field>
-              {num('Intensity', 'intensity', 1, 0)}
+              {num('Intensity', 'intensity', 1, 0, 20, 0.1)}
+              {(c.kind === 'point' || c.kind === 'spot') && (
+                <>
+                  {num('Range', 'range', 12, 0.5, 100, 0.5)}
+                  {num('Fog glow', 'glow', 0, 0, 5, 0.05)}
+                  {num('Glow falloff', 'glowFalloff', 1, 0.1, 8, 0.1)}
+                  {num('Light flare', 'flare', 0, 0, 5, 0.1)}
+                </>
+              )}
+              {(c.kind === 'point' || c.kind === 'spot') && link('Gel texture (Gobo)', 'texture', 'gel')}
+              {c.kind === 'spot' && (
+                <>
+                  {num('Cone angle (rad)', 'angle', 0.6, 0.05, 1.5, 0.05)}
+                  {num('Cone softness', 'coneSoftness', 0.25, 0, 1, 0.05)}
+                  <Field label="Cast shadow (active)">
+                    <input type="checkbox" checked={Boolean(c.castShadow)} onChange={(e) => prop('castShadow', e.target.checked)} />
+                  </Field>
+                </>
+              )}
             </>
           )}
           {c.type === 'camera' && (
@@ -271,10 +790,32 @@ export function Inspector({
                   onChange={(e) => prop('trigger', e.target.checked)}
                 />
               </Field>
+              {num('Friction', 'friction', 0.5, 0, 2, 0.05)}
+              {num('Restitution (bounce)', 'restitution', 0.1, 0, 1.5, 0.05)}
             </>
           )}
-          {c.type === 'body' &&
-            select('Body type', ['static', 'dynamic', 'kinematic'], c.kind, (v) => prop('kind', v))}
+          {c.type === 'body' && (
+            <>
+              {select('Body type', ['static', 'dynamic', 'kinematic'], c.kind, (v) => prop('kind', v))}
+              {c.kind === 'dynamic' && (
+                <>
+                  {num('Mass', 'mass', 1, 0.01, 1000, 0.1)}
+                  {num('Gravity scale', 'gravityScale', 1, -5, 5, 0.1)}
+                  {num('Linear damping', 'linearDamping', 0.1, 0, 20, 0.1)}
+                  {num('Angular damping', 'angularDamping', 0.1, 0, 20, 0.1)}
+                  {num('Friction', 'friction', 0.5, 0, 2, 0.05)}
+                  {num('Restitution', 'restitution', 0.1, 0, 1.5, 0.05)}
+                  <Field label="Lock rotation">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(c.lockRotation)}
+                      onChange={(e) => prop('lockRotation', e.target.checked)}
+                    />
+                  </Field>
+                </>
+              )}
+            </>
+          )}
           {c.type === 'audio' && (
             <>
               {link('Audio clip', 'audio', 'asset')}
@@ -292,7 +833,7 @@ export function Inspector({
               <ScriptParams project={project} component={c} change={(fields) => patch(i, fields)} />
             </>
           )}
-          {c.type === 'rule' && <RuleFields project={project} rule={c} change={data=>patch(i,data)} />}
+          {c.type === 'rule' && <RuleFields project={project} rule={c} change={(data) => patch(i, data)} />}
           {c.type === 'behavior' && (
             <>
               <Field label="Behavior">
@@ -316,11 +857,24 @@ export function Inspector({
                   {typeof v === 'number' ? (
                     <Numeric label={key} value={v} change={(n) => parameter(key, n)} />
                   ) : typeof v === 'boolean' ? (
-                    <input type="checkbox" checked={v} onChange={e=>parameter(key,e.target.checked)} />
+                    <input type="checkbox" checked={v} onChange={(e) => parameter(key, e.target.checked)} />
                   ) : key === 'event' ? (
-                    <><input aria-label="Behavior event" list="mf-event-catalog" value={String(v)} onChange={e=>parameter(key,e.target.value)}/></>
+                    <>
+                      <input
+                        aria-label="Behavior event"
+                        list="mf-event-catalog"
+                        value={String(v)}
+                        onChange={(e) => parameter(key, e.target.value)}
+                      />
+                    </>
                   ) : key === 'prefab' ? (
-                    <AssetSelect label="Spawn prefab" assets={project.assets} type="prefab" value={String(v||'')} change={id=>parameter(key,id)}/>
+                    <AssetSelect
+                      label="Spawn prefab"
+                      assets={project.assets}
+                      type="prefab"
+                      value={String(v || '')}
+                      change={(id) => parameter(key, id)}
+                    />
                   ) : key === 'target' || key === 'scene' ? (
                     <select value={String(v ?? '')} onChange={(e) => parameter(key, e.target.value)}>
                       <option value="">Select…</option>
@@ -405,7 +959,11 @@ export function Inspector({
   }
   return (
     <aside className="mf-inspector">
-      <datalist id="mf-event-catalog">{eventNames.map(name=><option key={name} value={name}/>)}</datalist>
+      <datalist id="mf-event-catalog">
+        {eventNames.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
       <div className="mf-pane-heading">
         <SlidersHorizontal size={15} />
         <strong>Inspector</strong>
@@ -433,7 +991,31 @@ export function Inspector({
             />
           </div>
           <Section name="Transform" icon={Move}>
-            <Field label="Tags"><input key={entity.id+JSON.stringify(entity.properties.tags || [])} aria-label="Object tags" placeholder="Comma-separated tags" defaultValue={(Array.isArray(entity.properties.tags)?entity.properties.tags:[]).join(", ")} onBlur={e=>{const tags=[...new Set(e.target.value.split(",").map(s=>s.trim()).filter(Boolean))]; if(JSON.stringify(tags)!==JSON.stringify(entity.properties.tags||[]))editEntity(obj=>{obj.properties.tags=tags})}} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></Field>
+            <Field label="Tags">
+              <input
+                key={entity.id + JSON.stringify(entity.properties.tags || [])}
+                aria-label="Object tags"
+                placeholder="Comma-separated tags"
+                defaultValue={(Array.isArray(entity.properties.tags) ? entity.properties.tags : []).join(', ')}
+                onBlur={(e) => {
+                  const tags = [
+                    ...new Set(
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    ),
+                  ]
+                  if (JSON.stringify(tags) !== JSON.stringify(entity.properties.tags || []))
+                    editEntity((obj) => {
+                      obj.properties.tags = tags
+                    })
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                }}
+              />
+            </Field>
             {(['position', 'rotation', 'scale'] as const).map((key) => (
               <div className="mf-transform" key={key}>
                 <span>{titleCase(key)}</span>
@@ -463,16 +1045,60 @@ export function Inspector({
           </Section>
           {entity.components.map(renderComponent)}
           <div className="mf-inspector-actions">
-            <button className="mf-add" aria-expanded={adding} onClick={() => showAdd(!adding)}>
+            <button
+              className="mf-add"
+              aria-expanded={adding}
+              onClick={() => {
+                setCompSearch('')
+                showAdd(!adding)
+              }}
+            >
               <Plus size={14} /> Add component
             </button>
             {adding && (
-              <div className="mf-component-menu">
-                {Object.entries(names).map(([k, n]) => (
-                  <button key={k} onClick={() => add(k)}>
-                    {n}
-                  </button>
-                ))}
+              <div className="mf-component-picker">
+                <div className="mf-comp-search">
+                  <Search size={13} />
+                  <input
+                    autoFocus
+                    placeholder="Search components…"
+                    aria-label="Search components"
+                    value={compSearch}
+                    onChange={(e) => setCompSearch(e.target.value)}
+                  />
+                </div>
+                <div className="mf-comp-list">
+                  {COMPONENT_CATALOG.filter((item) => {
+                    const q = compSearch.trim().toLowerCase()
+                    if (!q) return true
+                    return (
+                      item.name.toLowerCase().includes(q) ||
+                      item.category.toLowerCase().includes(q) ||
+                      item.desc.toLowerCase().includes(q) ||
+                      item.keywords.toLowerCase().includes(q)
+                    )
+                  }).map((item) => {
+                    const CompIcon = item.icon
+                    const has = entity.components.some((c) => c.type === item.type)
+                    return (
+                      <button
+                        key={item.type}
+                        type="button"
+                        className={'mf-comp-item' + (has ? ' has' : '')}
+                        onClick={() => add(item.type)}
+                      >
+                        <span className="mf-comp-icon">
+                          <CompIcon size={15} />
+                        </span>
+                        <span className="mf-comp-meta">
+                          <strong>{item.name}</strong>
+                          <small>{item.desc}</small>
+                        </span>
+                        <span className="mf-comp-cat">{item.category}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
             <button
@@ -497,5 +1123,5 @@ export function Inspector({
   )
 }
 export const defaultScript =
-  'export default function (api: GameAPI) {\n  return {\n    onUpdate(deltaTime: number) {\n      api.object.rotation.y += deltaTime;\n    },\n  };\n}\n'
+  'export default function (api: GameAPI) {\n  return {\n    onStart() {\n      // Initialize systems or register services here\n    },\n    onUpdate(deltaTime: number) {\n      api.object.rotation.y += deltaTime;\n    },\n  };\n}\n'
 export default Inspector

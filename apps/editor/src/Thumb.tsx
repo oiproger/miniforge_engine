@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, FileCode2, FileJson, Music2, Braces } from 'lucide-react'
+import { Box, FileCode2, FileJson, Music2, Braces, Flame } from 'lucide-react'
 import { createWorld, type RenderWorld } from '../../../packages/graphics/src'
 import { Vector3 } from '../../../packages/graphics/src/scene'
 import {
@@ -76,6 +76,8 @@ export function Thumb({ asset, project }: { asset: Asset; project: Project }) {
           ? FileJson
           : asset.type === 'shader'
             ? Braces
-            : Box
+            : asset.type === 'particle'
+              ? Flame
+              : Box
   return url || asset.type === 'texture' ? <img alt="" src={url || asset.data} /> : <Icon size={28} />
 }

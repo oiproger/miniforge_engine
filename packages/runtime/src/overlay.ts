@@ -10,7 +10,7 @@ interface Actions {
   retry(): void
   reward(): void
   language(): void
-  emit(name: string, source?: string): void
+  emit(name: string, source?: unknown): void
 }
 export const words: Record<string, Record<string, string>> = {
   en: {
@@ -61,6 +61,8 @@ export class Overlay {
   private panel = document.createElement('section')
   private hud = document.createElement('header')
   private custom = document.createElement('div')
+  private mountedLayer = document.createElement('div')
+  private mounted = new Map<string, { root: HTMLElement; style?: HTMLStyleElement }>()
   private stats = document.createElement('small')
   private pad = document.createElement('div')
   private stick = document.createElement('i')
@@ -78,10 +80,12 @@ export class Overlay {
     this.host.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:2'
     const style = document.createElement('style')
     style.textContent = `
-:host{color:#fff;font:600 15px system-ui,sans-serif}*{box-sizing:border-box}section{pointer-events:auto;position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;background:linear-gradient(180deg,#12272242,#071d218c);padding:20px}section[hidden],header[hidden],.pad[hidden]{display:none}h1{font-size:clamp(28px,6vw,64px);letter-spacing:-.055em;text-shadow:0 2px 24px #182114;margin:0}p{margin:0 0 6px;text-shadow:0 1px 4px #122}button{border:0;cursor:pointer;pointer-events:auto;font:inherit;border-radius:9px;padding:10px 18px;color:#15291b;background:#c3f48a}button:focus-visible{outline:3px solid white}section button+button,header button{background:#22332fe8;color:white}header{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px}output{background:#182922d9;color:#ebffbd;border-radius:7px;padding:8px 12px;font-variant-numeric:tabular-nums}header button{margin-left:auto}.pad{display:none;position:absolute;bottom:22px;left:22px;border:1px solid #ffffff80;background:#253b3277;width:100px;height:100px;border-radius:50%;touch-action:none;pointer-events:auto;place-items:center}.pad i{width:40px;height:40px;border-radius:50%;background:#eaffdacc}@media(pointer:coarse){.pad{display:grid}}small{position:absolute;bottom:8px;right:8px;padding:3px 6px;color:white;background:#101c22ad;font:11px monospace}small:empty{display:none}
+:host{color:#fff;font:600 15px system-ui,sans-serif}*{box-sizing:border-box}section{pointer-events:auto;position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;background:linear-gradient(180deg,#12272242,#071d218c);padding:20px}section[hidden],header[hidden],.pad[hidden]{display:none}h1{font-size:clamp(28px,6vw,64px);letter-spacing:-.055em;text-shadow:0 2px 24px #182114;margin:0}p{margin:0 0 6px;text-shadow:0 1px 4px #122}button{border:0;cursor:pointer;pointer-events:auto;font:inherit;border-radius:9px;padding:10px 18px;color:#15291b;background:#c3f48a}button:focus-visible{outline:3px solid white}section button+button,header button{background:#22332fe8;color:white}header{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px}output{background:#182922d9;color:#ebffbd;border-radius:7px;padding:8px 12px;font-variant-numeric:tabular-nums}header button{margin-left:auto}.pad{display:none;position:absolute;bottom:22px;left:22px;border:1px solid #ffffff80;background:#253b3277;width:100px;height:100px;border-radius:50%;touch-action:none;pointer-events:auto;place-items:center}.pad i{width:40px;height:40px;border-radius:50%;background:#eaffdacc}@media(pointer:coarse){.pad{display:grid}}small{position:absolute;bottom:8px;right:8px;padding:3px 6px;color:white;background:#101c22ad;font:11px monospace}small:empty{display:none}.inventory-entry{padding:6px 8px;border-radius:6px;background:#101b22cc;pointer-events:auto;cursor:pointer}.inventory-entry:hover{background:#1d303ce6}
 `
     this.custom.className = 'custom'
     this.custom.style.cssText = 'position:absolute;inset:0'
+    this.mountedLayer.className = 'mounted'
+    this.mountedLayer.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:4'
     this.pad.className = 'pad'
     this.pad.append(this.stick)
     const move = (e: PointerEvent) => {
@@ -103,7 +107,7 @@ export class Overlay {
       input.joystick(0, 0)
       this.stick.style.transform = ''
     }
-    this.shadow.append(style, this.hud, this.pad, this.panel, this.custom, this.stats)
+    this.shadow.append(style, this.hud, this.pad, this.panel, this.custom, this.mountedLayer, this.stats)
   }
   private button(text: string, fn: () => void) {
     const el = document.createElement('button')
@@ -120,7 +124,6 @@ export class Overlay {
   open(id: string): boolean {
     if (!this.project.screens?.some((s) => s.id === id && s.phase === 'window')) return false
     if (this.windows.at(-1) === id) return true
-    // Reopening an existing window unwinds to its position in the navigation stack.
     const index = this.windows.indexOf(id)
     if (index >= 0) this.windows.length = index + 1
     else this.windows.push(id)
@@ -138,6 +141,30 @@ export class Overlay {
     this.windows = []
     this.redraw()
     return true
+  }
+  mount(id: string, content: string | HTMLElement, css?: string): HTMLElement {
+    this.unmount(id)
+    const root = document.createElement('div')
+    root.dataset.mountedId = id
+    root.style.cssText = 'position:absolute;inset:0;pointer-events:none'
+    if (typeof content === 'string') root.innerHTML = content
+    else root.append(content)
+    let styleEl: HTMLStyleElement | undefined
+    if (css) {
+      styleEl = document.createElement('style')
+      styleEl.textContent = css
+      this.shadow.append(styleEl)
+    }
+    this.mountedLayer.append(root)
+    this.mounted.set(id, { root, style: styleEl })
+    return root
+  }
+  unmount(id: string) {
+    const entry = this.mounted.get(id)
+    if (!entry) return
+    entry.root.remove()
+    entry.style?.remove()
+    this.mounted.delete(id)
   }
   private redraw() {
     const state = this.snapshot
@@ -209,16 +236,17 @@ export class Overlay {
     if (this.phase !== phase) this.windows = []
     this.phase = phase
     this.snapshot = { score, time, best, lang, mode }
-    this.input.setModal(this.windows.length > 0)
-    this.input.releaseVirtual()
-    this.host.style.pointerEvents = this.windows.length || phase !== 'playing' ? 'auto' : 'none'
-    if (this.windows.length && document.pointerLockElement) document.exitPointerLock()
+    const active = this.project.screens?.find((s) => s.id === this.current())
+    const windowOpen = !!this.windows.length
+    const isModalWindow = windowOpen && active?.modal !== false
+    this.input.setModal(isModalWindow)
+    if (isModalWindow) this.input.releaseVirtual()
+    this.host.style.pointerEvents = isModalWindow || phase !== 'playing' ? 'auto' : 'none'
+    if (isModalWindow && document.pointerLockElement) document.exitPointerLock()
     this.hud.replaceChildren()
     this.panel.replaceChildren()
     this.custom.replaceChildren()
     this.labels.clear()
-    const active = this.project.screens?.find((s) => s.id === this.current())
-    const windowOpen = !!this.windows.length
     const items = this.project.ui.filter(
       (item) =>
         item.visible !== false &&
@@ -228,13 +256,16 @@ export class Overlay {
     this.panel.hidden = authored || phase === 'playing'
     this.hud.hidden = authored || phase !== 'playing'
     this.custom.hidden = !items.length && !windowOpen
-    this.custom.style.background = active?.background || (windowOpen ? '#152024dc' : 'transparent')
-    this.custom.style.pointerEvents = phase === 'playing' && !windowOpen ? 'none' : 'auto'
+    this.custom.style.background = active?.background || (isModalWindow ? '#152024dc' : 'transparent')
+    const screenBlur = Number((active as any)?.backdropBlur ?? 0)
+    this.custom.style.backdropFilter = screenBlur > 0 ? `blur(${screenBlur}px)` : ''
+    ;(this.custom.style as any).webkitBackdropFilter = screenBlur > 0 ? `blur(${screenBlur}px)` : ''
+    this.custom.style.pointerEvents = phase === 'playing' && !isModalWindow ? 'none' : 'auto'
     const safe = active?.safeArea !== false
     this.custom.style.inset = safe
       ? 'env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)'
       : '0'
-    this.pad.hidden = windowOpen || phase !== 'playing'
+    this.pad.hidden = isModalWindow || phase !== 'playing'
     const label = document.createElement('output')
     label.dataset.role = 'score'
     if (mode) this.hud.append(label)
@@ -287,7 +318,11 @@ export class Overlay {
         fontSize: (item.fontSize || 16) + 'px',
         textAlign: item.align || 'left',
         zIndex: String(item.zIndex || 0),
-        background: item.background || '',
+        background: item.background || (item.type === 'blur' ? 'rgba(18, 26, 32, 0.35)' : ''),
+        borderRadius: Number.isFinite(item.borderRadius) ? item.borderRadius + 'px' : (item.type === 'blur' ? '12px' : ''),
+        border: item.borderColor ? `1px solid ${item.borderColor}` : '',
+        backdropFilter: Number(item.backdropBlur ?? (item.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(item.backdropBlur ?? 12)}px)` : '',
+        webkitBackdropFilter: Number(item.backdropBlur ?? (item.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(item.backdropBlur ?? 12)}px)` : '',
         pointerEvents: item.type === 'button' ? 'auto' : 'none',
       })
       if (item.type === 'button' && item.action === 'input' && item.target) this.bindInput(el, item.target)
@@ -318,14 +353,23 @@ export class Overlay {
         const cells = el.getElementsByClassName('inventory-entry')
         while (cells.length > entries.length) cells[cells.length - 1].remove()
         for (let i = 0; i < entries.length; i++) {
-          let cell = cells[i]
+          let cell = cells[i] as HTMLElement | undefined
           if (!cell) {
             cell = document.createElement('div')
             cell.className = 'inventory-entry'
             el.append(cell)
           }
-          const label = this.t(String(entries[i] ?? ''))
+          const raw = entries[i]
+          const isObj = raw && typeof raw === 'object'
+          const label = this.t(String(isObj ? (raw as any).label ?? (raw as any).id ?? '' : (raw ?? '')))
           if (cell.textContent !== label) cell.textContent = label
+          cell.onclick = () =>
+            this.actions.emit('ui.item.click', {
+              container: item.id,
+              index: i,
+              item: raw,
+              id: isObj ? (raw as any).id : String(raw),
+            })
         }
       }
       if (!el || !item.variable || item.type === 'container') continue
@@ -336,12 +380,24 @@ export class Overlay {
     }
   }
   get(id: string) {
-    return this.labels.get(id)
+    return this.labels.get(id) ?? this.mounted.get(id)?.root
+  }
+  setBlur(id: string, blurPx: number) {
+    const el = this.get(id)
+    if (!el) return
+    const v = blurPx > 0 ? `blur(${blurPx}px)` : ''
+    el.style.backdropFilter = v
+    ;(el.style as any).webkitBackdropFilter = v
+  }
+  setStyle(id: string, styles: Partial<CSSStyleDeclaration>) {
+    const el = this.get(id)
+    if (el) Object.assign(el.style, styles)
   }
   performance(text: string) {
     this.stats.textContent = text
   }
   dispose() {
+    for (const id of [...this.mounted.keys()]) this.unmount(id)
     this.input.releaseVirtual()
     this.host.remove()
   }

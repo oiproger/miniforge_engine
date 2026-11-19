@@ -15,6 +15,15 @@ const types: Record<string, AssetType> = {
   js: 'script',
   glsl: 'shader',
   json: 'json',
+  md: 'text',
+  txt: 'text',
+  ini: 'text',
+  cfg: 'text',
+  csv: 'text',
+  toml: 'text',
+  yml: 'text',
+  yaml: 'text',
+  xml: 'text',
 }
 
 export async function readAssets(files: File[]): Promise<Asset[]> {
@@ -45,7 +54,7 @@ export async function readAssets(files: File[]): Promise<Asset[]> {
     if (consumed.has(file)) continue
     const type = types[extension(file.name)]
     if (!type) throw Error('Unsupported asset: ' + file.name)
-    const data = ['script', 'json', 'shader'].includes(type) ? await file.text() : await encode(file)
+    const data = ['script', 'json', 'shader', 'text'].includes(type) ? await file.text() : await encode(file)
     if (type === 'json') JSON.parse(data)
     result.push({ id: uid('asset'), type, name: file.name, data, properties: { size: file.size } })
   }

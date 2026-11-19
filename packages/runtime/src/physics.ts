@@ -1,9 +1,9 @@
 import R from '@dimforge/rapier3d-compat'
 import { mat4, vec3 } from 'gl-matrix'
 import { Vector3, type SceneNode } from '../../graphics/src/scene'
-import type { Entity, Scene } from '../../project-schema/src'
+import type { Entity, Scene, Vec3 } from '../../project-schema/src'
 import type { RenderWorld } from '../../graphics/src'
-import type { PhysicsSession } from './types'
+import type { PhysicsSession, RaycastHit } from './types'
 
 export default async function createPhysics(
   view: Pick<RenderWorld, 'objects'>,
@@ -17,13 +17,13 @@ export default async function createPhysics(
   const pos = new Vector3()
   const controllers = new Map<string, R.KinematicCharacterController>()
   function triangleCollider(node: SceneNode) {
-    const world = node.worldMatrix()
+    const worldMatrix = node.worldMatrix()
     const pose = mat4.fromRotationTranslation(
       mat4.create(),
       node.worldRotation(),
       node.getWorldPosition(pos).toArray(),
     )
-    const local = mat4.multiply(mat4.create(), mat4.invert(pose, pose)!, world)
+    const local = mat4.multiply(mat4.create(), mat4.invert(pose, pose)!, worldMatrix)
     const positions: number[] = [],
       indices: number[] = []
     const v = vec3.create()
@@ -52,25 +52,31 @@ export default async function createPhysics(
     const node = view.objects.get(e.id)
     const enabled = e.components.filter((c) => c.enabled !== false)
     const body = enabled.find((c) => c.type === 'body'),
-      c = enabled.find((c) => c.type === 'collider')
+      c = enabled.find((c) => c.type === 'collider'),
+      water = enabled.find((c) => c.type === 'water')
     const character = enabled.find(
       (c) => c.type === 'behavior' && ['player', 'first-person'].includes(c.kind),
     )
     const mesh = enabled.some((c) => c.type === 'terrain') || c?.shape === 'mesh'
-    if (!node || bodies.has(e.id) || !(body || c || character || mesh)) return
+    if (!node || bodies.has(e.id) || !(body || c || character || mesh || water)) return
     const scale = node.getWorldScale(new Vector3())
-    const [w, h, d] = (c?.size || scale.toArray()).map((v: number) => Math.max(0.001, Math.abs(v)))
+    const [w, h, d] = (
+      c?.size ||
+      (water ? [water.size ?? 16, Math.max(0.2, water.depth ?? 2), water.size ?? 16] : scale.toArray())
+    ).map((v: number) => Math.max(0.001, Math.abs(v)))
     const radius = Math.max(0.02, Number(character?.params?.radius ?? (c ? w / 2 : 0.24)))
     const height = Math.max(2 * radius, Number(character?.params?.height ?? (c ? h : 0.96)))
     const collider = character
       ? R.ColliderDesc.roundCylinder(height / 2 - 0.02, radius - 0.01, 0.01).setTranslation(0, height / 2, 0)
-      : mesh
-        ? triangleCollider(node)
-        : c?.shape === 'sphere'
-          ? R.ColliderDesc.ball(w / 2)
-          : c?.shape === 'capsule'
-            ? R.ColliderDesc.capsule(Math.max(0, (h - w) / 2), w / 2)
-            : R.ColliderDesc.cuboid(w / 2, h / 2, d / 2)
+      : water && !c
+        ? R.ColliderDesc.cuboid(w / 2, h / 2, d / 2).setTranslation(0, -h / 2, 0)
+        : mesh
+          ? triangleCollider(node)
+          : c?.shape === 'sphere'
+            ? R.ColliderDesc.ball(w / 2)
+            : c?.shape === 'capsule'
+              ? R.ColliderDesc.capsule(Math.max(0, (h - w) / 2), w / 2)
+              : R.ColliderDesc.cuboid(w / 2, h / 2, d / 2)
     if (!collider) return
     const desc =
       character || body?.kind === 'kinematic'
@@ -78,6 +84,10 @@ export default async function createPhysics(
         : body?.kind === 'dynamic'
           ? R.RigidBodyDesc.dynamic()
           : R.RigidBodyDesc.fixed()
+    if (body?.linearDamping != null) desc.setLinearDamping(Number(body.linearDamping))
+    if (body?.angularDamping != null) desc.setAngularDamping(Number(body.angularDamping))
+    if (body?.gravityScale != null) desc.setGravityScale(Number(body.gravityScale))
+    if (body?.lockRotation) desc.lockRotations()
     node.getWorldPosition(pos)
     const rot = rotation(node)
     const rigid = world.createRigidBody(desc.setTranslation(pos.x, pos.y, pos.z).setRotation(rot))
@@ -91,9 +101,14 @@ export default async function createPhysics(
       controller.enableSnapToGround(0.12)
       controllers.set(e.id, controller)
     }
-    collider.setSensor(!!c?.trigger).setActiveEvents(R.ActiveEvents.COLLISION_EVENTS)
-    if (c?.trigger) collider.setActiveCollisionTypes(R.ActiveCollisionTypes.ALL)
+    const isSensor = !!c?.trigger || (!!water && !c)
+    collider.setSensor(isSensor).setActiveEvents(R.ActiveEvents.COLLISION_EVENTS)
+    if (isSensor) collider.setActiveCollisionTypes(R.ActiveCollisionTypes.ALL)
     if (body && body.mass > 0) collider.setMass(body.mass)
+    if (c?.friction != null) collider.setFriction(Number(c.friction))
+    else if (body?.friction != null) collider.setFriction(Number(body.friction))
+    if (c?.restitution != null) collider.setRestitution(Number(c.restitution))
+    else if (body?.restitution != null) collider.setRestitution(Number(body.restitution))
     if (c?.groups != null) collider.setCollisionGroups(c.groups)
     owners.set(world.createCollider(collider, rigid).handle, e.id)
     let parent: typeof node | null = node
@@ -215,6 +230,67 @@ export default async function createPhysics(
         (collider) => owners.has(collider.handle),
       )
       return hit ? owners.get(hit.collider.handle) : undefined
+    },
+    raycastHit(origin, direction, length, excludeIds = []): RaycastHit | undefined {
+      const excluded = new Set(excludeIds)
+      const mag = Math.hypot(direction.x, direction.y, direction.z) || 1
+      const dx = direction.x / mag,
+        dy = direction.y / mag,
+        dz = direction.z / mag
+      const ray = new R.Ray(origin, { x: dx, y: dy, z: dz })
+      const hit = world.castRayAndGetNormal(
+        ray,
+        length,
+        true,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        (collider) => {
+          const id = owners.get(collider.handle)
+          return !!id && !excluded.has(id)
+        },
+      )
+      if (!hit) return undefined
+      const id = owners.get(hit.collider.handle)
+      if (!id) return undefined
+      const toi = hit.timeOfImpact
+      return {
+        id,
+        distance: toi,
+        point: [origin.x + dx * toi, origin.y + dy * toi, origin.z + dz * toi],
+        normal: [hit.normal.x, hit.normal.y, hit.normal.z],
+      }
+    },
+    applyImpulse(id, impulse: Vec3) {
+      const body = bodies.get(id)
+      if (body?.isDynamic()) body.applyImpulse({ x: impulse[0], y: impulse[1], z: impulse[2] }, true)
+    },
+    applyForce(id, force: Vec3) {
+      const body = bodies.get(id)
+      if (body?.isDynamic()) body.addForce({ x: force[0], y: force[1], z: force[2] }, true)
+    },
+    setVelocity(id, velocity: Vec3) {
+      const body = bodies.get(id)
+      if (body?.isDynamic()) body.setLinvel({ x: velocity[0], y: velocity[1], z: velocity[2] }, true)
+    },
+    getVelocity(id): Vec3 | undefined {
+      const body = bodies.get(id)
+      if (!body) return undefined
+      const v = body.linvel()
+      return [v.x, v.y, v.z]
+    },
+    setGravityScale(id, scale: number) {
+      const body = bodies.get(id)
+      if (body?.isDynamic()) body.setGravityScale(scale, true)
+    },
+    teleportBody(id, position: Vec3) {
+      const body = bodies.get(id)
+      if (!body) return
+      body.setTranslation({ x: position[0], y: position[1], z: position[2] }, true)
+      if (body.isKinematic()) {
+        body.setNextKinematicTranslation({ x: position[0], y: position[1], z: position[2] })
+      }
     },
     dispose() {
       queue.free()

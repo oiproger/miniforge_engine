@@ -8,6 +8,8 @@ export interface UIScreen {
   phase: ScreenPhase
   safeArea?: boolean
   background?: string
+  /** When false on a window screen, keeps gameplay input & pointer lock active (ideal for HUD widgets). */
+  modal?: boolean
 }
 export const anchors = [
   'top-left',
@@ -33,7 +35,20 @@ export const buttonActions = [
   'language',
   'input',
 ] as const
-export const inputActions = ['Jump', 'Interact', 'Attack', 'Pause', 'left', 'right', 'up', 'down'] as const
+export const inputActions = [
+  'Jump',
+  'Interact',
+  'Attack',
+  'Sprint',
+  'Crouch',
+  'Flashlight',
+  'Phone',
+  'Pause',
+  'left',
+  'right',
+  'up',
+  'down',
+] as const
 export type ButtonAction = (typeof buttonActions)[number]
 export const phaseNames: Record<ScreenPhase, string> = {
   menu: 'Main menu',
@@ -43,7 +58,7 @@ export const phaseNames: Record<ScreenPhase, string> = {
   window: 'Window',
 }
 export function makeScreen(phase: ScreenPhase, name = phaseNames[phase]): UIScreen {
-  return { id: uid('screen'), name, phase, safeArea: true }
+  return { id: uid('screen'), name, phase, safeArea: true, modal: phase === 'window' ? true : undefined }
 }
 export function makeScreenControls(screen: UIScreen): UIElement[] {
   const item = (
@@ -94,18 +109,18 @@ export function duplicateScreen(project: Project, id: string): UIScreen {
   if (!src) throw new Error('Unknown screen')
   const screen = { ...src, id: uid('screen'), name: src.name + ' Copy', phase: 'window' as const }
   project.screens!.push(screen)
-  const copiedIds=new Map<string,string>()
+  const copiedIds = new Map<string, string>()
   const controls = project.ui
     .filter((item) => item.screen === id)
     .map((item) => {
       const copy = structuredClone(item)
       copy.id = uid('ui')
-      copiedIds.set(item.id,copy.id)
+      copiedIds.set(item.id, copy.id)
       copy.screen = screen.id
       if (copy.action === 'open' && copy.target === id) copy.target = screen.id
       return copy
     })
-  for(const copy of controls) if(copy.parentId)copy.parentId=copiedIds.get(copy.parentId)
+  for (const copy of controls) if (copy.parentId) copy.parentId = copiedIds.get(copy.parentId)
   project.ui.push(...controls)
   return screen
 }

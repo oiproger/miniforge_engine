@@ -1,5 +1,6 @@
 import {validTerrain} from './terrain'
 export * from './terrain'
+export * from './nav'
 import {validateScreens, type UIScreen, type Anchor, type ButtonAction} from './screens'
 export * from './screens'
 // Project v1 is plain JSON. A component's type and an asset's ID are stable routing keys.
@@ -30,7 +31,7 @@ export interface Scene {
   environment: Environment
   entities: Entity[]
 }
-export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json'
+export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox' | 'text' | 'particle'
 export interface Asset {
   id: string
   name: string
@@ -77,6 +78,137 @@ export function makeEntity(name: string, shape?: string): Entity {
     properties: {},
   }
 }
+
+export interface ParticleConfig {
+  rate: number
+  maxParticles: number
+  lifeMin: number
+  lifeMax: number
+  speedMin: number
+  speedMax: number
+  spread: number
+  direction: Vec3
+  gravity: Vec3
+  startSize: number
+  endSize: number
+  startColor: string
+  endColor: string
+  startAlpha: number
+  endAlpha: number
+  additive: boolean
+  shape: 'point' | 'box' | 'sphere'
+  shapeSize: Vec3
+  texture?: string
+  loop: boolean
+  playing: boolean
+  burstCount: number
+  worldSpace: boolean
+}
+
+export const PARTICLE_PRESETS: Record<string, Partial<ParticleConfig>> = {
+  steam: {
+    rate: 18, maxParticles: 90, lifeMin: 1.4, lifeMax: 2.6, speedMin: 0.7, speedMax: 1.4,
+    spread: 18, direction: [0, 1, 0], gravity: [0.15, 0.25, 0],
+    startSize: 0.28, endSize: 1.15, startColor: '#d8e0e6', endColor: '#8d99a3',
+    startAlpha: 0.45, endAlpha: 0, additive: false, shape: 'sphere', shapeSize: [0.25, 0.1, 0.25],
+  },
+  smoke: {
+    rate: 14, maxParticles: 80, lifeMin: 2.0, lifeMax: 3.6, speedMin: 0.5, speedMax: 1.1,
+    spread: 24, direction: [0, 1, 0], gravity: [0.2, 0.12, 0.05],
+    startSize: 0.35, endSize: 1.6, startColor: '#565c63', endColor: '#25282c',
+    startAlpha: 0.6, endAlpha: 0, additive: false, shape: 'sphere', shapeSize: [0.3, 0.1, 0.3],
+  },
+  sparks: {
+    rate: 45, maxParticles: 120, lifeMin: 0.35, lifeMax: 0.9, speedMin: 2.2, speedMax: 5.0,
+    spread: 55, direction: [0, 1, 0], gravity: [0, -9.2, 0],
+    startSize: 0.11, endSize: 0.02, startColor: '#fff2a6', endColor: '#ff5511',
+    startAlpha: 1, endAlpha: 0, additive: true, shape: 'point', shapeSize: [0.1, 0.1, 0.1],
+  },
+  fire: {
+    rate: 32, maxParticles: 100, lifeMin: 0.45, lifeMax: 1.0, speedMin: 0.9, speedMax: 2.0,
+    spread: 22, direction: [0, 1, 0], gravity: [0, 0.6, 0],
+    startSize: 0.38, endSize: 0.08, startColor: '#ffd466', endColor: '#e83a14',
+    startAlpha: 0.9, endAlpha: 0, additive: true, shape: 'sphere', shapeSize: [0.25, 0.1, 0.25],
+  },
+  snow: {
+    rate: 40, maxParticles: 180, lifeMin: 3.0, lifeMax: 5.5, speedMin: 0.4, speedMax: 1.0,
+    spread: 20, direction: [0, -1, 0], gravity: [0.25, -0.45, 0.1],
+    startSize: 0.09, endSize: 0.07, startColor: '#f2f7ff', endColor: '#d9e6f5',
+    startAlpha: 0.85, endAlpha: 0.1, additive: false, shape: 'box', shapeSize: [14, 0.5, 14],
+  },
+  rain: {
+    rate: 85, maxParticles: 220, lifeMin: 0.6, lifeMax: 1.2, speedMin: 8.5, speedMax: 12.0,
+    spread: 5, direction: [0, -1, 0], gravity: [0.3, -9.8, 0],
+    startSize: 0.06, endSize: 0.05, startColor: '#b7d4ea', endColor: '#86a9c4',
+    startAlpha: 0.65, endAlpha: 0.15, additive: false, shape: 'box', shapeSize: [14, 0.5, 14],
+  },
+  dust: {
+    rate: 12, maxParticles: 70, lifeMin: 3.5, lifeMax: 6.5, speedMin: 0.08, speedMax: 0.25,
+    spread: 180, direction: [0, 1, 0], gravity: [0.03, 0.01, -0.02],
+    startSize: 0.07, endSize: 0.04, startColor: '#e8dcc2', endColor: '#c4b89d',
+    startAlpha: 0.35, endAlpha: 0, additive: true, shape: 'box', shapeSize: [6, 3, 6],
+  },
+}
+
+export function defaultParticleConfig(preset?: string): ParticleConfig {
+  const base: ParticleConfig = {
+    rate: 20,
+    maxParticles: 100,
+    lifeMin: 1.0,
+    lifeMax: 2.2,
+    speedMin: 0.8,
+    speedMax: 1.8,
+    spread: 25,
+    direction: [0, 1, 0],
+    gravity: [0, -0.5, 0],
+    startSize: 0.25,
+    endSize: 0.8,
+    startColor: '#ffffff',
+    endColor: '#8899aa',
+    startAlpha: 0.7,
+    endAlpha: 0,
+    additive: false,
+    shape: 'point',
+    shapeSize: [0.2, 0.2, 0.2],
+    loop: true,
+    playing: true,
+    burstCount: 0,
+    worldSpace: true,
+  }
+  return { ...base, ...(preset && PARTICLE_PRESETS[preset] ? PARTICLE_PRESETS[preset] : {}) }
+}
+
+export function makeParticleAsset(name = 'Steam', preset = 'steam', id = uid('ptc')): Asset {
+  return {
+    id,
+    name,
+    type: 'particle',
+    data: '',
+    properties: defaultParticleConfig(preset),
+  }
+}
+
+export interface TouchControlConfig {
+  id: string
+  kind: 'joystick' | 'button' | 'lookpad'
+  label?: string
+  action?: string
+  x: number
+  y: number
+  size: number
+  deadzone?: number
+  color?: string
+}
+
+export interface TouchSettings {
+  mode: 'auto' | 'always' | 'never'
+  emulateTouchFromMouse: boolean
+  emulateMouseFromTouch: boolean
+  lookSensitivity: number
+  opacity: number
+  controls?: TouchControlConfig[]
+}
+
 export function makeMaterial(name: string, color: string, id = uid('mat')): Asset {
   return {
     id,
@@ -300,6 +432,7 @@ export function needsPhysics(entities: Entity[]) {
         c.enabled !== false &&
         (c.type === 'body' ||
           c.type === 'terrain' ||
+          c.type === 'water' ||
           (c.type === 'collider' &&
             !c.trigger &&
             !e.components.some(

@@ -1,15 +1,38 @@
 import { SceneNode, Vector3 } from '../../graphics/src/scene'
 import { createWorld } from '../../graphics/src'
-import { needsPhysics, instantiatePrefab, makePrefab, subtree } from '../../project-schema/src'
+import { bakeNavZone, findNavPath, setNavAreaState, needsPhysics, instantiatePrefab, makePrefab, subtree, uid, type NavZone } from '../../project-schema/src'
 import { bindRule } from '../../behaviors/src/rules'
 import type { Component, Entity, Project, Vec3 } from '../../project-schema/src'
 import { behavior } from '../../behaviors/src'
+import { AudioEngine } from './audio'
+import { TweenManager } from './tween'
+import { SaveManager } from './saveSystem'
+import { TouchController } from './touch'
 import { Input } from './input'
 import { Events, Lifecycle, type ScriptLifecycle } from './lifecycle'
 import { Overlay, translate, type Phase } from './overlay'
-import type { GameAPI, GameOptions, GameSession, PhysicsSession } from './types'
-export type { GameAPI, GameOptions, GameSession, ScriptFactory } from './types'
+import type {
+  CameraAPI,
+  EnvironmentAPI,
+  GameAPI,
+  GraphicsAPI,
+  MaterialsAPI,
+  GameOptions,
+  GameSession,
+  LightsAPI,
+  PhysicsSession,
+  PlayerAPI,
+  ServicesAPI,
+  WorldStateAPI,
+} from './types'
+export type { GameAPI, GameOptions, GameSession, ScriptFactory, RaycastHit, FlashlightOptions } from './types'
 export type { ScriptLifecycle } from './lifecycle'
+export type { AudioBus, AudioPlayOptions } from './audio'
+export { Tween, PropertyTweener, TweenManager } from './tween'
+export type { TweenTrans, TweenEase } from './tween'
+export { SaveManager } from './saveSystem'
+export type { SaveSnapshot, SaveOptions, LoadOptions } from './saveSystem'
+export type { TouchAPI, TouchPointerState, TouchEmulationOptions } from './touch'
 
 const visible = (obj: SceneNode | null): boolean => !obj || (obj.visible && visible(obj.parent))
 interface Actor {
@@ -40,7 +63,11 @@ export async function startGame(
       (id) => active(id),
     )
   const signal = new AbortController(),
-    vars: Record<string, any> = {}
+    vars: Record<string, any> = {},
+    worldStore: Record<string, unknown> = {},
+    serviceRegistry = new Map<string, unknown>(),
+    audioEngine = new AudioEngine(project),
+    tweens = new TweenManager()
   const point = new Vector3(),
     playerPoint = new Vector3()
   const mode = project.settings.mode === 'collectathon'
@@ -49,6 +76,15 @@ export async function startGame(
   let firstPerson = false,
     yaw = 0,
     pitch = 0,
+    eyeHeight = 1.0,
+    currentEyeHeight = 1.0,
+    crouchOverride: boolean | null = null,
+    crouching = false,
+    sprinting = false,
+    speedOverride: number | null = null,
+    shakeIntensity = 0,
+    shakeRemaining = 0,
+    shakeDuration = 0,
     jumpTime = 0,
     jumpHeld = false,
     verticalSpeed = 0,
@@ -66,14 +102,13 @@ export async function startGame(
     sceneId = project.activeScene,
     revision = 0,
     physics: PhysicsSession | undefined
-  let sounds: AudioContext | undefined
-  const clips = new Set<HTMLAudioElement>()
   let player: Actor | undefined,
     coins: Actor[] = [],
     hazards: Actor[] = [],
     solids: Actor[] = [],
     volumes: Actor[] = []
   const contacts = new Set<string>()
+  const activeTriggers = new Map<string, Set<string>>()
   let scene = project.scenes.find((s) => s.id === sceneId)!
   const stats = {
     fps: 0,
@@ -118,13 +153,264 @@ export async function startGame(
         void platform.saveData('language', language)
         updateUI()
       },
-      emit: (name, source?: string) => emit(name, source),
+      emit: (name, source?: unknown) => emit(name, source),
     },
     input,
     t,
   )
   if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
   container.append(overlay.host)
+  const touchCtrl = new TouchController(
+    container,
+    world.renderer.domElement,
+    input,
+    (dx, dy) => {
+      if (!firstPerson || phase !== 'playing' || ad) return
+      yaw -= dx
+      pitch = Math.min(1.45, Math.max(-1.45, pitch - dy))
+    },
+    (clientX, clientY) => {
+      if (phase !== 'playing' || ad) return
+      const rect = world.renderer.domElement.getBoundingClientRect()
+      const id = world.pick(clientX - rect.left, clientY - rect.top)
+      if (id) {
+        lifecycle.call('onPointerClick', id)
+        emit('pointer.click', id)
+      }
+    },
+    signal.signal,
+    project.settings?.touch,
+  )
+  const touchAPI = touchCtrl.api()
+
+  function cameraForward(): Vector3 {
+    const p = world.camera.rotation.x,
+      y = world.camera.rotation.y
+    const cp = Math.cos(p)
+    return new Vector3(-Math.sin(y) * cp, Math.sin(p), -Math.cos(y) * cp)
+  }
+  function cameraRight(): Vector3 {
+    const y = world.camera.rotation.y
+    return new Vector3(Math.cos(y), 0, -Math.sin(y))
+  }
+
+  const cameraAPI: CameraAPI = {
+    get position() {
+      return world.camera.position
+    },
+    get rotation() {
+      return world.camera.rotation
+    },
+    get forward() {
+      return cameraForward()
+    },
+    get right() {
+      return cameraRight()
+    },
+    get yaw() {
+      return yaw
+    },
+    set yaw(v: number) {
+      yaw = v
+      if (firstPerson) world.camera.rotation.y = v
+    },
+    get pitch() {
+      return pitch
+    },
+    set pitch(v: number) {
+      pitch = Math.min(1.45, Math.max(-1.45, v))
+      if (firstPerson) world.camera.rotation.x = pitch
+    },
+    get fov() {
+      return world.camera.fov
+    },
+    set fov(v: number) {
+      world.camera.fov = Math.min(150, Math.max(15, v))
+    },
+    get eyeHeight() {
+      return eyeHeight
+    },
+    set eyeHeight(v: number) {
+      eyeHeight = Math.max(0.2, v)
+    },
+    lookAt(target: Vec3 | Vector3) {
+      const vec = Array.isArray(target) ? new Vector3().fromArray(target) : target
+      world.camera.lookAt(vec)
+      pitch = world.camera.rotation.x
+      yaw = world.camera.rotation.y
+    },
+    setLook(nextYaw: number, nextPitch: number) {
+      yaw = nextYaw
+      pitch = Math.min(1.45, Math.max(-1.45, nextPitch))
+      world.camera.rotation.set(pitch, yaw, 0)
+    },
+    shake(intensity: number, duration = 0.25) {
+      shakeIntensity = Math.max(shakeIntensity, Math.max(0, intensity))
+      shakeDuration = Math.max(0.01, duration)
+      shakeRemaining = Math.max(shakeRemaining, duration)
+    },
+    worldToScreen(position: Vec3 | Vector3) {
+      return world.worldToScreen(position)
+    },
+    screenToRay(x: number, y: number) {
+      return world.screenToRay(x, y)
+    },
+  }
+
+  const playerAPI: PlayerAPI = {
+    get id() {
+      return player?.entity.id
+    },
+    get position(): Vec3 {
+      if (!player) return [0, 0, 0]
+      return player.object.getWorldPosition(new Vector3()).toArray()
+    },
+    get isGrounded() {
+      return grounded
+    },
+    get isCrouching() {
+      return crouching
+    },
+    get isSprinting() {
+      return sprinting
+    },
+    get speed() {
+      return speedOverride ?? Number(player?.params.speed ?? 3.5)
+    },
+    set speed(v: number) {
+      speedOverride = Math.max(0, v)
+    },
+    teleport(position: Vec3, yawDelta = 0, pitchDelta = 0) {
+      if (!player) return
+      const target = new Vector3().fromArray(position)
+      const local = target.clone()
+      player.object.parent?.worldToLocal(local)
+      player.object.position.copy(local)
+      physics?.teleportBody?.(player.entity.id, position)
+      verticalSpeed = 0
+      if (yawDelta) yaw += yawDelta
+      if (pitchDelta) pitch = Math.min(1.45, Math.max(-1.45, pitch + pitchDelta))
+      if (firstPerson) {
+        world.camera.position.set(position[0], position[1] + currentEyeHeight, position[2])
+        world.camera.rotation.set(pitch, yaw, 0)
+      }
+      contacts.clear()
+    },
+    setSpeed(speed: number) {
+      speedOverride = Math.max(0, speed)
+    },
+    setCrouch(enabled: boolean) {
+      crouchOverride = enabled
+    },
+  }
+
+  const environmentAPI: EnvironmentAPI = {
+    setFog: (density, fogColor) => world.setFog(density, fogColor),
+    setFogFade: (start, end, depthMode) => world.setFogFade(start, end, depthMode),
+    setBackground: (hex) => world.setBackground(hex),
+    setAmbient: (intensity, tint) => world.setAmbient(intensity, tint),
+    setAmbientGround: (hex, intensity) => world.setAmbientGround(hex, intensity),
+    setSun: (direction, tint, intensity) => world.setSun(direction, tint, intensity),
+    setExposure: (value) => world.setExposure(value),
+    setSky: (topColor, horizonColor, bottomColor, enabled = true) =>
+      world.setSky(topColor, horizonColor, bottomColor, enabled),
+    setProceduralSky: (opts) => world.setProceduralSky(opts),
+    setSkyboxFaces: (faces) => world.setSkyboxFaces(faces),
+    setSkyAsset: (assetId) => world.setSkyAsset(assetId),
+  }
+
+  const graphicsAPI: GraphicsAPI = {
+    setPostProcess: (opts) => world.setPostProcess(opts),
+    getPostProcess: () => world.getPostProcess(),
+    setShadows: (enabled, range, softShadowHeight) => world.setShadows(enabled, range, softShadowHeight),
+    setSmoothShading: (enabled) => world.setSmoothShading(enabled),
+    bakeLighting: (zoneId) => world.bakeLighting(zoneId),
+    setReflections: (mode, resolution, interval) => world.setReflections(mode, resolution, interval),
+    updateZoneProbe: (zoneId) => world.updateZoneProbe(zoneId),
+    setShadowParams: (opts) => world.setShadowParams(opts),
+    setRenderQuality: (opts) => world.setRenderQuality(opts),
+  }
+
+  const materialsAPI: MaterialsAPI = {
+    set: (entityId, materialAssetId) => world.setEntityMaterial(entityId, materialAssetId),
+    setColor: (entityId, hex, opacity) => world.setEntityColor(entityId, hex, opacity),
+    setEmissive: (entityId, hex, intensity) => world.setEntityEmissive(entityId, hex, intensity),
+    setShader: (entityId, shaderAssetId) => world.setEntityShader(entityId, shaderAssetId),
+    create: (name, properties) => {
+      const id = uid('mat')
+      project.assets.push({ id, name, type: 'material', data: '', properties: { ...properties } })
+      return id
+    },
+  }
+
+  const lightsAPI: LightsAPI = {
+    setIntensity: (id, intensity) => world.setLightIntensity(id, intensity),
+    setColor: (id, hex) => world.setLightColor(id, hex),
+    setRange: (id, range) => world.setLightRange(id, range),
+    setGlow: (id, glow, falloff) => world.setLightGlow(id, glow, falloff),
+    setShadowLight: (id) => world.setShadowLight(id),
+    setGel: (id, texId) => world.setLightGel(id, texId),
+    setEnabled: (id, enabled) => setActive(id, enabled),
+    setFlashlight: (opts) => world.setFlashlight(opts),
+  }
+
+  const servicesAPI: ServicesAPI = {
+    register<T>(name: string, service: T): T {
+      serviceRegistry.set(name, service)
+      return service
+    },
+    get<T = any>(name: string): T | undefined {
+      return serviceRegistry.get(name) as T | undefined
+    },
+    has(name: string): boolean {
+      return serviceRegistry.has(name)
+    },
+  }
+
+  const worldStateAPI: WorldStateAPI = {
+    get<T = any>(key: string, fallback?: T): T {
+      return (Object.hasOwn(worldStore, key) ? worldStore[key] : fallback) as T
+    },
+    set(key: string, value: unknown) {
+      worldStore[key] = value
+      emit('worldState.changed', { key, value })
+    },
+    all() {
+      return { ...worldStore }
+    },
+    async save(slot = 'default') {
+      await platform.saveData('worldState:' + slot, worldStore)
+    },
+    async load(slot = 'default') {
+      const data = await platform.loadData('worldState:' + slot)
+      if (!data || typeof data !== 'object') return false
+      for (const key of Object.keys(worldStore)) delete worldStore[key]
+      Object.assign(worldStore, data)
+      emit('worldState.loaded', { slot })
+      return true
+    },
+  }
+
+  const saveManager = new SaveManager({
+    projectId: project.id,
+    platform,
+    events: { emit },
+    getSceneId: () => sceneId,
+    getScene: () => scene,
+    getWorld: () => world,
+    getVars: () => vars,
+    getWorldState: () => worldStore,
+    setWorldState: (data) => {
+      for (const k of Object.keys(worldStore)) delete worldStore[k]
+      Object.assign(worldStore, data)
+    },
+    getPlayer: () => playerAPI,
+    getCamera: () => cameraAPI,
+    setActive,
+    loadScene: async (id) => {
+      await load(id, false)
+    },
+  })
 
   function updateUI() {
     overlay.render(phase, vars.score, vars.time, best, language, mode)
@@ -135,8 +421,7 @@ export async function startGame(
   }
   function quiet() {
     input.clear()
-    for (const a of clips) a.pause()
-    void sounds?.suspend().catch(() => {})
+    audioEngine.suspend()
   }
   function pause() {
     if (phase !== 'playing' || disposed) return
@@ -151,15 +436,7 @@ export async function startGame(
     phase = 'playing'
     last = performance.now()
     platform.gameplayStart()
-    if (!sounds) {
-      try {
-        sounds = new AudioContext()
-      } catch {
-        /* audio is optional */
-      }
-    }
-    void sounds?.resume().catch(() => {})
-    for (const clip of clips) void clip.play().catch(() => {})
+    audioEngine.resume()
     updateUI()
     emit('game.play')
   }
@@ -191,32 +468,9 @@ export async function startGame(
     await load(project.activeScene, true)
     if (!disposed) resume()
   }
-  function playSound(assetId?: string) {
-    if (ad || phase !== 'playing' || project.settings.sound === false) return
-    const asset = assetId && project.assets.find((a) => a.id === assetId && a.type === 'audio')
-    if (asset) {
-      const clip = new Audio(asset.data)
-      clips.add(clip)
-      clip.onended = () => clips.delete(clip)
-      void clip.play().catch(() => clips.delete(clip))
-      return
-    }
-    if (!sounds || sounds.state !== 'running') return
-    const osc = sounds.createOscillator(),
-      gain = sounds.createGain(),
-      at = sounds.currentTime
-    osc.frequency.setValueAtTime(740, at)
-    osc.frequency.exponentialRampToValueAtTime(1120, at + 0.08)
-    gain.gain.setValueAtTime(0.045, at)
-    gain.gain.exponentialRampToValueAtTime(0.001, at + 0.13)
-    osc.connect(gain)
-    gain.connect(sounds.destination)
-    osc.start(at)
-    osc.stop(at + 0.15)
-    osc.onended = () => {
-      osc.disconnect()
-      gain.disconnect()
-    }
+  function playSound(assetId?: string, opts?: Parameters<AudioEngine['play']>[1]) {
+    if (ad || phase !== 'playing') return ''
+    return audioEngine.play(assetId, opts)
   }
   const registered = new Set<string>(),
     toStart = new Set<string>(),
@@ -270,6 +524,10 @@ export async function startGame(
       throw err
     }
   }
+  function clearTriggerPairsFor(id: string) {
+    activeTriggers.delete(id)
+    for (const set of activeTriggers.values()) set.delete(id)
+  }
   function destroy(id: string) {
     if (destroying.has(id) || unloading) return
     const nodes = subtree(scene, id),
@@ -284,6 +542,9 @@ export async function startGame(
       registered.delete(key)
       toStart.delete(key)
       contacts.delete(key)
+      clearTriggerPairsFor(key)
+      tweens.killOwner(key)
+      navAgents.delete(key)
       physics?.remove(key)
     }
     scene.entities = scene.entities.filter((e) => !ids.has(e.id))
@@ -301,12 +562,22 @@ export async function startGame(
   function setActive(id: string, enabled: boolean) {
     const nodes = subtree(scene, id)
     if (!nodes.length || destroying.has(id) || unloading) return
+    const prevActive = new Map(nodes.map((e) => [e.id, active(e.id)]))
     nodes[0].active = enabled
     world.setEntityActive(id, enabled)
     for (const entity of nodes) {
-      physics?.setActive(entity.id, active(entity.id))
-      if (enabled) install(entity)
-      else contacts.delete(entity.id)
+      const nowActive = active(entity.id)
+      const wasActive = prevActive.get(entity.id) ?? false
+      physics?.setActive(entity.id, nowActive)
+      if (nowActive) {
+        const alreadyRegistered = registered.has(entity.id)
+        install(entity)
+        if (alreadyRegistered && !wasActive) lifecycle.call('onEnable', entity.id)
+      } else {
+        contacts.delete(entity.id)
+        clearTriggerPairsFor(entity.id)
+        if (wasActive && registered.has(entity.id)) lifecycle.call('onDisable', entity.id)
+      }
     }
     if (enabled) startEntities(nodes.map((e) => e.id))
   }
@@ -316,7 +587,6 @@ export async function startGame(
   }
   function requestScene(id: string) {
     if (unloading || disposed || (startingScene && sceneId === id)) return
-    // Defer transitions requested inside event, script and physics callbacks until dispatch completes.
     if (queuedScene !== undefined) return
     queuedScene = id
     const generation = revision
@@ -326,6 +596,132 @@ export async function startGame(
       if (!disposed && generation === revision)
         void load(id, false).catch((err) => emit('scene.error', String(err)))
     })
+  }
+  interface NavAgentState {
+    id: string
+    path: Vec3[]
+    index: number
+    speed: number
+    turnSpeed: number
+    stopDistance: number
+    walkClip?: string
+    idleClip?: string
+    crossfade: number
+    moving: boolean
+  }
+  const navAgents = new Map<string, NavAgentState>()
+  function getNavZone(zoneId?: string): { entity: Entity; zone: NavZone } | undefined {
+    for (const e of scene.entities) {
+      if (!e.active) continue
+      if (zoneId && e.id !== zoneId) continue
+      const z = e.components.find((c) => c.type === 'navZone' && c.enabled !== false) as NavZone | undefined
+      if (z) return { entity: e, zone: z }
+    }
+    return undefined
+  }
+  function stepNavAgents(dt: number) {
+    for (const ag of navAgents.values()) {
+      if (!ag.moving || !ag.path.length) continue
+      const node = world.objects.get(ag.id)
+      if (!node || !active(ag.id)) { ag.moving = false; continue }
+      const target = ag.path[ag.index]
+      if (!target) { ag.moving = false; continue }
+      const wp = node.getWorldPosition(new Vector3())
+      const dx = target[0] - wp.x
+      const dz = target[2] - wp.z
+      const dist = Math.hypot(dx, dz)
+      const isLast = ag.index >= ag.path.length - 1
+      const thresh = isLast ? ag.stopDistance : Math.max(0.22, ag.speed * dt * 1.4)
+      if (dist <= thresh) {
+        if (isLast) {
+          ag.moving = false
+          ag.path = []
+          if (ag.idleClip) world.crossfadeAnimation(ag.id, ag.idleClip, ag.crossfade, true, 1)
+          emit('nav.arrived', { id: ag.id })
+          continue
+        }
+        ag.index++
+        continue
+      }
+      const step = Math.min(dist, ag.speed * dt)
+      const nx = wp.x + (dx / dist) * step
+      const nz = wp.z + (dz / dist) * step
+      const ny = wp.y + (target[1] - wp.y) * Math.min(1, dt * 8)
+      const local = new Vector3(nx, ny, nz)
+      node.parent?.worldToLocal(local)
+      node.position.copy(local)
+      physics?.teleportBody?.(ag.id, [nx, ny, nz])
+      const desiredYaw = Math.atan2(dx, dz)
+      let diff = desiredYaw - node.rotation.y
+      while (diff > Math.PI) diff -= Math.PI * 2
+      while (diff < -Math.PI) diff += Math.PI * 2
+      node.rotation.y += diff * Math.min(1, dt * ag.turnSpeed)
+    }
+  }
+  const navAPI: GameAPI['nav'] = {
+    findPath(start, goal, opts) {
+      const found = getNavZone(opts?.zoneId)
+      if (!found) return []
+      return findNavPath(found.zone, found.entity.transform, start, goal, { smooth: opts?.smooth })
+    },
+    bake(zoneId) {
+      const found = getNavZone(zoneId)
+      if (!found) return undefined
+      return bakeNavZone(found.zone, found.entity.transform, scene)
+    },
+    setObstacle(center, radius, blocked, zoneId) {
+      const found = getNavZone(zoneId)
+      if (found) setNavAreaState(found.zone, found.entity.transform, center, radius, blocked ? 0 : 1)
+    },
+    setAreaCost(center, radius, cost, zoneId) {
+      const found = getNavZone(zoneId)
+      if (found) setNavAreaState(found.zone, found.entity.transform, center, radius, Math.max(1, cost))
+    },
+    setLinkEnabled(linkId, enabled, zoneId) {
+      const found = getNavZone(zoneId)
+      const lnk = found?.zone.links?.find((l) => l.id === linkId)
+      if (lnk) lnk.enabled = enabled
+    },
+    moveAgent(entityId, goal, opts) {
+      const node = world.objects.get(entityId)
+      const ent = scene.entities.find((e) => e.id === entityId)
+      const found = getNavZone()
+      if (!node || !found) return false
+      const wp = node.getWorldPosition(new Vector3())
+      const path = findNavPath(found.zone, found.entity.transform, [wp.x, wp.y, wp.z], goal, { smooth: true })
+      if (!path.length) return false
+      const comp = ent?.components.find((c) => c.type === 'navAgent' && c.enabled !== false)
+      const crossfade = opts?.crossfade ?? Number(comp?.crossfade ?? 0.2)
+      const walkClip = opts?.walkClip ?? comp?.walkClip ?? ''
+      const idleClip = opts?.idleClip ?? comp?.idleClip ?? ''
+      navAgents.set(entityId, {
+        id: entityId,
+        path,
+        index: 0,
+        speed: Math.max(0.1, opts?.speed ?? Number(comp?.speed ?? 2.8)),
+        turnSpeed: Math.max(1, Number(comp?.turnSpeed ?? 8)),
+        stopDistance: Math.max(0.05, opts?.stopDistance ?? Number(comp?.stopDistance ?? 0.35)),
+        walkClip: walkClip || undefined,
+        idleClip: idleClip || undefined,
+        crossfade,
+        moving: true,
+      })
+      if (walkClip) world.crossfadeAnimation(entityId, walkClip, crossfade, true, 1)
+      return true
+    },
+    stopAgent(entityId) {
+      const ag = navAgents.get(entityId)
+      if (!ag) return
+      ag.moving = false
+      ag.path = []
+      if (ag.idleClip) world.crossfadeAnimation(entityId, ag.idleClip, ag.crossfade, true, 1)
+    },
+    getAgentPath(entityId) {
+      return navAgents.get(entityId)?.path ?? []
+    },
+    isAgentMoving(entityId) {
+      return Boolean(navAgents.get(entityId)?.moving)
+    },
   }
   function register(entity: Entity, object: SceneNode, c: Component) {
     const generation = revision
@@ -361,6 +757,37 @@ export async function startGame(
       vars,
       platform,
       project,
+      camera: cameraAPI,
+      player: playerAPI,
+      environment: environmentAPI,
+      graphics: graphicsAPI,
+      materials: materialsAPI,
+      lights: lightsAPI,
+      debug: {
+        drawLine: (a, b, hex, dur) => world.drawDebugLine(a, b, hex, dur),
+        drawBox: (c, sz, hex, dur) => world.drawDebugBox(c, sz, hex, dur),
+      },
+      particles: {
+        play: (id) => world.playParticles(id),
+        stop: (id) => world.stopParticles(id),
+        burst: (id, count) => world.burstParticles(id, count),
+        setRate: (id, rate) => world.setParticleRate(id, rate),
+        setColors: (id, s, e) => world.setParticleColors(id, s, e),
+      },
+      billboards: {
+        setFrame: (id, frame) => world.setBillboardFrame(id, frame),
+        setOpacity: (id, op) => world.setBillboardOpacity(id, op),
+        setSize: (id, w, h) => world.setBillboardSize(id, w, h),
+      },
+      decals: {
+        spawn: (opts) => world.spawnDecal(opts),
+        clear: () => world.clearDecals(),
+        setOpacity: (id, op) => world.setDecalOpacity(id, op),
+      },
+      touch: touchAPI,
+      services: servicesAPI,
+      worldState: worldStateAPI,
+      createTween: () => tweens.create(entity.id),
       get time() {
         return elapsed
       },
@@ -381,18 +808,38 @@ export async function startGame(
           .map((e) => e.id),
       component: (type) => entity.components.find((v) => v.type === type && v.enabled !== false),
       t,
-      audio: { play: playSound },
-      animation: {
-        play: (id, clip, loop = true, speed = 1) => world.playAnimation(id, clip, loop, speed),
-        stop: (id) => world.stopAnimation(id),
-        clips: (id) => world.animationClips(id),
+      audio: {
+        play: (assetId, opts) => playSound(assetId, opts),
+        stop: (handle) => audioEngine.stop(handle),
+        stopAll: () => audioEngine.stopAll(),
+        setVolume: (handle, vol, fade) => audioEngine.setVolume(handle, vol, fade),
+        setPitch: (handle, pitchVal) => audioEngine.setPitch(handle, pitchVal),
+        setPosition: (handle, pos) => audioEngine.setPosition(handle, pos),
+        setBusVolume: (bus, vol) => audioEngine.setBusVolume(bus, vol),
       },
+      animation: {
+        play: (id, clip, loop = true, speed = 1, blendTime = 0) => world.playAnimation(id, clip, loop, speed, blendTime),
+        crossfade: (id, clip, duration = 0.25, loop = true, speed = 1) => world.crossfadeAnimation(id, clip, duration, loop, speed),
+        stop: (id) => world.stopAnimation(id),
+        pause: (id) => world.pauseAnimation(id),
+        resume: (id) => world.resumeAnimation(id),
+        setTime: (id, time) => world.setAnimationTime(id, time),
+        clips: (id) => world.animationClips(id),
+        bones: (id) => world.animationBones(id),
+        getState: (id) => world.getAnimationState(id),
+        getBonePosition: (id, boneName) => world.getBoneWorldPosition(id, boneName),
+      },
+      nav: navAPI,
       ui: {
         get: (id) => overlay.get(id),
         open: (id) => overlay.open(id),
         close: () => overlay.close(),
         back: () => overlay.back(),
         current: () => overlay.current(),
+        setBlur: (id, blurPx) => overlay.setBlur(id, blurPx),
+        setStyle: (id, styles) => overlay.setStyle(id, styles),
+        mount: (id, content, css) => overlay.mount(id, content, css),
+        unmount: (id) => overlay.unmount(id),
       },
       scene: {
         load: (id) => {
@@ -402,8 +849,31 @@ export async function startGame(
       physics: {
         raycast: (origin, direction, length) => {
           if (physics) return physics.raycast(origin, direction, length)
-          return world.raycast(origin,direction,length)
+          return world.raycast(origin, direction, length)
         },
+        raycastHit: (origin, direction, length, excludeIds) => {
+          const o = Array.isArray(origin) ? new Vector3().fromArray(origin) : origin
+          const d = Array.isArray(direction) ? new Vector3().fromArray(direction) : direction
+          if (physics?.raycastHit) return physics.raycastHit(o, d, length, excludeIds)
+          const id = world.raycast(o, d, length)
+          if (!id || excludeIds?.includes(id)) return undefined
+          return { id, distance: length, point: [o.x, o.y, o.z], normal: [0, 1, 0] }
+        },
+        applyImpulse: (id, impulse) => physics?.applyImpulse?.(id, impulse),
+        applyForce: (id, force) => physics?.applyForce?.(id, force),
+        setVelocity: (id, velocity) => physics?.setVelocity?.(id, velocity),
+        getVelocity: (id) => physics?.getVelocity?.(id),
+        setGravityScale: (id, scale) => physics?.setGravityScale?.(id, scale),
+      },
+      saveSystem: {
+        save: (slot, opts) => saveManager.save(slot, opts),
+        load: (slot, opts) => saveManager.load(slot, opts),
+        capture: (slot) => saveManager.capture(slot),
+        exportJSON: (slot) => saveManager.exportJSON(slot),
+        downloadJSON: (slot, filename) => saveManager.downloadJSON(slot, filename),
+        importJSON: (json, slot, applyNow) => saveManager.importJSON(json, slot, applyNow),
+        listSlots: () => saveManager.listSlots(),
+        deleteSlot: (slot) => saveManager.deleteSlot(slot),
       },
       save: { get: (key) => platform.loadData(key), set: (key, value) => platform.saveData(key, value) },
     }
@@ -420,7 +890,9 @@ export async function startGame(
             else if (overlay.current() === id) overlay.back()
           },
           loadScene: api.scene.load,
-          playSound,
+          playSound: (asset) => {
+            playSound(asset)
+          },
           playAnimation: (id: string, clip: string) => {
             const animation = scene.entities
               .find((e) => e.id === id)
@@ -454,6 +926,8 @@ export async function startGame(
       if (c.kind === 'player' || c.kind === 'first-person') {
         player = actor
         firstPerson = c.kind === 'first-person'
+        eyeHeight = Number(actor.params.eyeHeight ?? 1.0)
+        currentEyeHeight = eyeHeight
       } else if (c.kind === 'collectible') coins.push(actor)
       else if (c.kind === 'damage') hazards.push(actor)
       else lifecycle.add(entity.id, () => behavior(c.kind, api))
@@ -479,6 +953,7 @@ export async function startGame(
       registered.clear()
       toStart.clear()
       destroying.clear()
+      activeTriggers.clear()
       volumes = []
       overlay.close()
       unloading = false
@@ -489,11 +964,15 @@ export async function startGame(
       firstPerson = false
       yaw = 0
       pitch = 0
+      speedOverride = null
+      crouchOverride = null
+      crouching = false
+      sprinting = false
       coins = []
       hazards = []
       solids = []
-      for (const clip of clips) clip.pause()
-      clips.clear()
+      audioEngine.stopAll()
+      tweens.clear()
       if (last || id !== sceneId || reset) world.load(project, id)
       sceneId = id
       scene = structuredClone(target)
@@ -525,8 +1004,8 @@ export async function startGame(
       jumpHeld = false
       if (player) groundY = (player as Actor).object.getWorldPosition(point).y
       if (firstPerson) {
-        world.camera.height=0
-        world.camera.fov=70
+        world.camera.height = 0
+        world.camera.fov = Number((player as Actor | undefined)?.params.fov ?? 70)
         for (const child of player!.object.children) child.visible = false
       }
       if (clicker) {
@@ -577,7 +1056,7 @@ export async function startGame(
       if (!firstPerson || phase !== 'playing' || document.pointerLockElement !== world.renderer.domElement)
         return
       yaw -= e.movementX * 0.002
-      pitch = Math.min(1.35, Math.max(-1.35, pitch - e.movementY * 0.002))
+      pitch = Math.min(1.45, Math.max(-1.45, pitch - e.movementY * 0.002))
     },
     { signal: signal.signal },
   )
@@ -585,7 +1064,8 @@ export async function startGame(
     'pointerdown',
     (e) => {
       if (phase !== 'playing' || ad) return
-      if (firstPerson && !document.pointerLockElement) {
+      const locked = document.pointerLockElement === world.renderer.domElement
+      if (firstPerson && !locked) {
         try {
           void world.renderer.domElement.requestPointerLock()?.catch(() => {})
         } catch {
@@ -593,7 +1073,9 @@ export async function startGame(
         }
       }
       const rect = world.renderer.domElement.getBoundingClientRect()
-      const id=world.pick(e.clientX-rect.left,e.clientY-rect.top)
+      const pickX = firstPerson && locked ? rect.width / 2 : e.clientX - rect.left
+      const pickY = firstPerson && locked ? rect.height / 2 : e.clientY - rect.top
+      const id = world.pick(pickX, pickY)
       if (id) {
         lifecycle.call('onPointerClick', id)
         emit('pointer.click', id)
@@ -613,6 +1095,19 @@ export async function startGame(
     }
   }
   function contact(a: string, b: string, enter: boolean, trigger: boolean) {
+    if (trigger) {
+      if (enter) {
+        let sa = activeTriggers.get(a)
+        if (!sa) activeTriggers.set(a, (sa = new Set()))
+        sa.add(b)
+        let sb = activeTriggers.get(b)
+        if (!sb) activeTriggers.set(b, (sb = new Set()))
+        sb.add(a)
+      } else {
+        activeTriggers.get(a)?.delete(b)
+        activeTriggers.get(b)?.delete(a)
+      }
+    }
     const hook = trigger ? (enter ? 'onTriggerEnter' : 'onTriggerExit') : 'onCollisionEnter'
     if (enter || trigger) {
       lifecycle.call(hook, a, b)
@@ -626,8 +1121,16 @@ export async function startGame(
     if (!player || !active(player.entity.id)) return
     const actor = player,
       node = actor.object,
-      move = input.move,
-      step = dt * (actor.params.speed ?? 3.5)
+      move = input.move
+    crouching = crouchOverride ?? (firstPerson && input.pressed('Crouch'))
+    sprinting = firstPerson && !crouching && input.pressed('Sprint') && (move[0] !== 0 || move[1] !== 0)
+    const baseSpeed = speedOverride ?? Number(actor.params.speed ?? 3.5)
+    const mult = crouching
+      ? Number(actor.params.crouchMultiplier ?? 0.55)
+      : sprinting
+        ? Number(actor.params.sprintMultiplier ?? 1.55)
+        : 1
+    const step = dt * baseSpeed * mult
     let [x, z] = move
     if (runner) z = -1
     if (firstPerson) {
@@ -674,8 +1177,19 @@ export async function startGame(
     node.parent?.worldToLocal(point)
     node.position.copy(point)
     if (firstPerson) {
-      world.camera.position.copy(playerPoint)
-      world.camera.position.y += 1
+      const targetEye = crouching ? eyeHeight * 0.62 : eyeHeight
+      currentEyeHeight += (targetEye - currentEyeHeight) * Math.min(1, dt * 12)
+      let sx = 0,
+        sy = 0
+      if (shakeRemaining > 0) {
+        shakeRemaining = Math.max(0, shakeRemaining - dt)
+        const falloff = shakeDuration > 0 ? shakeRemaining / shakeDuration : 0
+        const mag = shakeIntensity * falloff
+        sx = (Math.random() - 0.5) * 2 * mag
+        sy = (Math.random() - 0.5) * 2 * mag
+        if (shakeRemaining === 0) shakeIntensity = 0
+      }
+      world.camera.position.set(playerPoint.x + sx, playerPoint.y + currentEyeHeight + sy, playerPoint.z)
       world.camera.rotation.set(pitch, yaw, 0)
     }
     if (runner) {
@@ -750,11 +1264,18 @@ export async function startGame(
         accumulator -= 1 / 60
         control(1 / 60)
         physics?.step(1 / 60, contact)
+        for (const [id, others] of activeTriggers) {
+          for (const other of others) lifecycle.call('onTriggerStay', id, other, 1 / 60)
+        }
         lifecycle.call('onFixedUpdate', undefined, 1 / 60)
       }
       if (phase === 'playing' && !busy) {
+        const fwd = cameraForward()
+        audioEngine.updateListener(world.camera.position.toArray(), fwd.toArray())
+        tweens.update(dt)
         lifecycle.call('onUpdate', undefined, dt)
         world.updateAnimations(dt)
+        stepNavAgents(dt)
         if (mode) {
           vars.time = Math.max(0, vars.time - Math.max(0, frameMs) / 1000)
           if (!vars.time) finish('time.up')
@@ -803,8 +1324,7 @@ export async function startGame(
       if (ad) quiet()
       else if (phase === 'playing' && !document.hidden) {
         last = performance.now()
-        void sounds?.resume().catch(() => {})
-        for (const clip of clips) void clip.play().catch(() => {})
+        audioEngine.resume()
       }
     },
     { signal: signal.signal },
@@ -817,11 +1337,12 @@ export async function startGame(
     signal.abort()
     platform.gameplayStop()
     quiet()
-    void sounds?.close().catch(() => {})
-    clips.clear()
+    tweens.clear()
+    audioEngine.dispose()
     lifecycle.clear()
     events.clear()
     physics?.dispose()
+    touchCtrl.dispose()
     overlay.dispose()
     world.dispose()
   }

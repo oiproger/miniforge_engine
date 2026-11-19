@@ -1,7 +1,31 @@
 import { useEffect, useRef, useLayoutEffect, useState } from 'react'
 import { createWorld, type RenderWorld } from '../../graphics/src'
 import { Vector3 } from '../../graphics/src/scene'
-import type { Project, Transform } from '../../project-schema/src'
+import {
+  brushTerrain,
+  ensureTerrainLayers,
+  raycastTerrain,
+  sampleTerrainGridHeight,
+  terrainTools,
+  type Project,
+  navCellToWorld,
+  type NavZone,
+  type Terrain,
+  type TerrainTool,
+  type Transform,
+  type Vec3,
+} from '../../project-schema/src'
+
+export interface TerrainBrushConfig {
+  enabled: boolean
+  tool: TerrainTool
+  radius: number
+  strength: number
+  falloff: number
+  hardness: number
+  level: number
+  activeLayer: number
+}
 
 export interface ViewportProps {
   visible?: boolean
@@ -10,12 +34,16 @@ export interface ViewportProps {
   selectedId: string | null
   onSelect: (id: string | null, additive?: boolean) => void
   onTransform: (id: string, transform: Transform) => void
+  onDropAsset?: (assetId: string, hitEntityId: string | undefined, worldPos: Vec3) => void
   tool?: 'select' | 'translate' | 'rotate' | 'scale'
   grid?: boolean
   snap?: boolean
   helpers?: boolean
   orthographic?: boolean
   focusToken?: number
+  terrainBrush?: TerrainBrushConfig
+  onTerrainBrushChange?: (patch: Partial<TerrainBrushConfig>) => void
+  onTerrainEdit?: (entityId: string, patch: Partial<Terrain>, commit: boolean) => void
 }
 const axes = ['x', 'y', 'z'] as const,
   colors = ['#e68177', '#9acf85', '#80acdf']
@@ -28,6 +56,10 @@ export function SceneViewport(props: ViewportProps) {
     undefined,
   )
   const [error, setError] = useState('')
+  const [dragOver, setDragOver] = useState(false)
+  const [navMode, setNavMode] = useState<'orbit' | 'fly'>('orbit')
+  const navModeRef = useRef<'orbit' | 'fly'>('orbit')
+  navModeRef.current = navMode
   useLayoutEffect(() => {
     const el = host.current!,
       guide = overlay.current!,
@@ -48,8 +80,53 @@ export function SceneViewport(props: ViewportProps) {
     let yaw = 0.69,
       pitch = 0.49,
       distance = 23,
-      raf = 0
+      raf = 0,
+      lastFrame = performance.now(),
+      flySpeed = 10,
+      flyActive = false,
+      flyYaw = -0.69,
+      flyPitch = -0.49
+    const flyPos = new Vector3(
+      target.x + distance * Math.sin(yaw) * Math.cos(pitch),
+      target.y + distance * Math.sin(pitch),
+      target.z + distance * Math.cos(yaw) * Math.cos(pitch),
+    )
+    const heldKeys = new Set<string>()
+    const syncFlyFromOrbit = () => {
+      flyPos.set(
+        target.x + distance * Math.sin(yaw) * Math.cos(pitch),
+        target.y + distance * Math.sin(pitch),
+        target.z + distance * Math.cos(yaw) * Math.cos(pitch),
+      )
+      flyYaw = yaw
+      flyPitch = -pitch
+    }
+    const syncOrbitFromFly = () => {
+      const cp = Math.cos(flyPitch),
+        sp = Math.sin(flyPitch)
+      const fwdX = -Math.sin(flyYaw) * cp,
+        fwdY = sp,
+        fwdZ = -Math.cos(flyYaw) * cp
+      target.set(flyPos.x + fwdX * distance, flyPos.y + fwdY * distance, flyPos.z + fwdZ * distance)
+      yaw = flyYaw
+      pitch = -flyPitch
+    }
     let handles: { x: number; y: number; ax: number; ay: number; axis: number }[] = []
+    let terrainHover: { worldPos: Vec3; gx: number; gz: number } | null = null
+    let terrainStroke: {
+      entityId: string
+      data: Terrain
+      lastGx: number
+      lastGz: number
+      lastPush: number
+    } | null = null
+    const getSelectedTerrain = () => {
+      const p = latest.current.project
+      const scene = p.scenes.find((s) => s.id === (latest.current.sceneId ?? p.activeScene))
+      const entity = scene?.entities.find((e) => e.id === latest.current.selectedId)
+      const comp = entity?.components.find((c) => c.type === 'terrain' && c.enabled !== false) as Terrain | undefined
+      return entity && comp ? { entity, terrain: comp } : null
+    }
     let drag:
       | {
           x: number
@@ -96,13 +173,53 @@ export function SceneViewport(props: ViewportProps) {
     function frame() {
       raf = requestAnimationFrame(frame)
       if (latest.current.visible === false || !el.clientWidth || document.hidden) return
+      const now = performance.now()
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastFrame) / 1000))
+      lastFrame = now
+      const wantFly = navModeRef.current === 'fly' || drag?.mode === 'fly'
+      if (wantFly && !flyActive) {
+        syncFlyFromOrbit()
+        flyActive = true
+      } else if (!wantFly && flyActive) {
+        syncOrbitFromFly()
+        flyActive = false
+      }
       const c = world.camera
-      c.position.set(
-        target.x + distance * Math.sin(yaw) * Math.cos(pitch),
-        target.y + distance * Math.sin(pitch),
-        target.z + distance * Math.cos(yaw) * Math.cos(pitch),
-      )
-      c.lookAt(target)
+      if (flyActive) {
+        const cp = Math.cos(flyPitch),
+          sp = Math.sin(flyPitch)
+        const fwdX = -Math.sin(flyYaw) * cp,
+          fwdY = sp,
+          fwdZ = -Math.cos(flyYaw) * cp
+        const rightX = Math.cos(flyYaw),
+          rightZ = -Math.sin(flyYaw)
+        let mx = 0,
+          my = 0,
+          mz = 0
+        if (heldKeys.has('KeyW')) { mx += fwdX; my += fwdY; mz += fwdZ }
+        if (heldKeys.has('KeyS')) { mx -= fwdX; my -= fwdY; mz -= fwdZ }
+        if (heldKeys.has('KeyD')) { mx += rightX; mz += rightZ }
+        if (heldKeys.has('KeyA')) { mx -= rightX; mz -= rightZ }
+        if (heldKeys.has('KeyE') || heldKeys.has('Space')) my += 1
+        if (heldKeys.has('KeyQ') || heldKeys.has('ControlLeft')) my -= 1
+        const len = Math.hypot(mx, my, mz)
+        if (len > 0) {
+          const mult = heldKeys.has('ShiftLeft') || heldKeys.has('ShiftRight') ? 2.5 : 1
+          const step = (flySpeed * mult * dt) / len
+          flyPos.x += mx * step
+          flyPos.y += my * step
+          flyPos.z += mz * step
+        }
+        c.position.copy(flyPos)
+        c.rotation.set(flyPitch, flyYaw, 0)
+      } else {
+        c.position.set(
+          target.x + distance * Math.sin(yaw) * Math.cos(pitch),
+          target.y + distance * Math.sin(pitch),
+          target.z + distance * Math.cos(yaw) * Math.cos(pitch),
+        )
+        c.lookAt(target)
+      }
       c.fov = 33
       c.height = latest.current.orthographic ? distance * 0.6 : 0
       world.setGrid(!!latest.current.grid, latest.current.project.settings.mode === 'scene' ? -0.02 : -1.95)
@@ -117,12 +234,31 @@ export function SceneViewport(props: ViewportProps) {
         for (const e of p.scenes.find((s) => s.id === (latest.current.sceneId ?? p.activeScene))?.entities ??
           []) {
           const c = e.components.find(
-            (c) => ['light', 'camera', 'collider'].includes(c.type) && c.enabled !== false,
+            (c) => ['light', 'camera', 'collider', 'bakeZone', 'navZone'].includes(c.type) && c.enabled !== false,
           )
           const n = world.objects.get(e.id)
           if (!c || !n?.active) continue
           const center = n.getWorldPosition(new Vector3())
-          if (c.type === 'collider') {
+          if (c.type === 'navZone') {
+            const nz = c as NavZone
+            if (nz.showOverlay === false) continue
+            const step = Math.max(1, Math.ceil(Math.max(nz.cols || 1, nz.rows || 1) / 36))
+            for (let r = 0; r < (nz.rows || 0); r += step) {
+              for (let col = 0; col < (nz.cols || 0); col += step) {
+                const val = nz.walkable[r * nz.cols + col]
+                const wp = navCellToWorld(nz, e.transform, col, r)
+                const q = project(new Vector3(wp[0], wp[1] + 0.06, wp[2]))
+                if (!q) continue
+                ctx.fillStyle = val === 0 ? 'rgba(235, 92, 92, 0.52)' : val > 1 ? 'rgba(255, 196, 86, 0.65)' : 'rgba(92, 224, 152, 0.55)'
+                ctx.fillRect(q.x - 2, q.y - 2, 4, 4)
+              }
+            }
+            for (const lnk of nz.links ?? []) {
+              const a = new Vector3(lnk.from[0], lnk.from[1] + 0.15, lnk.from[2])
+              const b = new Vector3(lnk.to[0], lnk.to[1] + 0.15, lnk.to[2])
+              line(a, b, lnk.enabled === false ? '#88888888' : '#ffb84d', 2.2)
+            }
+          } else if (c.type === 'collider') {
             const scale = n.getWorldScale(new Vector3()),
               size = c.size ?? scale.toArray()
             const corners = Array.from({ length: 8 }, (_, i) =>
@@ -155,8 +291,67 @@ export function SceneViewport(props: ViewportProps) {
           }
         }
       }
+      const tb = latest.current.terrainBrush
+      const selTerrain = getSelectedTerrain()
+      if (tb?.enabled && selTerrain && terrainHover) {
+        const t = terrainStroke?.entityId === selTerrain.entity.id ? terrainStroke.data : selTerrain.terrain
+        const tr = selTerrain.entity.transform
+        const px = tr.position[0], py = tr.position[1], pz = tr.position[2]
+        const sx = tr.scale[0] || 1, sy = tr.scale[1] || 1, sz = tr.scale[2] || 1
+        const cellW = (t.size / t.segments) * sx
+        const cellD = (t.size / t.segments) * sz
+        const isPaint = tb.tool === 'Paint' || tb.tool === 'Erase paint'
+        const ringColor = isPaint ? '#ffb84d' : '#58d8ff'
+        const drawRing = (radCells: number, strokeCol: string, width: number, dashed = false) => {
+          const segs = 36
+          ctx.save()
+          ctx.beginPath()
+          if (dashed) ctx.setLineDash([4, 4])
+          let started = false
+          for (let i = 0; i <= segs; i++) {
+            const ang = (i / segs) * Math.PI * 2
+            const gx = terrainHover!.gx + Math.cos(ang) * radCells
+            const gz = terrainHover!.gz + Math.sin(ang) * radCells
+            const lx = (gx / t.segments - 0.5) * t.size
+            const lz = (gz / t.segments - 0.5) * t.size
+            const ly = sampleTerrainGridHeight(t, gx, gz)
+            const wp = new Vector3(px + lx * sx, py + ly * sy + 0.04, pz + lz * sz)
+            const q = project(wp)
+            if (!q) { started = false; continue }
+            if (!started) { ctx.moveTo(q.x, q.y); started = true }
+            else ctx.lineTo(q.x, q.y)
+          }
+          ctx.strokeStyle = strokeCol
+          ctx.lineWidth = width
+          ctx.stroke()
+          ctx.restore()
+        }
+        drawRing(tb.radius, ringColor, 2.2, false)
+        const innerRatio = isPaint
+          ? Math.max(0.08, Math.min(0.95, tb.hardness))
+          : Math.max(0.12, Math.min(0.9, 1 / (1 + Math.max(0.1, tb.falloff) * 0.6)))
+        drawRing(tb.radius * innerRatio, ringColor + '99', 1.25, true)
+        const cp = project(new Vector3(terrainHover.worldPos[0], terrainHover.worldPos[1] + 0.05, terrainHover.worldPos[2]))
+        if (cp) {
+          ctx.fillStyle = ringColor
+          ctx.beginPath()
+          ctx.arc(cp.x, cp.y, 3.2, 0, Math.PI * 2)
+          ctx.fill()
+          const worldR = (tb.radius * (cellW + cellD) * 0.5).toFixed(1)
+          const label = isPaint
+            ? `${tb.tool} L${tb.activeLayer} · R ${tb.radius.toFixed(1)} (${worldR}m)`
+            : `${tb.tool} · R ${tb.radius.toFixed(1)} (${worldR}m) · H ${terrainHover.worldPos[1].toFixed(2)}`
+          ctx.font = '600 11px system-ui, sans-serif'
+          const tw = ctx.measureText(label).width
+          ctx.fillStyle = 'rgba(13, 18, 25, 0.78)'
+          ctx.fillRect(cp.x + 10, cp.y - 22, tw + 12, 18)
+          ctx.fillStyle = '#eef4fa'
+          ctx.fillText(label, cp.x + 16, cp.y - 9)
+        }
+      }
       handles = []
       const node = world.objects.get(latest.current.selectedId ?? '')
+      if (tb?.enabled && selTerrain) return
       if (!node) return
       const center = node.getWorldPosition(new Vector3()),
         p = project(center)
@@ -182,14 +377,33 @@ export function SceneViewport(props: ViewportProps) {
       'wheel',
       (e) => {
         e.preventDefault()
-        distance = Math.max(0.5, Math.min(1000, distance * Math.exp(e.deltaY * 0.001)))
+        if (flyActive) {
+          flySpeed = Math.max(1, Math.min(80, flySpeed * Math.exp(-e.deltaY * 0.001)))
+        } else {
+          distance = Math.max(0.5, Math.min(1000, distance * Math.exp(e.deltaY * 0.001)))
+        }
       },
       { ...opts, passive: false },
     )
     canvas.addEventListener('dblclick', focus, opts)
+    window.addEventListener('keyup', (e) => heldKeys.delete(e.code), opts)
+    window.addEventListener('blur', () => heldKeys.clear(), opts)
     canvas.addEventListener(
       'keydown',
       (e) => {
+        if (flyActive && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft'].includes(e.code)) {
+          heldKeys.add(e.code)
+          e.preventDefault()
+          e.stopPropagation()
+          return
+        }
+        if (latest.current.terrainBrush?.enabled && (e.key === '[' || e.key === ']')) {
+          const cur = latest.current.terrainBrush.radius
+          const next = Math.max(0.5, Math.min(32, cur + (e.key === ']' ? 0.5 : -0.5)))
+          latest.current.onTerrainBrushChange?.({ radius: next })
+          e.preventDefault()
+          return
+        }
         if (e.key.toLowerCase() === 'f') focus()
         const step = distance * 0.04
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -226,6 +440,21 @@ export function SceneViewport(props: ViewportProps) {
                 return Math.hypot(e.offsetX - h.ax - t * dx, e.offsetY - h.ay - t * dy) < 8
               })
             : undefined
+        const tbNow = latest.current.terrainBrush
+        const selT = getSelectedTerrain()
+        if (tbNow?.enabled && selT && e.button === 0 && !e.altKey && !e.shiftKey && navModeRef.current !== 'fly') {
+          const ray = world.screenToRay(e.offsetX, e.offsetY)
+          const hit = raycastTerrain(selT.terrain, ray.origin, ray.direction, selT.entity.transform)
+          if (hit) {
+            terrainHover = hit
+            const data = structuredClone(selT.terrain)
+            brushTerrain(data, tbNow.tool, hit.gx, hit.gz, tbNow.radius, tbNow.strength, tbNow.level, tbNow.falloff, tbNow.activeLayer, tbNow.hardness)
+            terrainStroke = { entityId: selT.entity.id, data, lastGx: hit.gx, lastGz: hit.gz, lastPush: performance.now() }
+            latest.current.onTerrainEdit?.(selT.entity.id, { heights: data.heights, layers: data.layers, splatWeights: data.splatWeights }, false)
+            drag = { x: e.offsetX, y: e.offsetY, lastX: e.offsetX, lastY: e.offsetY, axis: -1, mode: 'terrain', amount: 0, dx: 0, dy: 0 }
+            return
+          }
+        }
         const n = world.objects.get(latest.current.selectedId ?? '')
         drag = {
           x: e.offsetX,
@@ -233,7 +462,7 @@ export function SceneViewport(props: ViewportProps) {
           lastX: e.offsetX,
           lastY: e.offsetY,
           axis: h?.axis ?? -1,
-          mode: h ? latest.current.tool! : e.button === 1 || e.shiftKey ? 'pan' : 'orbit',
+          mode: h ? latest.current.tool! : e.button === 2 || (navModeRef.current === 'fly' && e.button === 0) ? 'fly' : e.button === 1 || e.shiftKey ? 'pan' : 'orbit',
           amount: distance * 0.1,
           dx: h ? h.x - h.ax : 0,
           dy: h ? h.y - h.ay : 0,
@@ -252,12 +481,60 @@ export function SceneViewport(props: ViewportProps) {
     canvas.addEventListener(
       'pointermove',
       (e) => {
+        const tbMove = latest.current.terrainBrush
+        const selTMove = getSelectedTerrain()
+        if (tbMove?.enabled && selTMove) {
+          const ray = world.screenToRay(e.offsetX, e.offsetY)
+          const activeT = terrainStroke?.entityId === selTMove.entity.id ? terrainStroke.data : selTMove.terrain
+          const hit = raycastTerrain(activeT, ray.origin, ray.direction, selTMove.entity.transform)
+          terrainHover = hit
+          if (drag?.mode === 'terrain' && terrainStroke && hit) {
+            const dist = Math.hypot(hit.gx - terrainStroke.lastGx, hit.gz - terrainStroke.lastGz)
+            const steps = Math.max(1, Math.ceil(dist / Math.max(0.35, tbMove.radius * 0.35)))
+            for (let s = 1; s <= steps; s++) {
+              const f = s / steps
+              brushTerrain(
+                terrainStroke.data,
+                tbMove.tool,
+                terrainStroke.lastGx + (hit.gx - terrainStroke.lastGx) * f,
+                terrainStroke.lastGz + (hit.gz - terrainStroke.lastGz) * f,
+                tbMove.radius,
+                tbMove.strength,
+                tbMove.level,
+                tbMove.falloff,
+                tbMove.activeLayer,
+                tbMove.hardness,
+              )
+            }
+            terrainStroke.lastGx = hit.gx
+            terrainStroke.lastGz = hit.gz
+            const nowMs = performance.now()
+            if (nowMs - terrainStroke.lastPush > 55) {
+              terrainStroke.lastPush = nowMs
+              latest.current.onTerrainEdit?.(
+                terrainStroke.entityId,
+                {
+                  heights: terrainStroke.data.heights.slice(),
+                  layers: terrainStroke.data.layers.slice(),
+                  splatWeights: terrainStroke.data.splatWeights?.map((w) => w.slice()),
+                },
+                false,
+              )
+            }
+            return
+          }
+        } else {
+          terrainHover = null
+        }
         if (!drag) return
         const dx = e.offsetX - drag.lastX,
           dy = e.offsetY - drag.lastY
         drag.lastX = e.offsetX
         drag.lastY = e.offsetY
-        if (drag.mode === 'orbit') {
+        if (drag.mode === 'fly') {
+          flyYaw -= dx * 0.005
+          flyPitch = Math.min(1.52, Math.max(-1.52, flyPitch - dy * 0.005))
+        } else if (drag.mode === 'orbit') {
           yaw -= dx * 0.008
           pitch = Math.min(1.56, Math.max(-1.56, pitch + dy * 0.008))
         } else if (drag.mode === 'pan') {
@@ -286,6 +563,21 @@ export function SceneViewport(props: ViewportProps) {
       'pointerup',
       (e) => {
         if (!drag) return
+        if (drag.mode === 'terrain' && terrainStroke) {
+          const finished = terrainStroke
+          terrainStroke = null
+          latest.current.onTerrainEdit?.(
+            finished.entityId,
+            {
+              heights: finished.data.heights,
+              layers: finished.data.layers,
+              splatWeights: finished.data.splatWeights,
+            },
+            true,
+          )
+          drag = undefined
+          return
+        }
         if (drag.id) {
           const n = world.objects.get(drag.id)
           if (n)
@@ -333,7 +625,36 @@ export function SceneViewport(props: ViewportProps) {
     if (props.focusToken) controller.current?.focus()
   }, [props.focusToken])
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        outline: dragOver ? '2px dashed #80acdf' : undefined,
+        outlineOffset: -2,
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('miniforge/asset')) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (!dragOver) setDragOver(true)
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        setDragOver(false)
+        const assetId = e.dataTransfer.getData('miniforge/asset')
+        if (!assetId || !latest.current.onDropAsset) return
+        e.preventDefault()
+        e.stopPropagation()
+        const w = controller.current?.world
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = e.clientX - rect.left,
+          y = e.clientY - rect.top
+        const hitId = w?.pick(x, y)
+        const pos = w ? w.screenToGround(x, y, 0) : ([0, 0, 0] as Vec3)
+        latest.current.onDropAsset(assetId, hitId, pos)
+      }}
+    >
       <div ref={host} style={{ position: 'absolute', inset: 0 }} />
       <canvas
         ref={overlay}
@@ -345,7 +666,136 @@ export function SceneViewport(props: ViewportProps) {
           {error}
         </div>
       )}
-      <div aria-label="View orientation" style={{ position: 'absolute', right: 12, bottom: 12 }}>
+      {(() => {
+        const scene = props.project.scenes.find((s) => s.id === (props.sceneId ?? props.project.activeScene))
+        const ent = scene?.entities.find((e) => e.id === props.selectedId)
+        const terr = ent?.components.find((c) => c.type === 'terrain' && c.enabled !== false) as Terrain | undefined
+        const tb = props.terrainBrush
+        if (!terr || !tb || !props.onTerrainBrushChange) return null
+        const { materials } = ensureTerrainLayers(terr)
+        const isPaint = tb.tool === 'Paint' || tb.tool === 'Erase paint'
+        return (
+          <div
+            aria-label="Terrain viewport tools"
+            style={{
+              position: 'absolute',
+              top: 10,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 10px',
+              borderRadius: 8,
+              background: 'rgba(18, 24, 32, 0.88)',
+              border: '1px solid rgba(255,255,255,0.14)',
+              backdropFilter: 'blur(8px)',
+              color: '#e6edf3',
+              fontSize: 11.5,
+              zIndex: 12,
+              flexWrap: 'wrap',
+              maxWidth: '94%',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => props.onTerrainBrushChange?.({ enabled: !tb.enabled })}
+              style={{
+                padding: '3px 9px',
+                borderRadius: 6,
+                border: '1px solid ' + (tb.enabled ? '#58d8ff' : 'rgba(255,255,255,0.18)'),
+                background: tb.enabled ? 'rgba(88, 216, 255, 0.22)' : 'rgba(255,255,255,0.06)',
+                color: tb.enabled ? '#8ee6ff' : '#c9d1d9',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {tb.enabled ? 'Terrain Brush: ON' : 'Terrain Brush: OFF'}
+            </button>
+            {tb.enabled && (
+              <>
+                <select
+                  aria-label="Viewport terrain tool"
+                  value={tb.tool}
+                  onChange={(e) => props.onTerrainBrushChange?.({ tool: e.target.value as TerrainTool })}
+                  style={{ background: '#11161e', color: '#eef4fa', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 5, padding: '2px 6px', fontSize: 11.5 }}
+                >
+                  {terrainTools.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span>R</span>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={Math.min(24, terr.segments)}
+                    step={0.5}
+                    value={tb.radius}
+                    onChange={(e) => props.onTerrainBrushChange?.({ radius: Number(e.target.value) })}
+                    style={{ width: 62 }}
+                  />
+                  <span style={{ minWidth: 22 }}>{tb.radius.toFixed(1)}</span>
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span>Str</span>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={1}
+                    step={0.05}
+                    value={tb.strength}
+                    onChange={(e) => props.onTerrainBrushChange?.({ strength: Number(e.target.value) })}
+                    style={{ width: 54 }}
+                  />
+                </label>
+                {isPaint && (
+                  <>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span>Hard</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={tb.hardness}
+                        onChange={(e) => props.onTerrainBrushChange?.({ hardness: Number(e.target.value) })}
+                        style={{ width: 54 }}
+                      />
+                    </label>
+                    <select
+                      aria-label="Paint material layer"
+                      value={Math.min(tb.activeLayer, materials.length - 1)}
+                      onChange={(e) => props.onTerrainBrushChange?.({ activeLayer: Number(e.target.value) })}
+                      style={{ background: '#11161e', color: '#ffd280', border: '1px solid rgba(255,184,77,0.4)', borderRadius: 5, padding: '2px 6px', fontSize: 11.5 }}
+                    >
+                      {materials.map((matId, idx) => {
+                        const matName = props.project.assets.find((a) => a.id === matId)?.name || (idx === 0 ? 'Base' : `Layer ${idx}`)
+                        return (
+                          <option key={idx} value={idx}>
+                            L{idx}: {matName}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()}
+      <div aria-label="View orientation" style={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', gap: 4 }}>
+        <button
+          type="button"
+          title="Switch between Orbit and Fly (WASD + RMB) camera"
+          onClick={() => setNavMode((m) => (m === 'orbit' ? 'fly' : 'orbit'))}
+          style={{ fontWeight: 600 }}
+        >
+          {navMode === 'fly' ? 'Fly (WASD)' : 'Orbit'}
+        </button>
         {axes.map((a, i) => (
           <button
             key={a}

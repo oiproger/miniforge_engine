@@ -47,11 +47,12 @@ const actions: Record<ButtonAction, string> = {
   reward: 'Rewarded ad',
   language: 'Switch language',
 }
-const types = ['text', 'button', 'panel', 'image', 'progress', 'counter', 'container']
+const types = ['text', 'button', 'panel', 'blur', 'image', 'progress', 'counter', 'container']
 const labels: Record<string, string> = {
   text: 'Text',
   button: 'Button',
   panel: 'Panel',
+  blur: 'Background blur',
   container: 'Container',
   image: 'Image',
   progress: 'Progress bar',
@@ -81,6 +82,7 @@ function createElement(screen: string, type: string, index: number): UIElement {
   if (type === 'counter') el.variable = 'score'
   if (type === 'progress') Object.assign(el, { variable: 'health', max: 100, width: 26 })
   if (type === 'panel') Object.assign(el, { width: 32, height: 25, background: '#29383c', text: '' })
+  if (type === 'blur') Object.assign(el, { width: 36, height: 28, background: 'rgba(18, 26, 32, 0.35)', backdropBlur: 12, borderRadius: 12, borderColor: 'rgba(255,255,255,0.18)', text: '' })
   if (type === 'container')
     Object.assign(el, {
       width: 65,
@@ -317,7 +319,9 @@ function ElementProperties({
           ))}
         </select>
       </Field>
-      {(el.type === 'panel' || el.type === 'button' || el.type === 'container') && (
+      {number('backdropBlur', 'Background blur (px)', el.type === 'blur' ? 12 : 0, 0, 64)}
+      {number('borderRadius', 'Border radius (px)', el.type === 'blur' ? 12 : 0, 0, 128)}
+      {(el.type === 'panel' || el.type === 'blur' || el.type === 'button' || el.type === 'container') && (
         <Field label="Fill">
           <Color
             label="Fill"
@@ -395,7 +399,11 @@ function Canvas({
     const style: CSSProperties = {
       ...anchorStyle(el.anchor, pos.x, pos.y),
       color: el.color || 'white',
-      backgroundColor: el.background,
+      backgroundColor: el.background || (el.type === 'blur' ? 'rgba(18, 26, 32, 0.35)' : undefined),
+      backdropFilter: Number(el.backdropBlur ?? (el.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(el.backdropBlur ?? 12)}px)` : undefined,
+      WebkitBackdropFilter: Number(el.backdropBlur ?? (el.type === 'blur' ? 12 : 0)) > 0 ? `blur(${Number(el.backdropBlur ?? 12)}px)` : undefined,
+      borderRadius: Number.isFinite(el.borderRadius) ? el.borderRadius + 'px' : (el.type === 'blur' ? '12px' : undefined),
+      border: el.borderColor ? `1px solid ${el.borderColor}` : undefined,
       width: el.width ? el.width + '%' : undefined,
       height: el.height ? el.height + '%' : undefined,
       fontSize: 'calc(' + Math.max(1, el.fontSize || 16) + ' * var(--hud-pixel))',
@@ -730,11 +738,30 @@ export default function InterfaceForm({
                 onChange={(e) => patchScreen({ safeArea: e.target.checked })}
               />
             </Field>
+            {screen.phase === 'window' && (
+              <Field label="Modal (locks input)">
+                <input
+                  type="checkbox"
+                  checked={screen.modal !== false}
+                  onChange={(e) => patchScreen({ modal: e.target.checked })}
+                />
+              </Field>
+            )}
             <Field label="Background">
               <Color
                 label="Screen background"
                 value={screen.background || '#20272b'}
                 change={(background) => patchScreen({ background })}
+              />
+            </Field>
+            <Field label="Screen blur (px)">
+              <Numeric
+                label="Screen backdrop blur"
+                value={Number((screen as any).backdropBlur ?? 0)}
+                min={0}
+                max={64}
+                step={1}
+                change={(v) => patchScreen({ backdropBlur: v } as any)}
               />
             </Field>
             {screen.background && (

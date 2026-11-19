@@ -36,9 +36,11 @@ export default function Assets({
     'All assets': [],
     Prefabs: ['prefab'],
     Materials: ['material', 'shader'],
+    Particles: ['particle'],
+    Skyboxes: ['skybox'],
     Scripts: ['script'],
     Models: ['model'],
-    Media: ['texture', 'audio', 'json'],
+    Media: ['texture', 'audio', 'json', 'text'],
   }
   const filtered = project.assets.filter(
     (a) =>
@@ -111,7 +113,9 @@ export default function Assets({
                     ? editAsset('new-script')
                     : folder === 'Materials'
                       ? editAsset('new-material')
-                      : importFiles()
+                      : folder === 'Particles'
+                        ? editAsset('new-particle')
+                        : importFiles()
                 }
               >
                 <Plus size={13} /> Add asset

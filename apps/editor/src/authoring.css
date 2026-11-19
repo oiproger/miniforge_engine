@@ -468,3 +468,259 @@
 .rule-fields legend{font-size:11px;color:#b4c3ce;padding:0 4px}
 .rule-order{display:flex;gap:4px;align-items:center;justify-content:flex-end}
 .rule-order button{font:inherit;font-size:11px;padding:3px 6px}
+
+.mf-dialog.mf-dialog-code {
+  width: min(1280px, 95vw);
+  height: min(880px, 92vh);
+  max-height: 92vh;
+}
+.mf-dialog.mf-dialog-code .mf-dialog-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mf-dialog.mf-dialog-code .mf-code {
+  flex: 1;
+  min-height: 520px;
+  height: auto;
+  max-height: none;
+}
+
+.mf-settings-group {
+  border: 1px solid var(--border, #34363a);
+  border-radius: 6px;
+  background: #17191d;
+  overflow: hidden;
+}
+.mf-settings-group > summary {
+  cursor: pointer;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e4e6ea;
+  background: #202328;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mf-settings-group > summary::before {
+  content: '▸';
+  font-size: 11px;
+  color: var(--accent, #f3a05d);
+  transition: transform 0.12s ease;
+}
+.mf-settings-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+.mf-settings-body {
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+
+/* === v0.5 Component Picker with Search & Icons === */
+.mf-component-picker {
+  background: var(--panel, #1b222c);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px;
+  margin-top: 6px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.mf-comp-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 6px;
+  color: #93a3b5;
+}
+.mf-comp-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #eef3f8;
+  font-size: 12px;
+}
+.mf-comp-list {
+  max-height: 270px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mf-comp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  color: #e4ebf2;
+  cursor: pointer;
+}
+.mf-comp-item:hover {
+  background: rgba(88, 184, 255, 0.14);
+  border-color: rgba(88, 184, 255, 0.35);
+}
+.mf-comp-item.has {
+  opacity: 0.72;
+}
+.mf-comp-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(88, 184, 255, 0.14);
+  color: #7cc7ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.mf-comp-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.mf-comp-meta strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #eef3f8;
+}
+.mf-comp-meta small {
+  font-size: 10.5px;
+  color: #8b9bb0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mf-comp-cat {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #9cb0c5;
+  flex-shrink: 0;
+}
+
+/* === v0.5 3D Particle Editor === */
+.mf-particle-dialog {
+  width: min(880px, 94vw) !important;
+}
+.mf-particle-editor {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+.mf-particle-canvas {
+  width: 100%;
+  height: 260px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
+}
+.mf-particle-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+.mf-particle-stat {
+  margin-left: auto;
+  font-size: 11px;
+  color: #94a6b8;
+  font-variant-numeric: tabular-nums;
+}
+.mf-minor-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7cc7ff;
+  margin: 10px 0 6px;
+}
+.mf-preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.mf-preset-chip {
+  padding: 4px 9px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe5f0;
+  font-size: 11px;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+.mf-preset-chip:hover {
+  background: rgba(88, 184, 255, 0.22);
+  border-color: rgba(88, 184, 255, 0.5);
+}
+.mf-particle-params-col {
+  max-height: 430px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.mf-vec2-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.mf-vec3-inline {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+.mf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4ebf2;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.mf-btn:hover {
+  background: rgba(88, 184, 255, 0.2);
+}
+
+/* === v0.5 Touch Controls Editor === */
+.mf-touch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+}
+.mf-touch-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 1fr 62px 62px 26px;
+  gap: 5px;
+  align-items: center;
+}
+.mf-touch-row input {
+  width: 100%;
+  min-width: 0;
+}
