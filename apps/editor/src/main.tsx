@@ -58,6 +58,8 @@ import {
   HardDrive,
   Workflow,
   Aperture,
+  Waves,
+  Sparkles,
 } from 'lucide-react'
 import {
   makeTerrain,
@@ -72,6 +74,7 @@ import {
   type Project,
   type Asset,
   type Entity,
+  type Vec3,
 } from '../../../packages/project-schema/src'
 import { createTemplate, freshTemplate } from '../../../templates'
 import { SceneViewport } from '../../../packages/editor-tools/src'
@@ -83,7 +86,7 @@ import Hierarchy from './Hierarchy'
 import Assets from './Assets'
 import PlatformPanel from './PlatformPanel'
 import { readAssets } from './importAssets'
-import { download, persist, restore } from './io'
+import { download, persist, restore, saveProjectToDisk, openProjectFromDisk, getLinkedDiskPath } from './io'
 import './style.css'
 
 type Icon = typeof Box
@@ -127,6 +130,8 @@ const geometries = [
   'Audio Source',
   'Trigger',
   'Terrain',
+  'Water',
+  'Volumetric Light',
 ]
 function bytes(n: number) {
   return n > 1e6 ? (n / 1e6).toFixed(2) + ' MB' : (n / 1024).toFixed(1) + ' KB'
@@ -324,13 +329,147 @@ function App() {
       note(String(e))
     }
   }
+  function dropAsset(assetId: string, targetId?: string, worldPos?: Vec3) {
+    const asset = p.assets.find((a) => a.id === assetId)
+    if (!asset) return
+    const pos: Vec3 = worldPos ?? [0, 0, 0]
+    if (asset.type === 'skybox') {
+      patch((n) => {
+        getScene(n).environment.skyEnabled = true
+        getScene(n).environment.skyAsset = asset.id
+      })
+      note('Applied skybox ' + asset.name)
+      return
+    }
+    if (asset.type === 'prefab') {
+      patch((n) => {
+        const created = instantiatePrefab(getScene(n), asset, targetId && !worldPos ? targetId : null)
+        if (worldPos) created.transform.position = [...pos]
+        select(created.id)
+      })
+      note('Spawned prefab ' + asset.name)
+      return
+    }
+    if (asset.type === 'model') {
+      patch((n) => {
+        const e = makeEntity(asset.name.replace(/\.[^.]+$/, ''))
+        e.transform.position = [...pos]
+        if (targetId && !worldPos) e.parent = targetId
+        e.components.push({ type: 'mesh', shape: 'model', asset: asset.id })
+        getScene(n).entities.push(e)
+        select(e.id)
+      })
+      note('Placed model ' + asset.name)
+      return
+    }
+    if (asset.type === 'material') {
+      patch((n) => {
+        const scene = getScene(n)
+        const target = targetId ? scene.entities.find((e) => e.id === targetId) : undefined
+        const mesh = target?.components.find((c) => c.type === 'mesh')
+        if (mesh) {
+          mesh.material = asset.id
+          select(target!.id)
+        } else {
+          const e = makeEntity(asset.name + ' Box', 'box')
+          e.transform.position = [pos[0], pos[1] + 0.5, pos[2]]
+          e.components[0].material = asset.id
+          scene.entities.push(e)
+          select(e.id)
+        }
+      })
+      note('Applied material ' + asset.name)
+      return
+    }
+    if (asset.type === 'texture') {
+      patch((n) => {
+        const scene = getScene(n)
+        const target = targetId ? scene.entities.find((e) => e.id === targetId) : undefined
+        const mesh = target?.components.find((c) => c.type === 'mesh')
+        if (mesh) {
+          let mat = n.assets.find((a) => a.id === mesh.material && a.type === 'material')
+          if (!mat) {
+            const matId = uid('mat')
+            mat = { id: matId, name: asset.name + ' Mat', type: 'material', data: '', properties: { color: '#ffffff', roughness: 0.75, metalness: 0 } }
+            n.assets.push(mat)
+            mesh.material = matId
+          }
+          mat.properties.map = asset.id
+          select(target!.id)
+        } else {
+          const e = makeEntity(asset.name)
+          e.transform.position = [pos[0], pos[1] + 0.5, pos[2]]
+          e.components.push({ type: 'sprite', texture: asset.id, color: '#ffffff', opacity: 1, width: 1.5, height: 1.5 })
+          scene.entities.push(e)
+          select(e.id)
+        }
+      })
+      note('Applied texture ' + asset.name)
+      return
+    }
+    if (asset.type === 'shader' && targetId) {
+      patch((n) => {
+        const target = getScene(n).entities.find((e) => e.id === targetId)
+        const mesh = target?.components.find((c) => c.type === 'mesh')
+        if (!mesh) return
+        let mat = n.assets.find((a) => a.id === mesh.material && a.type === 'material')
+        if (!mat) {
+          const matId = uid('mat')
+          mat = { id: matId, name: target!.name + ' Mat', type: 'material', data: '', properties: { color: '#ffffff', roughness: 0.7, metalness: 0 } }
+          n.assets.push(mat)
+          mesh.material = matId
+        }
+        mat.properties.shader = asset.id
+        select(target!.id)
+      })
+      note('Applied shader ' + asset.name)
+      return
+    }
+    if (asset.type === 'script') {
+      patch((n) => {
+        const scene = getScene(n)
+        const target = targetId ? scene.entities.find((e) => e.id === targetId) : undefined
+        if (target) {
+          target.components.push({ type: 'script', asset: asset.id, params: {} })
+          select(target.id)
+        } else {
+          const e = makeEntity(asset.name.replace(/\.[^.]+$/, ''))
+          e.transform.position = [...pos]
+          e.components.push({ type: 'script', asset: asset.id, params: {} })
+          scene.entities.push(e)
+          select(e.id)
+        }
+      })
+      note('Attached script ' + asset.name)
+      return
+    }
+    if (asset.type === 'audio') {
+      patch((n) => {
+        const scene = getScene(n)
+        const target = targetId ? scene.entities.find((e) => e.id === targetId) : undefined
+        if (target) {
+          target.components.push({ type: 'audio', asset: asset.id, volume: 1 })
+          select(target.id)
+        } else {
+          const e = makeEntity(asset.name)
+          e.transform.position = [...pos]
+          e.components.push({ type: 'audio', asset: asset.id, volume: 1 })
+          scene.entities.push(e)
+          select(e.id)
+        }
+      })
+      note('Attached audio ' + asset.name)
+      return
+    }
+    use(asset)
+  }
   function newEntity(kind: string, parent: string | null = null) {
     patch((n) => {
       const e = makeEntity(kind, geometries.slice(0, 6).includes(kind) ? kind.toLowerCase() : undefined)
       e.parent = parent
       if (kind.endsWith('Camera'))
         e.components.push({ type: 'camera', projection: kind.split(' ')[0].toLowerCase() })
-      if (kind.endsWith('Light'))
+      if (kind.endsWith('Light') && kind !== 'Volumetric Light')
         e.components.push({
           type: 'light',
           kind: kind.split(' ')[0].toLowerCase(),
@@ -339,6 +478,34 @@ function App() {
         })
       if (kind === 'Audio Source') e.components.push({ type: 'audio', asset: '', volume: 1 })
       if (kind === 'Terrain') e.components.push(makeTerrain())
+      if (kind === 'Water')
+        e.components.push({
+          type: 'water',
+          size: 16,
+          segments: 24,
+          depth: 2,
+          deepColor: '#153a4a',
+          shallowColor: '#3c8ea0',
+          waveHeight: 0.14,
+          waveSpeed: 1.4,
+          waveScale: 0.7,
+          opacity: 0.82,
+          fresnelPower: 2.6,
+          foamAmount: 0.35,
+        })
+      if (kind === 'Volumetric Light') {
+        e.transform.scale = [1, 4, 1]
+        e.components.push({
+          type: 'volumetric',
+          shape: 'cone',
+          color: '#ffe5b4',
+          intensity: 0.42,
+          softness: 2.2,
+          dustSpeed: 0.35,
+          topRadius: 0.2,
+          bottomRadius: 1.6,
+        })
+      }
       if (kind === 'Trigger') e.components.push({ type: 'collider', shape: 'box', trigger: true })
       getScene(n).entities.push(e)
       select(e.id)
@@ -669,6 +836,7 @@ function App() {
           change={change}
           add={() => modal('add')}
           context={context}
+          onDropAsset={(assetId, targetId) => dropAsset(assetId, targetId)}
         />
         <div className="split left" onPointerDown={(e) => resize(e, 'left')} />
         <section className="scene-panel">
@@ -704,6 +872,7 @@ function App() {
                 grid={grid}
                 snap={snap}
                 orthographic={ortho}
+                onDropAsset={dropAsset}
                 helpers={helpers}
                 focusToken={focus}
                 onSelect={select}
@@ -1001,7 +1170,9 @@ function App() {
                     Music2,
                     Hexagon,
                     Layers3,
-                  ][i]
+                    Waves,
+                    Sparkles,
+                  ][i] ?? Box
                   return (
                     <button key={kind} onClick={() => newEntity(kind, dialog === 'child' ? selected : null)}>
                       <I size={16} />
@@ -1017,7 +1188,9 @@ function App() {
       {notice && (
         <div className="toast" role="status">
           {notice}
-          <button className="icon" onClick={() => say('')}>
+          <button onClick={() => { modal(''); void saveProjectToDisk(p).then((s) => note(s ? 'Saved to disk: ' + s : 'Disk save cancelled')).catch((e) => note(String(e))) }}>Save to disk (Ctrl+S){getLinkedDiskPath() ? ' · ' + getLinkedDiskPath()!.split(/[\\/]/).pop() : ''}</button>
+                <button onClick={() => { modal(''); void openProjectFromDisk().then((res) => { if (res) { change(res.project); note('Opened from disk: ' + res.label) } }).catch((e) => note(String(e))) }}>Open from disk (.json)</button>
+                <button className="icon" onClick={() => say('')}>
             <X />
           </button>
         </div>

@@ -1,12 +1,23 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import {
+  autoPaintTerrain,
   brushTerrain,
+  generateTerrainPreset,
   terrainTools,
   type Terrain,
+  type TerrainPreset,
   type TerrainTool,
 } from '../../../packages/project-schema/src/terrain'
 import type { Asset } from '../../../packages/project-schema/src'
 import { Field, Numeric } from './Fields'
+
+const terrainPresets: { id: TerrainPreset; label: string }[] = [
+  { id: 'flat', label: 'Flat' },
+  { id: 'hills', label: 'Hills' },
+  { id: 'valley', label: 'Valley' },
+  { id: 'crater', label: 'Crater' },
+  { id: 'ridge', label: 'Ridge' },
+]
 
 function draw(canvas: HTMLCanvasElement, t: Terrain) {
   const ctx = canvas.getContext('2d')
@@ -36,7 +47,10 @@ export function TerrainEditor({
   const [tool, setTool] = useState<TerrainTool>('Raise'),
     [radius, setRadius] = useState(3),
     [strength, setStrength] = useState(0.35),
-    [level, setLevel] = useState(0)
+    [falloff, setFalloff] = useState(1.2),
+    [level, setLevel] = useState(0.5),
+    [amplitude, setAmplitude] = useState(2.4),
+    [slopeThreshold, setSlopeThreshold] = useState(0.35)
   useEffect(() => {
     stroke.current = null
     if (canvas.current) draw(canvas.current, terrain)
@@ -64,6 +78,7 @@ export function TerrainEditor({
         radius,
         strength,
         level,
+        falloff,
       )
     }
     s.x = x
@@ -75,6 +90,16 @@ export function TerrainEditor({
     if (s?.pointer !== e.pointerId) return
     stroke.current = null
     change({ heights: s.data.heights, layers: s.data.layers })
+  }
+  function applyPreset(preset: TerrainPreset) {
+    const copy = structuredClone(terrain)
+    generateTerrainPreset(copy, preset, amplitude)
+    change({ heights: copy.heights })
+  }
+  function applyAutoPaint() {
+    const copy = structuredClone(terrain)
+    autoPaintTerrain(copy, slopeThreshold)
+    change({ layers: copy.layers })
   }
   return (
     <>
@@ -103,11 +128,39 @@ export function TerrainEditor({
       <Field label="Strength">
         <Numeric label="Brush strength" value={strength} min={0.01} max={1} change={setStrength} />
       </Field>
-      {tool === 'Flatten' && (
-        <Field label="Target height">
+      <Field label="Brush falloff">
+        <Numeric label="Brush falloff" value={falloff} min={0.1} max={4} step={0.1} change={setFalloff} />
+      </Field>
+      {(tool === 'Flatten' || tool === 'Terrace') && (
+        <Field label={tool === 'Terrace' ? 'Step height' : 'Target height'}>
           <Numeric label="Target height" value={level} change={setLevel} />
         </Field>
       )}
+      <Field label="Generator amplitude">
+        <Numeric label="Generator amplitude" value={amplitude} min={0.2} max={16} change={setAmplitude} />
+      </Field>
+      <div className="mf-presets" style={{ marginBottom: 6 }}>
+        {terrainPresets.map((p) => (
+          <button key={p.id} type="button" onClick={() => applyPreset(p.id)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <Field label="Auto-paint slope">
+        <div className="mf-pair">
+          <Numeric
+            label="Slope threshold"
+            value={slopeThreshold}
+            min={0.05}
+            max={3}
+            step={0.05}
+            change={setSlopeThreshold}
+          />
+          <button type="button" className="mf-secondary" onClick={applyAutoPaint}>
+            Auto-paint
+          </button>
+        </div>
+      </Field>
       <Field label="Terrain size">
         <Numeric label="Terrain size" value={terrain.size} min={0.1} change={(size) => change({ size })} />
       </Field>

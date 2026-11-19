@@ -19,6 +19,7 @@ import InterfaceForm from './HudEditor'
 import { Field, Numeric, Color } from './Fields'
 import { defaultScript, AssetSelect } from './Inspector'
 import { shaders, checkShader } from './shaderTemplates'
+import { materialPresets, generateProceduralTextures, type ProceduralPattern } from './materialTextures'
 
 const CodeEditor = lazy(() => import('./CodeEditor'))
 type Edit = (fn: (p: Project) => void) => void
@@ -64,6 +65,66 @@ const presets: Record<string, Record<string, unknown>> = {
     fogDensity: 0,
     resolutionScale: 0.8,
     pixelRatioLimit: 1,
+  },
+  'PGT Overcast': {
+    background: '#7b8790',
+    ambient: 1.15,
+    ambientColor: '#aeb8c0',
+    sunColor: '#dde3e6',
+    sunIntensity: 0.75,
+    exposure: 0.95,
+    shadows: true,
+    fogDensity: 0.028,
+    fogColor: '#88949c',
+    skyEnabled: true,
+    skyTopColor: '#54616b',
+    skyHorizonColor: '#96a2aa',
+    skyBottomColor: '#3b4248',
+  },
+  'PGT Dusk': {
+    background: '#2a2d3b',
+    ambient: 0.65,
+    ambientColor: '#69748c',
+    sunColor: '#e89a6b',
+    sunIntensity: 0.85,
+    exposure: 0.85,
+    shadows: true,
+    fogDensity: 0.032,
+    fogColor: '#3e4354',
+    skyEnabled: true,
+    skyTopColor: '#1c2338',
+    skyHorizonColor: '#7d5c5a',
+    skyBottomColor: '#1a1d24',
+  },
+  'PGT Foggy Night': {
+    background: '#0e141c',
+    ambient: 0.32,
+    ambientColor: '#46586e',
+    sunColor: '#7a96b8',
+    sunIntensity: 0.35,
+    exposure: 0.72,
+    shadows: true,
+    fogDensity: 0.055,
+    fogColor: '#151e29',
+    skyEnabled: true,
+    skyTopColor: '#080c12',
+    skyHorizonColor: '#1c2736',
+    skyBottomColor: '#090c10',
+  },
+  'Anomaly Shift': {
+    background: '#18221e',
+    ambient: 0.7,
+    ambientColor: '#7ea892',
+    sunColor: '#c4ff9e',
+    sunIntensity: 0.9,
+    exposure: 0.9,
+    shadows: true,
+    fogDensity: 0.045,
+    fogColor: '#22332c',
+    skyEnabled: true,
+    skyTopColor: '#11211b',
+    skyHorizonColor: '#3d594c',
+    skyBottomColor: '#0d1411',
   },
 }
 function Settings({ p, edit }: { p: Project; edit: Edit }) {
@@ -149,21 +210,267 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
             <option value="none">None</option>
           </select>
         </Field>
+        <Field label="Ambient color">
+          <Color label="Ambient color" value={env.ambientColor || '#c8cfda'} change={(v) => patch('ambientColor', v)} />
+        </Field>
+        <Field label="Sun color">
+          <Color label="Sun color" value={env.sunColor || '#fff3d9'} change={(v) => patch('sunColor', v)} />
+        </Field>
+        <Field label="Sun intensity">
+          <Numeric label="Sun intensity" value={env.sunIntensity ?? 1} min={0} max={5} step={0.1} change={(v) => patch('sunIntensity', v)} />
+        </Field>
+        <Field label="Sky asset">
+          <AssetSelect assets={p.assets} type="skybox" label="Sky asset" value={env.skyAsset || ''} change={(v) => patch('skyAsset', v || undefined)} />
+        </Field>
+        <Field label="Sky enabled">
+          <input type="checkbox" checked={Boolean(env.skyEnabled)} onChange={(e) => patch('skyEnabled', e.target.checked)} />
+        </Field>
+        {env.skyEnabled && !env.skyAsset && (
+          <>
+            <Field label="Sky mode">
+              <select value={env.skyMode || 'gradient'} onChange={(e) => patch('skyMode', e.target.value)}>
+                <option value="gradient">Sky Dome (Gradient)</option>
+                <option value="procedural">Procedural (Clouds + Stars)</option>
+                <option value="cubemap">Skybox (6 Sides)</option>
+              </select>
+            </Field>
+            {(env.skyMode || 'gradient') !== 'cubemap' && (
+              <>
+                <Field label="Sky top">
+                  <Color label="Sky top" value={env.skyTopColor || '#3a536b'} change={(v) => patch('skyTopColor', v)} />
+                </Field>
+                <Field label="Sky horizon">
+                  <Color label="Sky horizon" value={env.skyHorizonColor || '#8c99a3'} change={(v) => patch('skyHorizonColor', v)} />
+                </Field>
+                <Field label="Sky bottom">
+                  <Color label="Sky bottom" value={env.skyBottomColor || '#262b30'} change={(v) => patch('skyBottomColor', v)} />
+                </Field>
+              </>
+            )}
+            {env.skyMode === 'procedural' && (
+              <>
+                <Field label="Cloud color">
+                  <Color label="Cloud color" value={env.skyCloudColor || '#e4ebf0'} change={(v) => patch('skyCloudColor', v)} />
+                </Field>
+                <Field label="Cloud coverage">
+                  <Numeric label="Cloud coverage" value={env.skyCloudCoverage ?? 0.48} min={0} max={1} step={0.05} change={(v) => patch('skyCloudCoverage', v)} />
+                </Field>
+                <Field label="Cloud speed">
+                  <Numeric label="Cloud speed" value={env.skyCloudSpeed ?? 0.035} min={0} max={0.5} step={0.005} change={(v) => patch('skyCloudSpeed', v)} />
+                </Field>
+                <Field label="Cloud scale">
+                  <Numeric label="Cloud scale" value={env.skyCloudScale ?? 1.8} min={0.2} max={8} step={0.1} change={(v) => patch('skyCloudScale', v)} />
+                </Field>
+                <Field label="Sun sharpness">
+                  <Numeric label="Sun sharpness" value={env.skySunSize ?? 72} min={8} max={256} step={4} change={(v) => patch('skySunSize', v)} />
+                </Field>
+                <Field label="Star intensity">
+                  <Numeric label="Star intensity" value={env.skyStarIntensity ?? 0} min={0} max={1} step={0.05} change={(v) => patch('skyStarIntensity', v)} />
+                </Field>
+              </>
+            )}
+            {env.skyMode === 'cubemap' &&
+              ([
+                ['px', 'Right (+X)'],
+                ['nx', 'Left (-X)'],
+                ['py', 'Top (+Y)'],
+                ['ny', 'Bottom (-Y)'],
+                ['pz', 'Front (+Z)'],
+                ['nz', 'Back (-Z)'],
+              ] as const).map(([faceKey, label]) => {
+                const face = env.skyFaces?.[faceKey] || {}
+                const setFace = (upd: Record<string, unknown>) =>
+                  patch('skyFaces', { ...(env.skyFaces || {}), [faceKey]: { ...face, ...upd } })
+                return (
+                  <Field key={faceKey} label={label}>
+                    <div className="mf-pair">
+                      <AssetSelect assets={p.assets} type="texture" label={label + ' texture'} value={face.texture || ''} change={(t) => setFace({ texture: t || undefined })} />
+                      <Color label={label + ' color'} value={face.color || '#8fa6b8'} change={(col) => setFace({ color: col })} />
+                    </div>
+                  </Field>
+                )
+              })}
+            <Field label="Save sky asset">
+              <button
+                type="button"
+                className="mf-secondary"
+                onClick={() => {
+                  const skyId = uid('sky')
+                  edit((n) => {
+                    n.assets.push({
+                      id: skyId,
+                      name: (env.skyMode === 'cubemap' ? 'Skybox' : env.skyMode === 'procedural' ? 'Procedural Sky' : 'Gradient Sky') + ' Asset',
+                      type: 'skybox',
+                      data: '',
+                      properties: {
+                        mode: env.skyMode || 'gradient',
+                        topColor: env.skyTopColor || '#3a536b',
+                        horizonColor: env.skyHorizonColor || '#8c99a3',
+                        bottomColor: env.skyBottomColor || '#262b30',
+                        sunColor: env.sunColor || '#fff1cc',
+                        sunSize: env.skySunSize ?? 72,
+                        cloudColor: env.skyCloudColor || '#e4ebf0',
+                        cloudCoverage: env.skyCloudCoverage ?? 0.48,
+                        cloudSpeed: env.skyCloudSpeed ?? 0.035,
+                        cloudScale: env.skyCloudScale ?? 1.8,
+                        starIntensity: env.skyStarIntensity ?? 0,
+                        faces: structuredClone(env.skyFaces || {}),
+                      },
+                    })
+                    getScene(n).environment.skyAsset = skyId
+                  })
+                }}
+              >
+                Save as Skybox Asset
+              </button>
+            </Field>
+          </>
+        )}
+      </div>
+      <h4>LittleJS Lighting & Fog</h4>
+      <div className="mf-form-grid">
+        <Field label="Hemisphere ground">
+          <Color label="Ambient ground color" value={env.ambientGroundColor || '#2a2d30'} change={(v) => patch('ambientGroundColor', v)} />
+        </Field>
+        {(
+          [
+            ['ambientGroundIntensity', 'Ground bounce', 0.5, 0, 3, 0.05],
+            ['shadowRange', 'Shadow range', 40, 5, 200, 5],
+            ['softShadowHeight', 'Soft shadow Y', 0, -50, 50, 0.1],
+            ['fogFadeStart', 'Fog fade start', 0, 0, 300, 1],
+            ['fogFadeEnd', 'Fog fade end', 0, 0, 400, 1],
+          ] as const
+        ).map(([k, label, def, min, max, step]) => (
+          <Field key={k} label={label}>
+            <Numeric label={label} value={env[k] ?? def} min={min} max={max} step={step} change={(v) => patch(k, v)} />
+          </Field>
+        ))}
+        <Field label="Depth fog">
+          <input type="checkbox" checked={Boolean(env.fogDepth)} onChange={(e) => patch('fogDepth', e.target.checked)} />
+        </Field>
+        <Field label="Smooth shading">
+          <input type="checkbox" checked={Boolean(env.smoothShading)} onChange={(e) => patch('smoothShading', e.target.checked)} />
+        </Field>
+      </div>
+      <h4>Post-Processing (WebGL2)</h4>
+      <div className="mf-form-grid">
+        {(
+          [
+            ['ao', 'Ambient Occlusion (AO)', 0, 0, 1, 0.05],
+            ['aoRadius', 'AO radius', 2.5, 1, 6, 0.25],
+            ['dof', 'Depth of Field (DoF)', 0, 0, 1, 0.05],
+            ['dofFocus', 'DoF focus Y', 0.5, 0, 1, 0.05],
+            ['dofAperture', 'DoF focus band', 0.22, 0.05, 0.5, 0.02],
+            ['bloom', 'Bloom glow', 0, 0, 2, 0.05],
+            ['bloomThreshold', 'Bloom threshold', 0.72, 0.2, 1, 0.02],
+            ['vignette', 'Vignette', 0, 0, 1, 0.05],
+            ['chromatic', 'Chromatic aberration', 0, 0, 1, 0.05],
+            ['grain', 'Film grain', 0, 0, 0.4, 0.02],
+            ['scanlines', 'CRT scanlines', 0, 0, 1, 0.05],
+            ['contrast', 'Contrast', 1, 0.5, 2, 0.05],
+            ['saturation', 'Saturation', 1, 0, 2, 0.05],
+          ] as const
+        ).map(([k, label, def, min, max, step]) => (
+          <Field key={k} label={label}>
+            <Numeric label={label} value={env[k] ?? def} min={min} max={max} step={step} change={(v) => patch(k, v)} />
+          </Field>
+        ))}
       </div>
     </>
   )
 }
-function MaterialForm({ a, p, patch }: { a: Asset; p: Project; patch: (k: string, v: unknown) => void }) {
+function MaterialForm({ a, p, patch, edit }: { a: Asset; p: Project; patch: (k: string, v: unknown) => void; edit: Edit }) {
+  const [pattern, setPattern] = useState<ProceduralPattern>('concrete')
+  const [accent, setAccent] = useState('#5b6166')
+  function bakeProcedural(
+    kind: ProceduralPattern,
+    baseCol: string,
+    accentCol: string,
+    extraProps?: Record<string, any>,
+  ) {
+    const { diffuse, normal } = generateProceduralTextures(kind, baseCol, accentCol, 256)
+    const diffId = uid('tex'),
+      normId = uid('tex')
+    edit((n) => {
+      n.assets.push(
+        { id: diffId, name: `${a.name} (${kind})`, type: 'texture', data: diffuse, properties: {} },
+        { id: normId, name: `${a.name} (${kind} normal)`, type: 'texture', data: normal, properties: {} },
+      )
+      const mat = n.assets.find((x) => x.id === a.id)
+      if (mat) {
+        if (extraProps) Object.assign(mat.properties, extraProps)
+        mat.properties.map = diffId
+        mat.properties.normalMap = normId
+      }
+    })
+  }
   const m = a.properties
   return (
     <>
       <div
         className="mf-material-preview"
         style={{
-          background:
-            'radial-gradient(circle at 40% 28%, white -20%, ' + (m.color || '#ffffff') + ' 35%, #121319 96%)',
+          opacity: m.opacity ?? 1,
+          backgroundImage: p.assets.find((x) => x.id === m.map)?.data
+            ? `radial-gradient(circle at 38% 26%, rgba(255,255,255,${(1 - (m.roughness ?? 0.8)) * 0.65}), transparent 48%), url(${p.assets.find((x) => x.id === m.map)!.data})`
+            : `radial-gradient(circle at 40% 28%, rgba(255,255,255,${0.25 + (1 - (m.roughness ?? 0.8)) * 0.7}) -10%, ${m.color || '#ffffff'} 36%, #121319 96%)`,
+          backgroundSize: 'cover',
+          boxShadow: m.emissive && m.emissive !== '#000000' ? `0 0 22px ${m.emissive}` : undefined,
         }}
       />
+      <h4>Material presets</h4>
+      <div className="mf-presets">
+        {materialPresets.map((preset) => (
+          <button
+            key={preset.name}
+            type="button"
+            onClick={() => {
+              if (preset.pattern) {
+                setPattern(preset.pattern)
+                if (preset.accent) setAccent(preset.accent)
+                bakeProcedural(
+                  preset.pattern,
+                  preset.properties.color || '#9aa0a4',
+                  preset.accent || '#5b6166',
+                  preset.properties,
+                )
+              } else {
+                edit((n) => {
+                  const mat = n.assets.find((x) => x.id === a.id)
+                  if (mat) Object.assign(mat.properties, preset.properties)
+                })
+              }
+            }}
+          >
+            {preset.name}
+          </button>
+        ))}
+      </div>
+      <h4>Procedural surface generator (Albedo + Normal map)</h4>
+      <div className="mf-form-grid">
+        <Field label="Pattern">
+          <select value={pattern} onChange={(e) => setPattern(e.target.value as ProceduralPattern)}>
+            <option value="concrete">Concrete / Plaster</option>
+            <option value="asphalt">Wet Asphalt</option>
+            <option value="tile">Soviet Tile</option>
+            <option value="brick">Brick Wall</option>
+            <option value="rust">Rusty Metal</option>
+            <option value="panel">Concrete Panels</option>
+          </select>
+        </Field>
+        <Field label="Detail / seam color">
+          <Color label="Accent color" value={accent} change={setAccent} />
+        </Field>
+        <Field label="Generate maps">
+          <button
+            type="button"
+            className="mf-secondary"
+            onClick={() => bakeProcedural(pattern, m.color || '#9aa0a4', accent)}
+          >
+            Bake Diffuse + Normal
+          </button>
+        </Field>
+      </div>
       <div className="mf-form-grid">
         <Field label="Shading">
           <select
@@ -205,11 +512,26 @@ function MaterialForm({ a, p, patch }: { a: Asset; p: Project; patch: (k: string
             />
           </Field>
         ))}
+        <Field label="Emissive intensity">
+          <Numeric label="emissiveIntensity" min={0} max={2} step={0.1} value={m.emissiveIntensity ?? 0} change={(v) => patch('emissiveIntensity', v)} />
+        </Field>
         {['doubleSided', 'flatShading'].map((k, i) => (
           <Field key={k} label={['Double sided', 'Flat shading'][i]}>
             <input type="checkbox" checked={!!m[k]} onChange={(e) => patch(k, e.target.checked)} />
           </Field>
         ))}
+        <Field label="Cast shadow">
+          <input type="checkbox" checked={m.castShadow !== false} onChange={(e) => patch('castShadow', e.target.checked)} />
+        </Field>
+        <Field label="Receive shadow">
+          <input type="checkbox" checked={m.receiveShadow !== false} onChange={(e) => patch('receiveShadow', e.target.checked)} />
+        </Field>
+        <Field label="Soft shadow radius">
+          <Numeric label="softShadow" min={0} max={10} step={0.1} value={m.softShadow ?? 0} change={(v) => patch('softShadow', v)} />
+        </Field>
+        <Field label="Round lighting">
+          <input type="checkbox" checked={Boolean(m.roundLighting)} onChange={(e) => patch('roundLighting', e.target.checked)} />
+        </Field>
         {['tiling', 'offset'].map((k) => (
           <Field label={k === 'tiling' ? 'UV tiling' : 'UV offset'} key={k}>
             <div className="mf-pair">
@@ -230,6 +552,60 @@ function MaterialForm({ a, p, patch }: { a: Asset; p: Project; patch: (k: string
         ))}
       </div>
     </>
+  )
+}
+function SkyboxForm({ a, p, patch }: { a: Asset; p: Project; patch: (k: string, v: unknown) => void }) {
+  const s = a.properties
+  const mode = s.mode || 'procedural'
+  return (
+    <div className="mf-form-grid">
+      <Field label="Sky mode">
+        <select value={mode} onChange={(e) => patch('mode', e.target.value)}>
+          <option value="gradient">Sky Dome (Gradient)</option>
+          <option value="procedural">Procedural (Clouds + Stars)</option>
+          <option value="cubemap">Skybox (6 Sides)</option>
+        </select>
+      </Field>
+      {mode !== 'cubemap' && (
+        <>
+          <Field label="Top color"><Color label="Top color" value={s.topColor || '#243b55'} change={(v) => patch('topColor', v)} /></Field>
+          <Field label="Horizon color"><Color label="Horizon color" value={s.horizonColor || '#9ab2c4'} change={(v) => patch('horizonColor', v)} /></Field>
+          <Field label="Bottom color"><Color label="Bottom color" value={s.bottomColor || '#232a30'} change={(v) => patch('bottomColor', v)} /></Field>
+        </>
+      )}
+      {mode === 'procedural' && (
+        <>
+          <Field label="Sun color"><Color label="Sun color" value={s.sunColor || '#fff1cc'} change={(v) => patch('sunColor', v)} /></Field>
+          <Field label="Cloud color"><Color label="Cloud color" value={s.cloudColor || '#e4ebf0'} change={(v) => patch('cloudColor', v)} /></Field>
+          <Field label="Cloud coverage"><Numeric label="Cloud coverage" value={s.cloudCoverage ?? 0.48} min={0} max={1} step={0.05} change={(v) => patch('cloudCoverage', v)} /></Field>
+          <Field label="Cloud speed"><Numeric label="Cloud speed" value={s.cloudSpeed ?? 0.035} min={0} max={0.5} step={0.005} change={(v) => patch('cloudSpeed', v)} /></Field>
+          <Field label="Cloud scale"><Numeric label="Cloud scale" value={s.cloudScale ?? 1.8} min={0.2} max={8} step={0.1} change={(v) => patch('cloudScale', v)} /></Field>
+          <Field label="Sun sharpness"><Numeric label="Sun sharpness" value={s.sunSize ?? 72} min={8} max={256} step={4} change={(v) => patch('sunSize', v)} /></Field>
+          <Field label="Star intensity"><Numeric label="Star intensity" value={s.starIntensity ?? 0} min={0} max={1} step={0.05} change={(v) => patch('starIntensity', v)} /></Field>
+        </>
+      )}
+      {mode === 'cubemap' &&
+        ([
+          ['px', 'Right (+X)'],
+          ['nx', 'Left (-X)'],
+          ['py', 'Top (+Y)'],
+          ['ny', 'Bottom (-Y)'],
+          ['pz', 'Front (+Z)'],
+          ['nz', 'Back (-Z)'],
+        ] as const).map(([faceKey, label]) => {
+          const face = s.faces?.[faceKey] || {}
+          const setFace = (upd: Record<string, unknown>) =>
+            patch('faces', { ...(s.faces || {}), [faceKey]: { ...face, ...upd } })
+          return (
+            <Field key={faceKey} label={label}>
+              <div className="mf-pair">
+                <AssetSelect assets={p.assets} type="texture" label={label + ' texture'} value={face.texture || ''} change={(t) => setFace({ texture: t || undefined })} />
+                <Color label={label + ' color'} value={face.color || '#8fa6b8'} change={(col) => setFace({ color: col })} />
+              </div>
+            </Field>
+          )
+        })}
+    </div>
   )
 }
 function LocalesForm({ p, edit, fail }: { p: Project; edit: Edit; fail: (s: string) => void }) {
@@ -523,8 +899,11 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
               <Field label="Asset name">
                 <input value={a.name} onChange={(e) => changeA((a) => (a.name = e.target.value))} />
               </Field>
+              {a.type === 'skybox' && (
+                <SkyboxForm p={p} a={a} patch={(k, v) => changeA((a) => (a.properties[k] = v))} />
+              )}
               {a.type === 'material' && (
-                <MaterialForm p={p} a={a} patch={(k, v) => changeA((a) => (a.properties[k] = v))} />
+                <MaterialForm p={p} a={a} edit={edit} patch={(k, v) => changeA((a) => (a.properties[k] = v))} />
               )}
               {a.type === 'shader' && (
                 <div className="mf-row">

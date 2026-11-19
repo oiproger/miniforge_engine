@@ -36,6 +36,7 @@ export default function Assets({
     'All assets': [],
     Prefabs: ['prefab'],
     Materials: ['material', 'shader'],
+    Skyboxes: ['skybox'],
     Scripts: ['script'],
     Models: ['model'],
     Media: ['texture', 'audio', 'json'],

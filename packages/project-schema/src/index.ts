@@ -30,7 +30,7 @@ export interface Scene {
   environment: Environment
   entities: Entity[]
 }
-export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json'
+export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox'
 export interface Asset {
   id: string
   name: string
@@ -300,6 +300,7 @@ export function needsPhysics(entities: Entity[]) {
         c.enabled !== false &&
         (c.type === 'body' ||
           c.type === 'terrain' ||
+          c.type === 'water' ||
           (c.type === 'collider' &&
             !c.trigger &&
             !e.components.some(

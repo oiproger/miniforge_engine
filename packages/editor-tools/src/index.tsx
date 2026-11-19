@@ -1,7 +1,7 @@
 import { useEffect, useRef, useLayoutEffect, useState } from 'react'
 import { createWorld, type RenderWorld } from '../../graphics/src'
 import { Vector3 } from '../../graphics/src/scene'
-import type { Project, Transform } from '../../project-schema/src'
+import type { Project, Transform, Vec3 } from '../../project-schema/src'
 
 export interface ViewportProps {
   visible?: boolean
@@ -10,6 +10,7 @@ export interface ViewportProps {
   selectedId: string | null
   onSelect: (id: string | null, additive?: boolean) => void
   onTransform: (id: string, transform: Transform) => void
+  onDropAsset?: (assetId: string, hitEntityId: string | undefined, worldPos: Vec3) => void
   tool?: 'select' | 'translate' | 'rotate' | 'scale'
   grid?: boolean
   snap?: boolean
@@ -28,6 +29,10 @@ export function SceneViewport(props: ViewportProps) {
     undefined,
   )
   const [error, setError] = useState('')
+  const [dragOver, setDragOver] = useState(false)
+  const [navMode, setNavMode] = useState<'orbit' | 'fly'>('orbit')
+  const navModeRef = useRef<'orbit' | 'fly'>('orbit')
+  navModeRef.current = navMode
   useLayoutEffect(() => {
     const el = host.current!,
       guide = overlay.current!,
@@ -48,7 +53,37 @@ export function SceneViewport(props: ViewportProps) {
     let yaw = 0.69,
       pitch = 0.49,
       distance = 23,
-      raf = 0
+      raf = 0,
+      lastFrame = performance.now(),
+      flySpeed = 10,
+      flyActive = false,
+      flyYaw = -0.69,
+      flyPitch = -0.49
+    const flyPos = new Vector3(
+      target.x + distance * Math.sin(yaw) * Math.cos(pitch),
+      target.y + distance * Math.sin(pitch),
+      target.z + distance * Math.cos(yaw) * Math.cos(pitch),
+    )
+    const heldKeys = new Set<string>()
+    const syncFlyFromOrbit = () => {
+      flyPos.set(
+        target.x + distance * Math.sin(yaw) * Math.cos(pitch),
+        target.y + distance * Math.sin(pitch),
+        target.z + distance * Math.cos(yaw) * Math.cos(pitch),
+      )
+      flyYaw = yaw
+      flyPitch = -pitch
+    }
+    const syncOrbitFromFly = () => {
+      const cp = Math.cos(flyPitch),
+        sp = Math.sin(flyPitch)
+      const fwdX = -Math.sin(flyYaw) * cp,
+        fwdY = sp,
+        fwdZ = -Math.cos(flyYaw) * cp
+      target.set(flyPos.x + fwdX * distance, flyPos.y + fwdY * distance, flyPos.z + fwdZ * distance)
+      yaw = flyYaw
+      pitch = -flyPitch
+    }
     let handles: { x: number; y: number; ax: number; ay: number; axis: number }[] = []
     let drag:
       | {
@@ -96,13 +131,53 @@ export function SceneViewport(props: ViewportProps) {
     function frame() {
       raf = requestAnimationFrame(frame)
       if (latest.current.visible === false || !el.clientWidth || document.hidden) return
+      const now = performance.now()
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastFrame) / 1000))
+      lastFrame = now
+      const wantFly = navModeRef.current === 'fly' || drag?.mode === 'fly'
+      if (wantFly && !flyActive) {
+        syncFlyFromOrbit()
+        flyActive = true
+      } else if (!wantFly && flyActive) {
+        syncOrbitFromFly()
+        flyActive = false
+      }
       const c = world.camera
-      c.position.set(
-        target.x + distance * Math.sin(yaw) * Math.cos(pitch),
-        target.y + distance * Math.sin(pitch),
-        target.z + distance * Math.cos(yaw) * Math.cos(pitch),
-      )
-      c.lookAt(target)
+      if (flyActive) {
+        const cp = Math.cos(flyPitch),
+          sp = Math.sin(flyPitch)
+        const fwdX = -Math.sin(flyYaw) * cp,
+          fwdY = sp,
+          fwdZ = -Math.cos(flyYaw) * cp
+        const rightX = Math.cos(flyYaw),
+          rightZ = -Math.sin(flyYaw)
+        let mx = 0,
+          my = 0,
+          mz = 0
+        if (heldKeys.has('KeyW')) { mx += fwdX; my += fwdY; mz += fwdZ }
+        if (heldKeys.has('KeyS')) { mx -= fwdX; my -= fwdY; mz -= fwdZ }
+        if (heldKeys.has('KeyD')) { mx += rightX; mz += rightZ }
+        if (heldKeys.has('KeyA')) { mx -= rightX; mz -= rightZ }
+        if (heldKeys.has('KeyE') || heldKeys.has('Space')) my += 1
+        if (heldKeys.has('KeyQ') || heldKeys.has('ControlLeft')) my -= 1
+        const len = Math.hypot(mx, my, mz)
+        if (len > 0) {
+          const mult = heldKeys.has('ShiftLeft') || heldKeys.has('ShiftRight') ? 2.5 : 1
+          const step = (flySpeed * mult * dt) / len
+          flyPos.x += mx * step
+          flyPos.y += my * step
+          flyPos.z += mz * step
+        }
+        c.position.copy(flyPos)
+        c.rotation.set(flyPitch, flyYaw, 0)
+      } else {
+        c.position.set(
+          target.x + distance * Math.sin(yaw) * Math.cos(pitch),
+          target.y + distance * Math.sin(pitch),
+          target.z + distance * Math.cos(yaw) * Math.cos(pitch),
+        )
+        c.lookAt(target)
+      }
       c.fov = 33
       c.height = latest.current.orthographic ? distance * 0.6 : 0
       world.setGrid(!!latest.current.grid, latest.current.project.settings.mode === 'scene' ? -0.02 : -1.95)
@@ -182,14 +257,26 @@ export function SceneViewport(props: ViewportProps) {
       'wheel',
       (e) => {
         e.preventDefault()
-        distance = Math.max(0.5, Math.min(1000, distance * Math.exp(e.deltaY * 0.001)))
+        if (flyActive) {
+          flySpeed = Math.max(1, Math.min(80, flySpeed * Math.exp(-e.deltaY * 0.001)))
+        } else {
+          distance = Math.max(0.5, Math.min(1000, distance * Math.exp(e.deltaY * 0.001)))
+        }
       },
       { ...opts, passive: false },
     )
     canvas.addEventListener('dblclick', focus, opts)
+    window.addEventListener('keyup', (e) => heldKeys.delete(e.code), opts)
+    window.addEventListener('blur', () => heldKeys.clear(), opts)
     canvas.addEventListener(
       'keydown',
       (e) => {
+        if (flyActive && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft'].includes(e.code)) {
+          heldKeys.add(e.code)
+          e.preventDefault()
+          e.stopPropagation()
+          return
+        }
         if (e.key.toLowerCase() === 'f') focus()
         const step = distance * 0.04
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -233,7 +320,7 @@ export function SceneViewport(props: ViewportProps) {
           lastX: e.offsetX,
           lastY: e.offsetY,
           axis: h?.axis ?? -1,
-          mode: h ? latest.current.tool! : e.button === 1 || e.shiftKey ? 'pan' : 'orbit',
+          mode: h ? latest.current.tool! : e.button === 2 || (navModeRef.current === 'fly' && e.button === 0) ? 'fly' : e.button === 1 || e.shiftKey ? 'pan' : 'orbit',
           amount: distance * 0.1,
           dx: h ? h.x - h.ax : 0,
           dy: h ? h.y - h.ay : 0,
@@ -257,7 +344,10 @@ export function SceneViewport(props: ViewportProps) {
           dy = e.offsetY - drag.lastY
         drag.lastX = e.offsetX
         drag.lastY = e.offsetY
-        if (drag.mode === 'orbit') {
+        if (drag.mode === 'fly') {
+          flyYaw -= dx * 0.005
+          flyPitch = Math.min(1.52, Math.max(-1.52, flyPitch - dy * 0.005))
+        } else if (drag.mode === 'orbit') {
           yaw -= dx * 0.008
           pitch = Math.min(1.56, Math.max(-1.56, pitch + dy * 0.008))
         } else if (drag.mode === 'pan') {
@@ -333,7 +423,36 @@ export function SceneViewport(props: ViewportProps) {
     if (props.focusToken) controller.current?.focus()
   }, [props.focusToken])
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        outline: dragOver ? '2px dashed #80acdf' : undefined,
+        outlineOffset: -2,
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('miniforge/asset')) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (!dragOver) setDragOver(true)
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        setDragOver(false)
+        const assetId = e.dataTransfer.getData('miniforge/asset')
+        if (!assetId || !latest.current.onDropAsset) return
+        e.preventDefault()
+        e.stopPropagation()
+        const w = controller.current?.world
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = e.clientX - rect.left,
+          y = e.clientY - rect.top
+        const hitId = w?.pick(x, y)
+        const pos = w ? w.screenToGround(x, y, 0) : ([0, 0, 0] as Vec3)
+        latest.current.onDropAsset(assetId, hitId, pos)
+      }}
+    >
       <div ref={host} style={{ position: 'absolute', inset: 0 }} />
       <canvas
         ref={overlay}
@@ -345,7 +464,15 @@ export function SceneViewport(props: ViewportProps) {
           {error}
         </div>
       )}
-      <div aria-label="View orientation" style={{ position: 'absolute', right: 12, bottom: 12 }}>
+      <div aria-label="View orientation" style={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', gap: 4 }}>
+        <button
+          type="button"
+          title="Switch between Orbit and Fly (WASD + RMB) camera"
+          onClick={() => setNavMode((m) => (m === 'orbit' ? 'fly' : 'orbit'))}
+          style={{ fontWeight: 600 }}
+        >
+          {navMode === 'fly' ? 'Fly (WASD)' : 'Orbit'}
+        </button>
         {axes.map((a, i) => (
           <button
             key={a}

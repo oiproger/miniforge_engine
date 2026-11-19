@@ -19,11 +19,15 @@ import {
   Package,
   Diamond,
   MoreHorizontal,
+  Waves,
+  Sparkles,
 } from 'lucide-react'
 import { getScene, reparentEntity, type Project, type Entity } from '../../../packages/project-schema/src'
 export function entityIcon(entity: Entity) {
   const n = entity.name.toLowerCase()
   if (entity.components.some((c) => c.type === 'camera')) return Camera
+  if (entity.components.some((c) => c.type === 'water')) return Waves
+  if (entity.components.some((c) => c.type === 'volumetric')) return Sparkles
   if (entity.components.some((c) => c.type === 'light') || n.includes('light')) return Lightbulb
   if (n.includes('coin')) return Coins
   if (n.includes('pine') || n.includes('grove') || n.includes('tree')) return Trees
@@ -39,13 +43,21 @@ type Props = {
   change: (p: Project) => void
   add: () => void
   context: (e: Entity, x: number, y: number) => void
+  onDropAsset?: (assetId: string, targetId: string | undefined) => void
 }
-export default function Hierarchy({ project, selection, select, change, add, context }: Props) {
+export default function Hierarchy({ project, selection, select, change, add, context, onDropAsset }: Props) {
   const [search, query] = useState(''),
     [expanded, expand] = useState<string[]>([]),
     [open, show] = useState(true)
   const scene = getScene(project)
   function drop(ev: React.DragEvent, id: string | null) {
+    if (ev.dataTransfer.types.includes('miniforge/asset') && onDropAsset) {
+      ev.preventDefault()
+      ev.stopPropagation()
+      const assetId = ev.dataTransfer.getData('miniforge/asset')
+      if (assetId) onDropAsset(assetId, id ?? undefined)
+      return
+    }
     if (!ev.dataTransfer.types.includes('miniforge/entity')) return
     ev.preventDefault()
     ev.stopPropagation()

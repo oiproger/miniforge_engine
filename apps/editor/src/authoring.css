@@ -468,3 +468,21 @@
 .rule-fields legend{font-size:11px;color:#b4c3ce;padding:0 4px}
 .rule-order{display:flex;gap:4px;align-items:center;justify-content:flex-end}
 .rule-order button{font:inherit;font-size:11px;padding:3px 6px}
+
+.mf-dialog.mf-dialog-code {
+  width: min(1280px, 95vw);
+  height: min(880px, 92vh);
+  max-height: 92vh;
+}
+.mf-dialog.mf-dialog-code .mf-dialog-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mf-dialog.mf-dialog-code .mf-code {
+  flex: 1;
+  min-height: 520px;
+  height: auto;
+  max-height: none;
+}

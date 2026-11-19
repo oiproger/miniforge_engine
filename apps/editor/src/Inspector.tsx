@@ -16,6 +16,8 @@ import {
   Shapes,
   PackagePlus,
   Check,
+  Waves,
+  Sparkles,
 } from 'lucide-react'
 import {
   getScene,
@@ -33,14 +35,16 @@ import { VisualFields } from './VisualFields'
 import { Section, Field, Numeric, Color } from './Fields'
 import './authoring.css'
 
-import {behaviorDefaults, eventNames} from '../../../packages/behaviors/src/catalog'
-import {RuleFields} from './RuleFields'
-export {behaviorDefaults}
+import { behaviorDefaults, eventNames } from '../../../packages/behaviors/src/catalog'
+import { RuleFields } from './RuleFields'
+export { behaviorDefaults }
 const names: Record<string, string> = {
   mesh: 'Mesh Renderer',
   behavior: 'Behavior',
   rule: 'Event Rule',
   light: 'Light',
+  volumetric: 'Volumetric Light',
+  water: 'Water Surface',
   camera: 'Camera',
   collider: 'Collider',
   body: 'Physics Body',
@@ -53,6 +57,8 @@ const names: Record<string, string> = {
 const icons = {
   mesh: Box,
   light: Sun,
+  volumetric: Sparkles,
+  water: Waves,
   camera: Video,
   collider: Cuboid,
   body: Box,
@@ -123,6 +129,32 @@ export function Inspector({
       case 'terrain':
         Object.assign(item, makeTerrain())
         break
+      case 'water':
+        Object.assign(item, {
+          size: 16,
+          segments: 24,
+          depth: 2,
+          deepColor: '#153a4a',
+          shallowColor: '#3c8ea0',
+          waveHeight: 0.14,
+          waveSpeed: 1.4,
+          waveScale: 0.7,
+          opacity: 0.82,
+          fresnelPower: 2.6,
+          foamAmount: 0.35,
+        })
+        break
+      case 'volumetric':
+        Object.assign(item, {
+          shape: 'cone',
+          color: '#ffe5b4',
+          intensity: 0.42,
+          softness: 2.2,
+          dustSpeed: 0.35,
+          topRadius: 0.2,
+          bottomRadius: 1.6,
+        })
+        break
       case 'animation':
         Object.assign(item, { clip: '', loop: true, autoplay: true, speed: 1, event: '' })
         break
@@ -133,13 +165,18 @@ export function Inspector({
         Object.assign(item, { shape: 'box', material: '' })
         break
       case 'rule':
-        Object.assign(item, { event: 'object.clicked', source: '', tag: '', actions: [{kind:'addVariable', key:'score', value:1}] })
+        Object.assign(item, {
+          event: 'object.clicked',
+          source: '',
+          tag: '',
+          actions: [{ kind: 'addVariable', key: 'score', value: 1 }],
+        })
         break
       case 'behavior':
         Object.assign(item, { kind: 'rotate', params: { ...behaviorDefaults.rotate[1] } })
         break
       case 'light':
-        Object.assign(item, { kind: 'point', color: '#ffffff', intensity: 2 })
+        Object.assign(item, { kind: 'point', color: '#ffffff', intensity: 2, range: 12, angle: 0.6 })
         break
       case 'camera':
         Object.assign(item, { projection: 'perspective', fov: 50 })
@@ -151,10 +188,19 @@ export function Inspector({
         })
         break
       case 'collider':
-        Object.assign(item, { shape: 'box', trigger: false })
+        Object.assign(item, { shape: 'box', trigger: false, friction: 0.5, restitution: 0.1 })
         break
       case 'body':
-        Object.assign(item, { kind: 'static' })
+        Object.assign(item, {
+          kind: 'static',
+          mass: 1,
+          friction: 0.5,
+          restitution: 0.1,
+          linearDamping: 0.1,
+          angularDamping: 0.1,
+          gravityScale: 1,
+          lockRotation: false,
+        })
         break
       case 'audio':
         Object.assign(item, { asset: '', volume: 1 })
@@ -192,9 +238,16 @@ export function Inspector({
     function parameter(key: string, value: unknown) {
       prop('params', { ...c.params, [key]: value })
     }
-    const num = (label: string, key: string, def: number, min?: number, max?: number) => (
+    const num = (label: string, key: string, def: number, min?: number, max?: number, step?: number) => (
       <Field label={label}>
-        <Numeric label={label} value={c[key] ?? def} min={min} max={max} change={(n) => prop(key, n)} />
+        <Numeric
+          label={label}
+          value={c[key] ?? def}
+          min={min}
+          max={max}
+          step={step}
+          change={(n) => prop(key, n)}
+        />
       </Field>
     )
     const link = (label: string, type: Asset['type'], key: string) => (
@@ -218,9 +271,56 @@ export function Inspector({
           toggle={() => prop('enabled', c.enabled === false)}
           remove={() => editEntity((e) => e.components.splice(i, 1))}
         >
-          {c.type === 'terrain' && <TerrainEditor terrain={c as Terrain} assets={project.assets} change={data=>patch(i,data)} />}
+          {c.type === 'terrain' && (
+            <TerrainEditor terrain={c as Terrain} assets={project.assets} change={(data) => patch(i, data)} />
+          )}
+          {c.type === 'water' && (
+            <>
+              {num('Size', 'size', 16, 1, 256, 1)}
+              {num('Segments', 'segments', 24, 4, 64, 2)}
+              {num('Depth (sensor)', 'depth', 2, 0.2, 50, 0.5)}
+              <Field label="Deep color">
+                <Color label="Deep color" value={c.deepColor ?? '#153a4a'} change={(v) => prop('deepColor', v)} />
+              </Field>
+              <Field label="Shallow color">
+                <Color
+                  label="Shallow color"
+                  value={c.shallowColor ?? '#3c8ea0'}
+                  change={(v) => prop('shallowColor', v)}
+                />
+              </Field>
+              {num('Wave height', 'waveHeight', 0.14, 0, 2, 0.02)}
+              {num('Wave speed', 'waveSpeed', 1.4, 0, 10, 0.1)}
+              {num('Wave scale', 'waveScale', 0.7, 0.05, 5, 0.05)}
+              {num('Opacity', 'opacity', 0.82, 0.05, 1, 0.05)}
+              {num('Fresnel power', 'fresnelPower', 2.6, 0.5, 8, 0.1)}
+              {num('Foam amount', 'foamAmount', 0.35, 0, 1, 0.05)}
+            </>
+          )}
+          {c.type === 'volumetric' && (
+            <>
+              {select('Shape', ['cone', 'box'], c.shape ?? 'cone', (v) => prop('shape', v))}
+              <Field label="Beam color">
+                <Color label="Beam color" value={c.color ?? '#ffe5b4'} change={(v) => prop('color', v)} />
+              </Field>
+              {num('Intensity', 'intensity', 0.42, 0.02, 1.5, 0.05)}
+              {num('Edge softness', 'softness', 2.2, 0.5, 8, 0.1)}
+              {num('Dust speed', 'dustSpeed', 0.35, 0, 5, 0.05)}
+              {(c.shape ?? 'cone') === 'cone' && (
+                <>
+                  {num('Top radius', 'topRadius', 0.2, 0, 10, 0.05)}
+                  {num('Bottom radius', 'bottomRadius', 1.6, 0.1, 20, 0.1)}
+                </>
+              )}
+            </>
+          )}
           {(c.type === 'animation' || c.type === 'sprite') && (
-            <VisualFields c={c} assets={project.assets} modelId={entity?.components.find(part => part.type === 'mesh' && part.shape === 'model')?.asset} change={prop}/>
+            <VisualFields
+              c={c}
+              assets={project.assets}
+              modelId={entity?.components.find((part) => part.type === 'mesh' && part.shape === 'model')?.asset}
+              change={prop}
+            />
           )}
           {c.type === 'mesh' && (
             <>
@@ -250,7 +350,9 @@ export function Inspector({
               <Field label="Color">
                 <Color label="Light color" value={c.color} change={(v) => prop('color', v)} />
               </Field>
-              {num('Intensity', 'intensity', 1, 0)}
+              {num('Intensity', 'intensity', 1, 0, 20, 0.1)}
+              {(c.kind === 'point' || c.kind === 'spot') && num('Range', 'range', 12, 0.5, 100, 0.5)}
+              {c.kind === 'spot' && num('Cone angle (rad)', 'angle', 0.6, 0.05, 1.5, 0.05)}
             </>
           )}
           {c.type === 'camera' && (
@@ -271,10 +373,32 @@ export function Inspector({
                   onChange={(e) => prop('trigger', e.target.checked)}
                 />
               </Field>
+              {num('Friction', 'friction', 0.5, 0, 2, 0.05)}
+              {num('Restitution (bounce)', 'restitution', 0.1, 0, 1.5, 0.05)}
             </>
           )}
-          {c.type === 'body' &&
-            select('Body type', ['static', 'dynamic', 'kinematic'], c.kind, (v) => prop('kind', v))}
+          {c.type === 'body' && (
+            <>
+              {select('Body type', ['static', 'dynamic', 'kinematic'], c.kind, (v) => prop('kind', v))}
+              {c.kind === 'dynamic' && (
+                <>
+                  {num('Mass', 'mass', 1, 0.01, 1000, 0.1)}
+                  {num('Gravity scale', 'gravityScale', 1, -5, 5, 0.1)}
+                  {num('Linear damping', 'linearDamping', 0.1, 0, 20, 0.1)}
+                  {num('Angular damping', 'angularDamping', 0.1, 0, 20, 0.1)}
+                  {num('Friction', 'friction', 0.5, 0, 2, 0.05)}
+                  {num('Restitution', 'restitution', 0.1, 0, 1.5, 0.05)}
+                  <Field label="Lock rotation">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(c.lockRotation)}
+                      onChange={(e) => prop('lockRotation', e.target.checked)}
+                    />
+                  </Field>
+                </>
+              )}
+            </>
+          )}
           {c.type === 'audio' && (
             <>
               {link('Audio clip', 'audio', 'asset')}
@@ -292,7 +416,7 @@ export function Inspector({
               <ScriptParams project={project} component={c} change={(fields) => patch(i, fields)} />
             </>
           )}
-          {c.type === 'rule' && <RuleFields project={project} rule={c} change={data=>patch(i,data)} />}
+          {c.type === 'rule' && <RuleFields project={project} rule={c} change={(data) => patch(i, data)} />}
           {c.type === 'behavior' && (
             <>
               <Field label="Behavior">
@@ -316,11 +440,24 @@ export function Inspector({
                   {typeof v === 'number' ? (
                     <Numeric label={key} value={v} change={(n) => parameter(key, n)} />
                   ) : typeof v === 'boolean' ? (
-                    <input type="checkbox" checked={v} onChange={e=>parameter(key,e.target.checked)} />
+                    <input type="checkbox" checked={v} onChange={(e) => parameter(key, e.target.checked)} />
                   ) : key === 'event' ? (
-                    <><input aria-label="Behavior event" list="mf-event-catalog" value={String(v)} onChange={e=>parameter(key,e.target.value)}/></>
+                    <>
+                      <input
+                        aria-label="Behavior event"
+                        list="mf-event-catalog"
+                        value={String(v)}
+                        onChange={(e) => parameter(key, e.target.value)}
+                      />
+                    </>
                   ) : key === 'prefab' ? (
-                    <AssetSelect label="Spawn prefab" assets={project.assets} type="prefab" value={String(v||'')} change={id=>parameter(key,id)}/>
+                    <AssetSelect
+                      label="Spawn prefab"
+                      assets={project.assets}
+                      type="prefab"
+                      value={String(v || '')}
+                      change={(id) => parameter(key, id)}
+                    />
                   ) : key === 'target' || key === 'scene' ? (
                     <select value={String(v ?? '')} onChange={(e) => parameter(key, e.target.value)}>
                       <option value="">Select…</option>
@@ -405,7 +542,11 @@ export function Inspector({
   }
   return (
     <aside className="mf-inspector">
-      <datalist id="mf-event-catalog">{eventNames.map(name=><option key={name} value={name}/>)}</datalist>
+      <datalist id="mf-event-catalog">
+        {eventNames.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
       <div className="mf-pane-heading">
         <SlidersHorizontal size={15} />
         <strong>Inspector</strong>
@@ -433,7 +574,31 @@ export function Inspector({
             />
           </div>
           <Section name="Transform" icon={Move}>
-            <Field label="Tags"><input key={entity.id+JSON.stringify(entity.properties.tags || [])} aria-label="Object tags" placeholder="Comma-separated tags" defaultValue={(Array.isArray(entity.properties.tags)?entity.properties.tags:[]).join(", ")} onBlur={e=>{const tags=[...new Set(e.target.value.split(",").map(s=>s.trim()).filter(Boolean))]; if(JSON.stringify(tags)!==JSON.stringify(entity.properties.tags||[]))editEntity(obj=>{obj.properties.tags=tags})}} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></Field>
+            <Field label="Tags">
+              <input
+                key={entity.id + JSON.stringify(entity.properties.tags || [])}
+                aria-label="Object tags"
+                placeholder="Comma-separated tags"
+                defaultValue={(Array.isArray(entity.properties.tags) ? entity.properties.tags : []).join(', ')}
+                onBlur={(e) => {
+                  const tags = [
+                    ...new Set(
+                      e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    ),
+                  ]
+                  if (JSON.stringify(tags) !== JSON.stringify(entity.properties.tags || []))
+                    editEntity((obj) => {
+                      obj.properties.tags = tags
+                    })
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                }}
+              />
+            </Field>
             {(['position', 'rotation', 'scale'] as const).map((key) => (
               <div className="mf-transform" key={key}>
                 <span>{titleCase(key)}</span>
@@ -497,5 +662,5 @@ export function Inspector({
   )
 }
 export const defaultScript =
-  'export default function (api: GameAPI) {\n  return {\n    onUpdate(deltaTime: number) {\n      api.object.rotation.y += deltaTime;\n    },\n  };\n}\n'
+  'export default function (api: GameAPI) {\n  return {\n    onStart() {\n      // Initialize systems or register services here\n    },\n    onUpdate(deltaTime: number) {\n      api.object.rotation.y += deltaTime;\n    },\n  };\n}\n'
 export default Inspector
