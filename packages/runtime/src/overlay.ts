@@ -1,4 +1,5 @@
-import type { Project } from '../../project-schema/src'
+import type { Project, UIElement } from '../../project-schema/src'
+import { anchorStyle } from '../../project-schema/src/screens'
 import type { Input } from './input'
 
 export type Phase = 'menu' | 'playing' | 'paused' | 'results'
@@ -8,7 +9,7 @@ interface Actions {
   retry(): void
   reward(): void
   language(): void
-  emit(name: string): void
+  emit(name: string, source?: string): void
 }
 export const words: Record<string, Record<string, string>> = {
   en: {
@@ -62,11 +63,15 @@ export class Overlay {
   private stats = document.createElement('small')
   private pad = document.createElement('div')
   private stick = document.createElement('i')
+  private windows: string[] = []
+  private phase?: Phase
+  private snapshot?: { score: number; time: number; best: number; lang: string; mode: boolean }
+  private variables: Record<string, unknown> = {}
   private labels = new Map<string, HTMLElement>()
   constructor(
     private project: Project,
     private actions: Actions,
-    input: Input,
+    private input: Input,
     private t: (key: string) => string,
   ) {
     this.host.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:2'
@@ -74,6 +79,8 @@ export class Overlay {
     style.textContent = `
 :host{color:#fff;font:600 15px system-ui,sans-serif}*{box-sizing:border-box}section{pointer-events:auto;position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;background:linear-gradient(180deg,#12272242,#071d218c);padding:20px}section[hidden],header[hidden],.pad[hidden]{display:none}h1{font-size:clamp(28px,6vw,64px);letter-spacing:-.055em;text-shadow:0 2px 24px #182114;margin:0}p{margin:0 0 6px;text-shadow:0 1px 4px #122}button{border:0;cursor:pointer;pointer-events:auto;font:inherit;border-radius:9px;padding:10px 18px;color:#15291b;background:#c3f48a}button:focus-visible{outline:3px solid white}section button+button,header button{background:#22332fe8;color:white}header{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px}output{background:#182922d9;color:#ebffbd;border-radius:7px;padding:8px 12px;font-variant-numeric:tabular-nums}header button{margin-left:auto}.pad{display:none;position:absolute;bottom:22px;left:22px;border:1px solid #ffffff80;background:#253b3277;width:100px;height:100px;border-radius:50%;touch-action:none;pointer-events:auto;place-items:center}.pad i{width:40px;height:40px;border-radius:50%;background:#eaffdacc}@media(pointer:coarse){.pad{display:grid}}small{position:absolute;bottom:8px;right:8px;padding:3px 6px;color:white;background:#101c22ad;font:11px monospace}small:empty{display:none}
 `
+    this.custom.className = 'custom'
+    this.custom.style.cssText = 'position:absolute;inset:0'
     this.pad.className = 'pad'
     this.pad.append(this.stick)
     const move = (e: PointerEvent) => {
@@ -95,7 +102,7 @@ export class Overlay {
       input.joystick(0, 0)
       this.stick.style.transform = ''
     }
-    this.shadow.append(style, this.custom, this.hud, this.pad, this.panel, this.stats)
+    this.shadow.append(style, this.hud, this.pad, this.panel, this.custom, this.stats)
   }
   private button(text: string, fn: () => void) {
     const el = document.createElement('button')
@@ -103,15 +110,130 @@ export class Overlay {
     el.onclick = fn
     return el
   }
+  private phaseScreen() {
+    return this.project.screens?.find((s) => s.phase === this.phase)
+  }
+  current(): string | undefined {
+    return this.windows.at(-1) ?? this.phaseScreen()?.id
+  }
+  open(id: string): boolean {
+    if (!this.project.screens?.some((s) => s.id === id && s.phase === 'window')) return false
+    if (this.windows.at(-1) === id) return true
+    // Reopening an existing window unwinds to its position in the navigation stack.
+    const index = this.windows.indexOf(id)
+    if (index >= 0) this.windows.length = index + 1
+    else this.windows.push(id)
+    this.redraw()
+    return true
+  }
+  back(): boolean {
+    if (!this.windows.length) return false
+    this.windows.pop()
+    this.redraw()
+    return true
+  }
+  close(): boolean {
+    if (!this.windows.length) return false
+    this.windows = []
+    this.redraw()
+    return true
+  }
+  private redraw() {
+    const state = this.snapshot
+    if (state && this.phase)
+      this.render(this.phase, state.score, state.time, state.best, state.lang, state.mode)
+  }
+  private activate(item: UIElement) {
+    switch (item.action) {
+      case 'open':
+        if (item.target) this.open(item.target)
+        return
+      case 'back':
+        this.back()
+        return
+      case 'close':
+        this.close()
+        return
+      case 'play':
+        this.actions.play()
+        return
+      case 'pause':
+        this.actions.pause()
+        return
+      case 'retry':
+        this.actions.retry()
+        return
+      case 'reward':
+        this.actions.reward()
+        return
+      case 'language':
+        this.actions.language()
+        return
+      case 'input':
+        return
+      default:
+        this.actions.emit(String(item.event || item.id), item.id)
+    }
+  }
+  private bindInput(el: HTMLElement, action: string) {
+    const source = (pointer: number) => 'pointer-' + pointer
+    el.style.touchAction = 'none'
+    el.onpointerdown = (e) => {
+      if (e.button !== 0) return
+      el.setPointerCapture(e.pointerId)
+      this.input.setVirtual(action, source(e.pointerId), true)
+    }
+    el.onlostpointercapture =
+      el.onpointercancel =
+      el.onpointerup =
+        (e) => this.input.setVirtual(action, source(e.pointerId), false)
+    const key = 'hud-keyboard'
+    el.onkeydown = (e) => {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        this.input.setVirtual(action, key, true)
+      }
+    }
+    el.onkeyup = (e) => {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        this.input.setVirtual(action, key, false)
+      }
+    }
+    el.onblur = () => this.input.setVirtual(action, key, false)
+  }
   render(phase: Phase, score: number, time: number, best: number, lang: string, mode: boolean) {
+    if (this.phase !== phase) this.windows = []
+    this.phase = phase
+    this.snapshot = { score, time, best, lang, mode }
+    this.input.setModal(this.windows.length > 0)
+    this.input.releaseVirtual()
+    this.host.style.pointerEvents = this.windows.length || phase !== 'playing' ? 'auto' : 'none'
+    if (this.windows.length && document.pointerLockElement) document.exitPointerLock()
     this.hud.replaceChildren()
     this.panel.replaceChildren()
     this.custom.replaceChildren()
     this.labels.clear()
-    this.panel.hidden = phase === 'playing'
-    this.hud.hidden = phase !== 'playing'
-    this.custom.hidden = this.hud.hidden
-    this.pad.hidden = this.hud.hidden
+    const active = this.project.screens?.find((s) => s.id === this.current())
+    const windowOpen = !!this.windows.length
+    const items = this.project.ui.filter(
+      (item) =>
+        item.visible !== false &&
+        (item.screen ? item.screen === active?.id : !windowOpen && phase === 'playing'),
+    )
+    const authored = windowOpen || (!!active && items.some((item) => item.screen === active.id))
+    this.panel.hidden = authored || phase === 'playing'
+    this.hud.hidden = authored || phase !== 'playing'
+    this.custom.hidden = !items.length && !windowOpen
+    this.custom.style.background = active?.background || (windowOpen ? '#152024dc' : 'transparent')
+    this.custom.style.pointerEvents = phase === 'playing' && !windowOpen ? 'none' : 'auto'
+    const safe = active?.safeArea !== false
+    this.custom.style.inset = safe
+      ? 'env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)'
+      : '0'
+    this.pad.hidden = windowOpen || phase !== 'playing'
     const label = document.createElement('output')
     label.dataset.role = 'score'
     if (mode) this.hud.append(label)
@@ -140,21 +262,23 @@ export class Overlay {
         this.panel.append(this.button(this.t('menu.reward'), this.actions.reward))
       this.panel.append(this.button(lang.toUpperCase(), this.actions.language))
     }
-    for (const item of this.project.ui) {
-      if (item.visible === false) continue
+    for (const item of items) {
       const el =
         item.type === 'button'
-          ? this.button(this.t(item.text), () => this.actions.emit(String(item.event || item.id)))
+          ? this.button(this.t(item.text), () => this.activate(item))
           : document.createElement(
               item.type === 'image' ? 'img' : item.type === 'progress' ? 'progress' : 'div',
             )
-      if (el instanceof HTMLImageElement)
+      if (el instanceof HTMLImageElement) {
         el.src = this.project.assets.find((a) => a.id === item.asset)?.data || ''
-      else if (item.type !== 'progress') el.textContent = this.t(item.text || '')
+        el.alt = this.t(item.text || '')
+      } else if (item.type !== 'progress') el.textContent = this.t(item.text || '')
+      el.dataset.uiId = item.id
       Object.assign(el.style, {
         position: 'absolute',
-        left: item.x + '%',
-        top: item.y + '%',
+        ...anchorStyle(item.anchor, item.x, item.y),
+        width: Number.isFinite(item.width) ? item.width + '%' : 'auto',
+        height: Number.isFinite(item.height) ? item.height + '%' : 'auto',
         color: item.color || 'white',
         fontSize: (item.fontSize || 16) + 'px',
         textAlign: item.align || 'left',
@@ -162,12 +286,18 @@ export class Overlay {
         background: item.background || '',
         pointerEvents: item.type === 'button' ? 'auto' : 'none',
       })
+      if (item.type === 'button' && item.action === 'input' && item.target) this.bindInput(el, item.target)
       this.labels.set(item.id, el)
       this.custom.append(el)
     }
-    this.update(score, time, { score, time, best })
+    this.update(score, time, { ...this.variables, score, time, best })
   }
   update(score: number, time: number, vars: Record<string, unknown>) {
+    this.variables = vars
+    if (this.snapshot) {
+      this.snapshot.score = score
+      this.snapshot.time = time
+    }
     const scoreEl = this.hud.querySelector('output')
     if (scoreEl)
       scoreEl.textContent = `${this.t('hud.score')}  ${score}    ·    ${this.t('hud.time')}  ${Math.ceil(time)}`
@@ -187,6 +317,7 @@ export class Overlay {
     this.stats.textContent = text
   }
   dispose() {
+    this.input.releaseVirtual()
     this.host.remove()
   }
 }

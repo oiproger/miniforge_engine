@@ -37,3 +37,30 @@ test('Rapier stops a falling dynamic body on the floor and reports the contact a
     physics.dispose()
   }
 })
+
+test('spawned collider can be disabled, reenabled, destroyed and its ID reused', async () => {
+  const scene = makeScene(),
+    node = new Group(),
+    entity = makeEntity('Runtime blocker')
+  entity.components = [{ type: 'collider', shape: 'box', size: [2, 2, 2] }]
+  const view = { objects: new Map([[entity.id, node]]) }
+  const sim = await createPhysics(view, scene)
+  const hit = () => {
+    sim.step(1 / 60, () => {})
+    return sim.raycast(new Vector3(0, 4, 0), new Vector3(0, -1, 0), 8)
+  }
+  try {
+    sim.add(entity)
+    expect(hit()).toBe(entity.id)
+    sim.setActive(entity.id, false)
+    expect(hit()).toBeUndefined()
+    sim.setActive(entity.id, true)
+    expect(hit()).toBe(entity.id)
+    sim.remove(entity.id)
+    expect(hit()).toBeUndefined()
+    sim.add(entity)
+    expect(hit()).toBe(entity.id)
+  } finally {
+    sim.dispose()
+  }
+})

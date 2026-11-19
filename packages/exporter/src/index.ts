@@ -1,6 +1,7 @@
 import { strToU8, strFromU8, zipSync, unzipSync } from 'fflate'
-import { validateProject, serializeProject, parseProject, type Project } from '../../project-schema/src'
+import { validateProject, serializeProject, parseProject, type Project, type Entity } from '../../project-schema/src'
 import type { Profile } from '../../platform-sdk/src'
+import { projectIssues } from '../../project-schema/src/references'
 export type { Profile }
 export type Files = Record<string, Uint8Array>
 type RuntimeLoader = (file: string) => Promise<string>
@@ -50,6 +51,10 @@ function usedAssets(project: Project) {
   visit({ ...project, assets: [] })
   // User scripts can look up arbitrary resources by ID at runtime.
   const dynamic = project.assets.some((a) => used.has(a.id) && a.type === 'script')
+  if(dynamic)for(const a of project.assets)if(a.type==='prefab')visit(a.id)
+  if (dynamic) {
+    for (const asset of project.assets) if (asset.type === 'prefab') visit(asset.id)
+  }
   return project.assets.filter((a) => used.has(a.id) || (dynamic && a.type !== 'script'))
 }
 
@@ -74,6 +79,8 @@ function binaryData(value: string) {
 }
 async function prepare(project: Project, preview: boolean, read: RuntimeLoader) {
   validateProject(project)
+  const issues = projectIssues(project)
+  if(issues.length)throw new Error(issues.map(i=>i.owner+' · '+i.message).join('\n'))
   const compiled = structuredClone(project)
   compiled.assets = usedAssets(compiled)
   const files: Files = {}
@@ -105,7 +112,7 @@ async function prepare(project: Project, preview: boolean, read: RuntimeLoader) 
   }
   let physics: string | undefined
   if (
-    compiled.scenes.some((s) =>
+    compiled.assets.some(a=>a.type==='prefab' && (JSON.parse(a.data) as Project['scenes'][number]['entities']).some(e=>e.components.some(c=>c.type==='body' && c.enabled!==false))) || compiled.scenes.some((s) =>
       s.entities.some((e) => e.components.some((c) => c.type === 'body' && c.enabled !== false)),
     )
   ) {

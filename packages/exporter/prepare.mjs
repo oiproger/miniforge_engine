@@ -1,4 +1,5 @@
 import { build } from 'esbuild'
+import {writeScriptAPI} from './script-api.mjs'
 import { mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -6,6 +7,7 @@ import path from 'node:path'
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const out = path.join(root, 'apps/editor/public/engine')
 await mkdir(out, { recursive: true })
+await writeScriptAPI(root,out)
 const base = {
   absWorkingDir: root,
   bundle: true,

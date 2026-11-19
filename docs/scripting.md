@@ -31,6 +31,10 @@ export default function (api: GameAPI) {
 | `vars`, `save.set(key, value)`, `await save.get(key)` | Переменные раунда и асинхронное сохранение прогресса |
 | `physics.raycast(origin, direction, length)` | ID пересечённой сущности, аргументы направления и начала имеют тип Vector3 |
 | `scene.load(id)`, `ui.get(id)` | Загрузить сцену, получить DOM-элемент игрового HUD |
+| `spawnPrefab(assetId, position?, parent?)` | Создать экземпляр префаба и получить ID корня |
+| `destroy(id)`, `setActive(id, active)`, `findByTag(tag)` | Управлять объектами во время игры и искать их по тегу |
+| `animation.clips(id)`, `animation.play(id, clip?, loop?, speed?)`, `animation.stop(id)` | Получить список клипов модели и управлять воспроизведением |
+| `ui.open(id)`, `ui.back()`, `ui.close()`, `ui.current()` | Открыть окно по ID, вернуться в предыдущее окно, закрыть окна или узнать текущий экран |
 | `audio.play(assetId)`, `t(key, params)` | Звук и перевод с подстановкой параметров |
 | `platform.showRewarded()` | Promise с результатом рекламного просмотра |
 

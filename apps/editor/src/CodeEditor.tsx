@@ -15,48 +15,29 @@ monaco.languages.setMonarchTokensProvider('glsl', {
     ],
   },
 })
-const apiFields = [
-  'object',
-  'entity',
-  'params',
-  'time',
-  'input',
-  'physics',
-  'audio',
-  'scene',
-  'ui',
-  'platform',
-  'save',
-  'events',
-  't',
-]
-const callbacks = [
-  'onCreate',
-  'onStart',
-  'onUpdate',
-  'onFixedUpdate',
-  'onDestroy',
-  'onCollisionEnter',
-  'onTriggerEnter',
-  'onTriggerExit',
-  'onPointerClick',
-]
+interface APIMember {name:string;signature:string;method:boolean;description:string}
+let apiRequest: Promise<Record<string,APIMember[]>> | undefined
+function loadAPI():Promise<Record<string, APIMember[]>>{
+  return apiRequest ??= fetch(new URL(import.meta.env.BASE_URL+'engine/script-api.json',document.baseURI)).then(response=>{
+    if(!response.ok)throw Error('API catalog unavailable')
+    return response.json()
+  }).catch(()=>{apiRequest=undefined;return {}})
+}
 monaco.languages.registerCompletionItemProvider('typescript', {
   triggerCharacters: ['.'],
-  provideCompletionItems(model, position) {
+  async provideCompletionItems(model, position) {
     const word = model.getWordUntilPosition(position)
     const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn)
-    const before = model.getLineContent(position.lineNumber).slice(0, position.column - 1)
-    const values = /\bapi\.\w*$/.test(before) ? apiFields : callbacks
-    return {
-      suggestions: values.map((label) => ({
-        label,
-        kind: monaco.languages.CompletionItemKind.Property,
-        insertText: label,
-        range,
-      })),
-    }
-  },
+    const before = model.getLineContent(position.lineNumber).slice(0,position.column-1)
+    const path = /\b(api(?:\.\w+)*)\.\w*$/.exec(before)?.[1]
+    const catalog = await loadAPI()
+    const members=catalog[path??'lifecycle']??[]
+    return {suggestions:members.map(member=>({
+      label:member.name,insertText:member.name, range,
+      kind:member.method?monaco.languages.CompletionItemKind.Method:monaco.languages.CompletionItemKind.Property,
+      detail:member.signature, documentation:member.description
+    }))}
+  }
 })
 export default function CodeEditor({
   value,

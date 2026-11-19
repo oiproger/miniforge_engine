@@ -75,6 +75,7 @@ import {
 import { createTemplate, freshTemplate } from '../../../templates'
 import { SceneViewport } from '../../../packages/editor-tools/src'
 import { buildGame, previewGame, exportProject, importProject } from '../../../packages/exporter/src'
+import { projectIssues, type ProjectIssue } from '../../../packages/project-schema/src/references'
 import { Inspector } from './Inspector'
 import Authoring from './Authoring'
 import Hierarchy from './Hierarchy'
@@ -145,6 +146,7 @@ function App() {
     [tab, setTab] = useState<'scene' | 'game'>('scene'),
     [preview, setPreview] = useState<Project | null>(null),
     [full, setFull] = useState(false)
+  const [focusUiId, setFocusUiId] = useState<string>()
   const [target, edit] = useState(''),
     [dialog, modal] = useState(''),
     [template, setTemplate] = useState('empty'),
@@ -411,6 +413,15 @@ function App() {
         ],
       ],
     })
+  }
+  const buildIssues = dialog === 'export' ? projectIssues(p) : []
+  function locateIssue(issue:ProjectIssue) {
+    modal('')
+    if (issue.uiId){setFocusUiId(issue.uiId);edit('ui');return}
+    if (issue.assetId){edit(issue.assetId);return}
+    if (issue.sceneId && p.activeScene!==issue.sceneId)patch(n=>n.activeScene=issue.sceneId!)
+    select(issue.entityId??null)
+    setTab('scene')
   }
   async function build() {
     setBusy(true)
@@ -825,7 +836,7 @@ function App() {
           <Workflow size={12} />
           {scene.name}
           <i />
-          Miniforge Engine <b>v0.1.0</b>
+          Miniforge Engine <b>v0.2.0</b>
         </span>
       </footer>
       <input
@@ -874,7 +885,7 @@ function App() {
         </div>
       )}
       {target && (
-        <Authoring key={target} project={p} target={target} onChange={change} onClose={() => edit('')} />
+        <Authoring key={target} project={p} target={target} focusUiId={focusUiId} onChange={change} onClose={() => {setFocusUiId(undefined);edit('')}} />
       )}
       {dialog && (
         <div
@@ -930,6 +941,7 @@ function App() {
                       ['first-person', 'First Person Prototype'],
                       ['clicker', 'Clicker'],
                       ['runner', 'Mobile Runner'],
+                      ['key-vault', 'Key Vault'],
                     ].map(([k, v]) => (
                       <option key={k} value={k}>
                         {v}
@@ -960,7 +972,8 @@ function App() {
                       : 'Playable web ZIP'}
                   </small>
                 </div>
-                <button className="primary" disabled={busy} onClick={build}>
+                {buildIssues.length>0 && <div className="project-issues" role="alert"><strong>Resolve before building</strong>{buildIssues.map((issue,index)=><button key={index} onClick={()=>locateIssue(issue)}><b>{issue.owner}</b><span>{issue.message}</span></button>)}</div>}
+                <button className="primary" disabled={busy || !!buildIssues.length} onClick={build}>
                   <Hammer size={15} />
                   {busy ? 'Building…' : 'Build & download'}
                 </button>

@@ -1,10 +1,11 @@
 import { Vector3 } from 'three'
+import { behaviorParams } from './catalog'
 import type { GameAPI } from '../../runtime/src/types'
 import type { ScriptLifecycle } from '../../runtime/src/lifecycle'
 
 /** Event-driven behaviors share the same API and lifetimes as user scripts. */
 export function behavior(kind: string, api: GameAPI): ScriptLifecycle {
-  const p = api.params,
+  const p = behaviorParams(kind, api.params),
     obj = api.object,
     origin = obj.position.clone(),
     point = new Vector3()
@@ -50,7 +51,7 @@ export function behavior(kind: string, api: GameAPI): ScriptLifecycle {
           elapsed += dt
           if (elapsed >= (p.seconds ?? 3)) {
             elapsed = p.repeat ? 0 : -Infinity
-            if (kind === 'destroy') obj.visible = false
+            if (kind === 'destroy') api.destroy(api.entity.id)
             else api.events.emit(p.event || 'timer.done', api.entity.id)
           }
         },
@@ -80,24 +81,11 @@ export function behavior(kind: string, api: GameAPI): ScriptLifecycle {
           if (ok) api.vars.score = (api.vars.score || 0) + (p.points ?? 1)
         })
       }, 'reward.request')
-    case 'spawn': {
-      const clones = new Set<ReturnType<typeof obj.clone>>()
-      const off = api.events.on(p.event || 'spawn', () => {
-        const source = api.find(p.target)
-        if (!source || !obj.parent) return
-        const clone = source.clone()
-        clone.visible = true
-        clone.position.copy(obj.position)
-        obj.parent.add(clone)
-        clones.add(clone)
-      })
-      return {
-        onDestroy() {
-          off()
-          for (const clone of clones) clone.removeFromParent()
-        },
-      }
-    }
+    case 'spawn':
+      return when(() => {
+        const target = p.prefab || p.target
+        if (target) api.spawnPrefab(target, obj.getWorldPosition(point).toArray())
+      }, 'spawn')
     default:
       return {}
   }

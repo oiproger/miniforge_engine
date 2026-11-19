@@ -15,6 +15,7 @@ import {
   Download,
 } from 'lucide-react'
 import { getScene, uid, makeMaterial, type Asset, type Project } from '../../../packages/project-schema/src'
+import InterfaceForm from './HudEditor'
 import { Field, Numeric, Color } from './Fields'
 import { defaultScript, AssetSelect } from './Inspector'
 import { shaders, checkShader } from './shaderTemplates'
@@ -231,155 +232,6 @@ function MaterialForm({ a, p, patch }: { a: Asset; p: Project; patch: (k: string
     </>
   )
 }
-function InterfaceForm({ p, edit }: { p: Project; edit: Edit }) {
-  const [selected, select] = useState(p.ui[0]?.id || ''),
-    [type, setType] = useState('text')
-  const el = p.ui.find((x) => x.id === selected)
-  const patch = (k: string, v: unknown) =>
-    edit((n) => {
-      n.ui.find((x) => x.id === selected)![k] = v
-    })
-  const add = () => {
-    const id = uid('ui')
-    edit((n) =>
-      n.ui.push({
-        id,
-        type,
-        text: type === 'button' ? 'Continue' : 'HUD',
-        x: 5,
-        y: 15,
-        color: '#ffffff',
-        fontSize: 18,
-        visible: true,
-        ...(type === 'counter' ? { variable: 'score' } : {}),
-      }),
-    )
-    select(id)
-  }
-  return (
-    <>
-      <div className="mf-row">
-        <select aria-label="UI element type" value={type} onChange={(e) => setType(e.target.value)}>
-          {['text', 'button', 'image', 'progress', 'panel', 'counter'].map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
-        <button onClick={add}>
-          <Plus size={14} /> Add element
-        </button>
-      </div>
-      <div className="mf-screen">
-        {p.ui.map((u) => (
-          <button
-            key={u.id}
-            title={u.text || u.type}
-            className={u.id === selected ? 'chosen' : ''}
-            onClick={() => select(u.id)}
-            style={{
-              left: u.x + '%',
-              top: u.y + '%',
-              color: u.color,
-              fontSize: Math.min(24, u.fontSize || 14),
-              opacity: u.visible === false ? 0.45 : 1,
-            }}
-          >
-            {u.text || u.type}
-          </button>
-        ))}
-      </div>
-      {el && (
-        <>
-          <div className="mf-row">
-            <select aria-label="Selected element" value={selected} onChange={(e) => select(e.target.value)}>
-              {p.ui.map((u) => (
-                <option value={u.id} key={u.id}>
-                  {u.text || u.type} · {u.type}
-                </option>
-              ))}
-            </select>
-            <button
-              aria-label="Delete element"
-              onClick={() => {
-                edit((n) => (n.ui = n.ui.filter((u) => u.id !== selected)))
-                select(p.ui.find((u) => u.id !== selected)?.id || '')
-              }}
-            >
-              <Trash2 size={13} />
-            </button>
-          </div>
-          <div className="mf-form-grid">
-            <Field label="Text / locale key">
-              <input value={el.text} onChange={(e) => patch('text', e.target.value)} />
-            </Field>
-            <Field label="Text color">
-              <Color label="Text color" value={el.color} change={(v) => patch('color', v)} />
-            </Field>
-            {(['x', 'y', 'fontSize', 'zIndex'] as const).map((k, i) => (
-              <Field key={k} label={['Left (%)', 'Top (%)', 'Font size', 'Z order'][i]}>
-                <Numeric
-                  label={k}
-                  value={el[k] ?? (k === 'fontSize' ? 16 : 0)}
-                  min={k === 'fontSize' ? 1 : 0}
-                  max={k === 'x' || k === 'y' ? 100 : undefined}
-                  change={(v) => patch(k, v)}
-                />
-              </Field>
-            ))}
-            <Field label="Alignment">
-              <select value={el.align || 'left'} onChange={(e) => patch('align', e.target.value)}>
-                {['left', 'center', 'right'].map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Visible">
-              <input
-                type="checkbox"
-                checked={el.visible !== false}
-                onChange={(e) => patch('visible', e.target.checked)}
-              />
-            </Field>
-            {el.type === 'button' && (
-              <Field label="Click event">
-                <input value={el.event || ''} onChange={(e) => patch('event', e.target.value)} />
-              </Field>
-            )}
-            {el.type === 'image' && (
-              <Field label="Image">
-                <AssetSelect
-                  assets={p.assets}
-                  type="texture"
-                  value={el.asset || ''}
-                  label="Image"
-                  change={(v) => patch('asset', v)}
-                />
-              </Field>
-            )}
-            {['progress', 'counter'].includes(el.type) && (
-              <Field label="Variable">
-                <input value={el.variable || ''} onChange={(e) => patch('variable', e.target.value)} />
-              </Field>
-            )}
-            {el.type === 'panel' && (
-              <Field label="Background">
-                <Color
-                  label="Panel color"
-                  value={el.background || '#35383c'}
-                  change={(v) => patch('background', v)}
-                />
-              </Field>
-            )}
-            {el.type === 'progress' && (
-              <Field label="Maximum">
-                <Numeric label="Maximum" min={1} value={el.max ?? 100} change={(v) => patch('max', v)} />
-              </Field>
-            )}
-          </div>
-        </>
-      )}
-    </>
-  )
-}
 function LocalesForm({ p, edit, fail }: { p: Project; edit: Edit; fail: (s: string) => void }) {
   const [search, setSearch] = useState(''),
     [newKey, setKey] = useState(''),
@@ -530,13 +382,14 @@ function LocalesForm({ p, edit, fail }: { p: Project; edit: Edit; fail: (s: stri
 export interface AuthoringProps {
   project: Project
   target: string
+  focusUiId?: string
   onChange: (p: Project) => void
   onClose: () => void
 }
 export function Authoring(props: AuthoringProps) {
-  return <AuthoringDialog key={props.target} {...props} />
+  return <AuthoringDialog key={props.target + '-' + (props.focusUiId || '')} {...props} />
 }
-function AuthoringDialog({ project, target, onChange, onClose }: AuthoringProps) {
+function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: AuthoringProps) {
   const [p, set] = useState(() => structuredClone(project))
   const [newId] = useState(() => uid('asset'))
   const [vertex, setVertex] = useState(false),
@@ -646,7 +499,14 @@ function AuthoringDialog({ project, target, onChange, onClose }: AuthoringProps)
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="mf-dialog" role="dialog" aria-modal="true" aria-label={name} tabIndex={-1} ref={root}>
+      <div
+        className={target === 'ui' ? 'mf-dialog mf-hud-dialog' : 'mf-dialog'}
+        role="dialog"
+        aria-modal="true"
+        aria-label={name}
+        tabIndex={-1}
+        ref={root}
+      >
         <header>
           <Icon size={17} />
           <h3>{name}</h3>
@@ -656,7 +516,7 @@ function AuthoringDialog({ project, target, onChange, onClose }: AuthoringProps)
         </header>
         <div className="mf-dialog-body">
           {target === 'settings' && <Settings p={p} edit={edit} />}{' '}
-          {target === 'ui' && <InterfaceForm p={p} edit={edit} />}{' '}
+          {target === 'ui' && <InterfaceForm p={p} edit={edit} focusUiId={focusUiId} />}{' '}
           {target === 'locales' && <LocalesForm p={p} edit={edit} fail={fail} />}
           {a && (
             <>

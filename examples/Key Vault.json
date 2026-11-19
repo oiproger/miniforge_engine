@@ -1,0 +1,3305 @@
+{
+  "version": 1,
+  "id": "key-vault",
+  "name": "Key Vault",
+  "activeScene": "entry",
+  "scenes": [
+    {
+      "id": "entry",
+      "name": "The Lantern Passage",
+      "environment": {
+        "background": "#202a40",
+        "ambient": 1.25,
+        "shadows": true
+      },
+      "entities": [
+        {
+          "id": "entry-foundation",
+          "name": "entry foundation",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              8.4,
+              0.85,
+              12
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-floor",
+          "name": "entry floor",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.1,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              8,
+              0.18,
+              11.6
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "slate"
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "entry-paver-0",
+          "name": "entry paver 0",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              4.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "path"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-1",
+          "name": "entry paver 1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              3.4499999999999997
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-2",
+          "name": "entry paver 2",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              2.3
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-3",
+          "name": "entry paver 3",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              1.15
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "path"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-4",
+          "name": "entry paver 4",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-5",
+          "name": "entry paver 5",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -1.1500000000000004
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-6",
+          "name": "entry paver 6",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -2.3
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "path"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-7",
+          "name": "entry paver 7",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -3.4499999999999993
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-paver-8",
+          "name": "entry paver 8",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -4.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-parapet--1",
+          "name": "entry parapet  1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.88,
+              0.22,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.24,
+              0.5,
+              11.65
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1--4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              0.6,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1--4-band",
+          "name": "entry column  1  4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.23,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1--4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.52,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "amber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1-0",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              0.6,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1-0-band",
+          "name": "entry column  1 0 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.23,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1-0-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.52,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "amber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1-4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              0.6,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1-4-band",
+          "name": "entry column  1 4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.23,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column--1-4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.52,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "amber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-parapet-1",
+          "name": "entry parapet 1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.88,
+              0.22,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.24,
+              0.5,
+              11.65
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1--4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              0.6,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1--4-band",
+          "name": "entry column 1  4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.23,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1--4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.52,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "amber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1-0",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              0.6,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1-0-band",
+          "name": "entry column 1 0 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.23,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1-0-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.52,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "amber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1-4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              0.6,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1-4-band",
+          "name": "entry column 1 4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.23,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-column-1-4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.52,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "amber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-camera",
+          "name": "Gallery camera",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              8.6,
+              11.5,
+              13.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "camera",
+              "projection": "orthographic",
+              "target": [
+                0,
+                0,
+                0
+              ],
+              "size": 13,
+              "zoom": 1
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-sun",
+          "name": "Sun lamp",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3,
+              11,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "directional",
+              "color": "#fff3d4",
+              "intensity": 2.1
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-ambient",
+          "name": "Ambient lamp",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "ambient",
+              "color": "#cfe5ff",
+              "intensity": 1.3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-player",
+          "name": "Explorer",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              4.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "player",
+              "params": {
+                "speed": 3.4
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-coat",
+          "name": "entry coat",
+          "parent": "entry-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.38,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.5,
+              0.48,
+              0.37
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "blue"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-head",
+          "name": "entry head",
+          "parent": "entry-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.81,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.4,
+              0.38,
+              0.37
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-hood",
+          "name": "entry hood",
+          "parent": "entry-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.51,
+              0.18,
+              0.47
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-boot--0.15",
+          "name": "entry boot  0.15",
+          "parent": "entry-player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.15,
+              0.11,
+              0.03
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.2,
+              0.22,
+              0.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "entry-boot-0.15",
+          "name": "entry boot 0.15",
+          "parent": "entry-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.15,
+              0.11,
+              0.03
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.2,
+              0.22,
+              0.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "vault-gate",
+          "name": "Vault gate",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              -3.7
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "model",
+              "asset": "gate-model"
+            },
+            {
+              "type": "animation",
+              "clip": "Open",
+              "autoplay": false,
+              "loop": false,
+              "speed": 1
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "door-collider",
+          "name": "Gate collider",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.95,
+              -3.7
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                3,
+                2,
+                0.32
+              ]
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-exit",
+          "name": "Treasury threshold",
+          "parent": null,
+          "active": false,
+          "transform": {
+            "position": [
+              0,
+              0,
+              -4.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "collider",
+              "shape": "box",
+              "trigger": true,
+              "size": [
+                2.85,
+                1.8,
+                0.7
+              ]
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "passage-rules",
+          "name": "Passage rules",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "rule",
+              "event": "scene.start",
+              "actions": [
+                {
+                  "kind": "spawnPrefab",
+                  "target": "sun-key-prefab",
+                  "at": "key-marker-0"
+                },
+                {
+                  "kind": "spawnPrefab",
+                  "target": "sun-key-prefab",
+                  "at": "key-marker-1"
+                },
+                {
+                  "kind": "spawnPrefab",
+                  "target": "sun-key-prefab",
+                  "at": "key-marker-2"
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "coin.collected",
+              "tag": "brass-key",
+              "actions": [
+                {
+                  "kind": "addVariable",
+                  "key": "keys",
+                  "value": 1
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "coin.collected",
+              "tag": "brass-key",
+              "condition": {
+                "key": "keys",
+                "op": "==",
+                "value": 3
+              },
+              "actions": [
+                {
+                  "kind": "playAnimation",
+                  "target": "vault-gate",
+                  "clip": "Open"
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "animation.finished",
+              "source": "vault-gate",
+              "actions": [
+                {
+                  "kind": "setActive",
+                  "target": "door-collider",
+                  "active": false
+                },
+                {
+                  "kind": "setActive",
+                  "target": "treasury-exit",
+                  "active": true
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "trigger.enter",
+              "source": "treasury-exit",
+              "actions": [
+                {
+                  "kind": "loadScene",
+                  "target": "treasury"
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "input.Interact",
+              "actions": [
+                {
+                  "kind": "openScreen",
+                  "target": "satchel"
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "market.buy",
+              "condition": {
+                "key": "seals",
+                "op": ">=",
+                "value": 1
+              },
+              "actions": [
+                {
+                  "kind": "addVariable",
+                  "key": "seals",
+                  "value": -1
+                },
+                {
+                  "kind": "addVariable",
+                  "key": "lanterns",
+                  "value": 1
+                }
+              ]
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "key-marker-0",
+          "name": "Key marker 1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.65,
+              2.7
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "key-marker-1",
+          "name": "Key marker 2",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.65,
+              0.45
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "key-marker-2",
+          "name": "Key marker 3",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.65,
+              -1.85
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        }
+      ]
+    },
+    {
+      "id": "treasury",
+      "name": "The Treasury",
+      "environment": {
+        "background": "#202a40",
+        "ambient": 1.25,
+        "shadows": true
+      },
+      "entities": [
+        {
+          "id": "treasury-foundation",
+          "name": "treasury foundation",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.5,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              8.4,
+              0.85,
+              12
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-floor",
+          "name": "treasury floor",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.1,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              8,
+              0.18,
+              11.6
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "slate"
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "treasury-paver-0",
+          "name": "treasury paver 0",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              4.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "path"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-1",
+          "name": "treasury paver 1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              3.4499999999999997
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-2",
+          "name": "treasury paver 2",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              2.3
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-3",
+          "name": "treasury paver 3",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              1.15
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "path"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-4",
+          "name": "treasury paver 4",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-5",
+          "name": "treasury paver 5",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -1.1500000000000004
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-6",
+          "name": "treasury paver 6",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -2.3
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "path"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-7",
+          "name": "treasury paver 7",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -3.4499999999999993
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-paver-8",
+          "name": "treasury paver 8",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              -4.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.65,
+              0.04,
+              0.99
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-parapet--1",
+          "name": "treasury parapet  1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.88,
+              0.22,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.24,
+              0.5,
+              11.65
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1--4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              0.6,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1--4-band",
+          "name": "treasury column  1  4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.23,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1--4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.52,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1-0",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              0.6,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1-0-band",
+          "name": "treasury column  1 0 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.23,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1-0-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.52,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1-4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              0.6,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1-4-band",
+          "name": "treasury column  1 4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.23,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column--1-4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.52,
+              1.52,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-parapet-1",
+          "name": "treasury parapet 1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.88,
+              0.22,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.24,
+              0.5,
+              11.65
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "basalt"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1--4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              0.6,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1--4-band",
+          "name": "treasury column 1  4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.23,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1--4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.52,
+              -4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1-0",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              0.6,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1-0-band",
+          "name": "treasury column 1 0 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.23,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1-0-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.52,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1-4",
+          "name": "Watch column",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              0.6,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.76,
+              1.2,
+              0.76
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1-4-band",
+          "name": "treasury column 1 4 band",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.23,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.66,
+              0.12,
+              0.66
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-column-1-4-lamp",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.52,
+              1.52,
+              4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.64,
+              0.43
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-camera",
+          "name": "Gallery camera",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              8.6,
+              11.5,
+              13.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "camera",
+              "projection": "orthographic",
+              "target": [
+                0,
+                0,
+                0
+              ],
+              "size": 13,
+              "zoom": 1
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-sun",
+          "name": "Sun lamp",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3,
+              11,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "directional",
+              "color": "#fff3d4",
+              "intensity": 2.1
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-ambient",
+          "name": "Ambient lamp",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "ambient",
+              "color": "#cfe5ff",
+              "intensity": 1.3
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-player",
+          "name": "Explorer",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              4.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "player",
+              "params": {
+                "speed": 3.4
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-coat",
+          "name": "treasury coat",
+          "parent": "treasury-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.38,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.5,
+              0.48,
+              0.37
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "blue"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-head",
+          "name": "treasury head",
+          "parent": "treasury-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.81,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.4,
+              0.38,
+              0.37
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-hood",
+          "name": "treasury hood",
+          "parent": "treasury-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.51,
+              0.18,
+              0.47
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "jade"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-boot--0.15",
+          "name": "treasury boot  0.15",
+          "parent": "treasury-player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.15,
+              0.11,
+              0.03
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.2,
+              0.22,
+              0.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-boot-0.15",
+          "name": "treasury boot 0.15",
+          "parent": "treasury-player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.15,
+              0.11,
+              0.03
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.2,
+              0.22,
+              0.26
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "ink"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "relic",
+          "name": "Treasury crystal",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.2,
+              -1.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1.7,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "icosahedron",
+              "material": "jade"
+            },
+            {
+              "type": "behavior",
+              "kind": "rotate",
+              "params": {
+                "axis": "y",
+                "speed": 0.75
+              }
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "dais",
+          "name": "Treasury dais",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.32,
+              -1.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              2.2,
+              0.64,
+              2.2
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "brass"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "treasury-rules",
+          "name": "Treasury rules",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "rule",
+              "event": "input.Interact",
+              "actions": [
+                {
+                  "kind": "openScreen",
+                  "target": "satchel"
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "market.buy",
+              "condition": {
+                "key": "seals",
+                "op": ">=",
+                "value": 1
+              },
+              "actions": [
+                {
+                  "kind": "addVariable",
+                  "key": "seals",
+                  "value": -1
+                },
+                {
+                  "kind": "addVariable",
+                  "key": "lanterns",
+                  "value": 1
+                }
+              ]
+            },
+            {
+              "type": "rule",
+              "event": "scene.start",
+              "actions": [
+                {
+                  "kind": "setVariable",
+                  "key": "room",
+                  "value": "Treasury"
+                }
+              ]
+            }
+          ],
+          "properties": {}
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "sun-key-prefab",
+      "type": "prefab",
+      "name": "Sun Key",
+      "data": "[{\"id\":\"sun-key\",\"name\":\"Sun Key\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0.55,0],\"rotation\":[0,0,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"behavior\",\"kind\":\"rotate\",\"params\":{\"axis\":\"y\",\"speed\":1.4}},{\"type\":\"behavior\",\"kind\":\"collectible\",\"params\":{\"points\":1,\"radius\":0.6}}],\"properties\":{\"tags\":[\"brass-key\"]}},{\"id\":\"bow\",\"name\":\"Cut amber\",\"parent\":\"sun-key\",\"active\":true,\"transform\":{\"position\":[0,0.22,0],\"rotation\":[0,0,0],\"scale\":[0.45,0.48,0.24]},\"components\":[{\"type\":\"mesh\",\"shape\":\"icosahedron\",\"material\":\"amber\"}],\"properties\":{}},{\"id\":\"shaft\",\"name\":\"shaft\",\"parent\":\"sun-key\",\"active\":true,\"transform\":{\"position\":[0,-0.13,0],\"rotation\":[0,0,0],\"scale\":[0.12,0.52,0.13]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"brass\"}],\"properties\":{}},{\"id\":\"teeth\",\"name\":\"teeth\",\"parent\":\"sun-key\",\"active\":true,\"transform\":{\"position\":[0.1,-0.32,0],\"rotation\":[0,0,0],\"scale\":[0.28,0.11,0.13]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"brass\"}],\"properties\":{}}]",
+      "properties": {}
+    },
+    {
+      "id": "default-material",
+      "name": "Porcelain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d9dfdf",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "basalt",
+      "name": "basalt",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#343e57",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "slate",
+      "name": "slate",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#50647b",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "path",
+      "name": "path",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a4a7ad",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "ink",
+      "name": "ink",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#272f45",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "brass",
+      "name": "brass",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#f2ba54",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "amber",
+      "name": "amber",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffda72",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "jade",
+      "name": "jade",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#36baac",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "blue",
+      "name": "blue",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#355d88",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "gate-model",
+      "name": "Vault Gate.gltf",
+      "type": "model",
+      "data": "data:model/gltf+json;base64,eyJhc3NldCI6eyJ2ZXJzaW9uIjoiMi4wIiwiZ2VuZXJhdG9yIjoiTWluaWZvcmdlIEVuZ2luZSJ9LCJzY2VuZSI6MCwic2NlbmVzIjpbeyJub2RlcyI6WzBdfV0sIm5vZGVzIjpbeyJuYW1lIjoiVmF1bHQgZ2F0ZSIsInRyYW5zbGF0aW9uIjpbMCwwLDBdLCJjaGlsZHJlbiI6WzEsMiwzLDEyLDEzLDE0LDIzLDI0XX0seyJuYW1lIjoiV2VzdCBwaWxsYXIiLCJtZXNoIjowLCJ0cmFuc2xhdGlvbiI6Wy0xLjM2LDEuMSwwXSwic2NhbGUiOlswLjE4LDIuMiwwLjI4XSwicm90YXRpb24iOlswLDAsMCwxXX0seyJuYW1lIjoiV2VzdCBjYXAiLCJtZXNoIjoxLCJ0cmFuc2xhdGlvbiI6Wy0xLjM2LDIuMTcsMF0sInNjYWxlIjpbMC4yMSwwLjExLDAuMzJdLCJyb3RhdGlvbiI6WzAsMCwwLDFdfSx7Im5hbWUiOiJXZXN0IGhpbmdlIiwidHJhbnNsYXRpb24iOlstMS4yNiwwLDBdLCJjaGlsZHJlbiI6WzQsNSw2LDcsOCw5LDEwLDExXX0seyJuYW1lIjoiV2VzdCBkb29yIiwibWVzaCI6MCwidHJhbnNsYXRpb24iOlswLjYyLDEuMDQsMF0sInNjYWxlIjpbMS4yMywyLjA4LDAuMTRdLCJyb3RhdGlvbiI6WzAsMCwwLDFdfSx7Im5hbWUiOiJXZXN0IHBhbmVsIiwibWVzaCI6MiwidHJhbnNsYXRpb24iOlswLjYyLDEuMDQsMC4wODRdLCJzY2FsZSI6WzEuMDIsMS44NSwwLjA0NV0sInJvdGF0aW9uIjpbMCwwLDAsMV19LHsibmFtZSI6Ildlc3QgaG9yaXpvbnRhbCBpbmxheSIsIm1lc2giOjEsInRyYW5zbGF0aW9uIjpbMC42MiwwLjE4LDAuMTJdLCJzY2FsZSI6WzEuMTMsMC4wNjUsMC4wNl0sInJvdGF0aW9uIjpbMCwwLDAsMV19LHsibmFtZSI6Ildlc3QgaG9yaXpvbnRhbCBpbmxheSIsIm1lc2giOjEsInRyYW5zbGF0aW9uIjpbMC42MiwxLjkxLDAuMTJdLCJzY2FsZSI6WzEuMTMsMC4wNjUsMC4wNl0sInJvdGF0aW9uIjpbMCwwLDAsMV19LHsibmFtZSI6Ildlc3QgdmVydGljYWwgaW5sYXkiLCJtZXNoIjoxLCJ0cmFuc2xhdGlvbiI6WzAuMTIsMS4wNCwwLjEyXSwic2NhbGUiOlswLjA0MiwxLjY5LDAuMDZdLCJyb3RhdGlvbiI6WzAsMCwwLDFdfSx7Im5hbWUiOiJXZXN0IHZlcnRpY2FsIGlubGF5IiwibWVzaCI6MSwidHJhbnNsYXRpb24iOlsxLjEyLDEuMDQsMC4xMl0sInNjYWxlIjpbMC4wNDIsMS42OSwwLjA2XSwicm90YXRpb24iOlswLDAsMCwxXX0seyJuYW1lIjoiV2VzdCBzZWFsIiwibWVzaCI6MSwidHJhbnNsYXRpb24iOlswLjYyLDEuMTgsMC4xM10sInNjYWxlIjpbMC4zMiwwLjMyLDAuMDc1XSwicm90YXRpb24iOlswLDAsMC4zODI2ODM0MzIzNjUwODk4LDAuOTIzODc5NTMyNTExMjg2N119LHsibmFtZSI6Ildlc3QgaW5zZXQiLCJtZXNoIjozLCJ0cmFuc2xhdGlvbiI6WzAuNjIsMS4xOCwwLjE3M10sInNjYWxlIjpbMC4xNCwwLjE0LDAuMDI1XSwicm90YXRpb24iOlswLDAsMC4zODI2ODM0MzIzNjUwODk4LDAuOTIzODc5NTMyNTExMjg2N119LHsibmFtZSI6IkVhc3QgcGlsbGFyIiwibWVzaCI6MCwidHJhbnNsYXRpb24iOlsxLjM2LDEuMSwwXSwic2NhbGUiOlswLjE4LDIuMiwwLjI4XSwicm90YXRpb24iOlswLDAsMCwxXX0seyJuYW1lIjoiRWFzdCBjYXAiLCJtZXNoIjoxLCJ0cmFuc2xhdGlvbiI6WzEuMzYsMi4xNywwXSwic2NhbGUiOlswLjIxLDAuMTEsMC4zMl0sInJvdGF0aW9uIjpbMCwwLDAsMV19LHsibmFtZSI6IkVhc3QgaGluZ2UiLCJ0cmFuc2xhdGlvbiI6WzEuMjYsMCwwXSwiY2hpbGRyZW4iOlsxNSwxNiwxNywxOCwxOSwyMCwyMSwyMl19LHsibmFtZSI6IkVhc3QgZG9vciIsIm1lc2giOjAsInRyYW5zbGF0aW9uIjpbLTAuNjIsMS4wNCwwXSwic2NhbGUiOlsxLjIzLDIuMDgsMC4xNF0sInJvdGF0aW9uIjpbMCwwLDAsMV19LHsibmFtZSI6IkVhc3QgcGFuZWwiLCJtZXNoIjoyLCJ0cmFuc2xhdGlvbiI6Wy0wLjYyLDEuMDQsMC4wODRdLCJzY2FsZSI6WzEuMDIsMS44NSwwLjA0NV0sInJvdGF0aW9uIjpbMCwwLDAsMV19LHsibmFtZSI6IkVhc3QgaG9yaXpvbnRhbCBpbmxheSIsIm1lc2giOjEsInRyYW5zbGF0aW9uIjpbLTAuNjIsMC4xOCwwLjEyXSwic2NhbGUiOlsxLjEzLDAuMDY1LDAuMDZdLCJyb3RhdGlvbiI6WzAsMCwwLDFdfSx7Im5hbWUiOiJFYXN0IGhvcml6b250YWwgaW5sYXkiLCJtZXNoIjoxLCJ0cmFuc2xhdGlvbiI6Wy0wLjYyLDEuOTEsMC4xMl0sInNjYWxlIjpbMS4xMywwLjA2NSwwLjA2XSwicm90YXRpb24iOlswLDAsMCwxXX0seyJuYW1lIjoiRWFzdCB2ZXJ0aWNhbCBpbmxheSIsIm1lc2giOjEsInRyYW5zbGF0aW9uIjpbLTEuMTIsMS4wNCwwLjEyXSwic2NhbGUiOlswLjA0MiwxLjY5LDAuMDZdLCJyb3RhdGlvbiI6WzAsMCwwLDFdfSx7Im5hbWUiOiJFYXN0IHZlcnRpY2FsIGlubGF5IiwibWVzaCI6MSwidHJhbnNsYXRpb24iOlstMC4xMiwxLjA0LDAuMTJdLCJzY2FsZSI6WzAuMDQyLDEuNjksMC4wNl0sInJvdGF0aW9uIjpbMCwwLDAsMV19LHsibmFtZSI6IkVhc3Qgc2VhbCIsIm1lc2giOjEsInRyYW5zbGF0aW9uIjpbLTAuNjIsMS4xOCwwLjEzXSwic2NhbGUiOlswLjMyLDAuMzIsMC4wNzVdLCJyb3RhdGlvbiI6WzAsMCwwLjM4MjY4MzQzMjM2NTA4OTgsMC45MjM4Nzk1MzI1MTEyODY3XX0seyJuYW1lIjoiRWFzdCBpbnNldCIsIm1lc2giOjMsInRyYW5zbGF0aW9uIjpbLTAuNjIsMS4xOCwwLjE3M10sInNjYWxlIjpbMC4xNCwwLjE0LDAuMDI1XSwicm90YXRpb24iOlswLDAsMC4zODI2ODM0MzIzNjUwODk4LDAuOTIzODc5NTMyNTExMjg2N119LHsibmFtZSI6IkxpbnRlbCIsIm1lc2giOjAsInRyYW5zbGF0aW9uIjpbMCwyLjIyLDBdLCJzY2FsZSI6WzIuOSwwLjE2LDAuMzFdLCJyb3RhdGlvbiI6WzAsMCwwLDFdfSx7Im5hbWUiOiJMaW50ZWwgaW5sYXkiLCJtZXNoIjoxLCJ0cmFuc2xhdGlvbiI6WzAsMi4yMywwLjE2XSwic2NhbGUiOlsyLjY3LDAuMDQyLDAuMDI0XSwicm90YXRpb24iOlswLDAsMCwxXX1dLCJtZXNoZXMiOlt7Im5hbWUiOiJCYXNhbHQiLCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjowLCJOT1JNQUwiOjF9LCJtYXRlcmlhbCI6MH1dfSx7Im5hbWUiOiJCcm9uemUiLCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjowLCJOT1JNQUwiOjF9LCJtYXRlcmlhbCI6MX1dfSx7Im5hbWUiOiJFbmFtZWwiLCJwcmltaXRpdmVzIjpbeyJhdHRyaWJ1dGVzIjp7IlBPU0lUSU9OIjowLCJOT1JNQUwiOjF9LCJtYXRlcmlhbCI6Mn1dfSx7Im5hbWUiOiJHb2xkIiwicHJpbWl0aXZlcyI6W3siYXR0cmlidXRlcyI6eyJQT1NJVElPTiI6MCwiTk9STUFMIjoxfSwibWF0ZXJpYWwiOjN9XX1dLCJtYXRlcmlhbHMiOlt7Im5hbWUiOiJCYXNhbHQiLCJwYnJNZXRhbGxpY1JvdWdobmVzcyI6eyJiYXNlQ29sb3JGYWN0b3IiOlswLjA3OCwwLjExNywwLjEzNywxXSwibWV0YWxsaWNGYWN0b3IiOjAuMTYsInJvdWdobmVzc0ZhY3RvciI6MC42NH19LHsibmFtZSI6IkJyb256ZSIsInBick1ldGFsbGljUm91Z2huZXNzIjp7ImJhc2VDb2xvckZhY3RvciI6WzAuNjQsMC4zNSwwLjExLDFdLCJtZXRhbGxpY0ZhY3RvciI6MC4xNiwicm91Z2huZXNzRmFjdG9yIjowLjY0fX0seyJuYW1lIjoiRW5hbWVsIiwicGJyTWV0YWxsaWNSb3VnaG5lc3MiOnsiYmFzZUNvbG9yRmFjdG9yIjpbMC4wNDgsMC4yMywwLjIxLDFdLCJtZXRhbGxpY0ZhY3RvciI6MC4xNiwicm91Z2huZXNzRmFjdG9yIjowLjY0fX0seyJuYW1lIjoiR29sZCIsInBick1ldGFsbGljUm91Z2huZXNzIjp7ImJhc2VDb2xvckZhY3RvciI6WzEsMC42NCwwLjIxLDFdLCJtZXRhbGxpY0ZhY3RvciI6MC4xNiwicm91Z2huZXNzRmFjdG9yIjowLjY0fX1dLCJidWZmZXJzIjpbeyJieXRlTGVuZ3RoIjoxMDA4LCJ1cmkiOiJkYXRhOmFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbTtiYXNlNjQsQUFBQVB3QUFBTDhBQUFDL0FBQUFQd0FBQUQ4QUFBQy9BQUFBUHdBQUFEOEFBQUEvQUFBQVB3QUFBTDhBQUFDL0FBQUFQd0FBQUQ4QUFBQS9BQUFBUHdBQUFMOEFBQUEvQUFBQXZ3QUFBTDhBQUFDL0FBQUF2d0FBQUw4QUFBQS9BQUFBdndBQUFEOEFBQUEvQUFBQXZ3QUFBTDhBQUFDL0FBQUF2d0FBQUQ4QUFBQS9BQUFBdndBQUFEOEFBQUMvQUFBQXZ3QUFBRDhBQUFDL0FBQUF2d0FBQUQ4QUFBQS9BQUFBUHdBQUFEOEFBQUEvQUFBQXZ3QUFBRDhBQUFDL0FBQUFQd0FBQUQ4QUFBQS9BQUFBUHdBQUFEOEFBQUMvQUFBQXZ3QUFBTDhBQUFDL0FBQUFQd0FBQUw4QUFBQy9BQUFBUHdBQUFMOEFBQUEvQUFBQXZ3QUFBTDhBQUFDL0FBQUFQd0FBQUw4QUFBQS9BQUFBdndBQUFMOEFBQUEvQUFBQXZ3QUFBTDhBQUFBL0FBQUFQd0FBQUw4QUFBQS9BQUFBUHdBQUFEOEFBQUEvQUFBQXZ3QUFBTDhBQUFBL0FBQUFQd0FBQUQ4QUFBQS9BQUFBdndBQUFEOEFBQUEvQUFBQXZ3QUFBTDhBQUFDL0FBQUF2d0FBQUQ4QUFBQy9BQUFBUHdBQUFEOEFBQUMvQUFBQXZ3QUFBTDhBQUFDL0FBQUFQd0FBQUQ4QUFBQy9BQUFBUHdBQUFMOEFBQUMvQUFDQVB3QUFBQUFBQUFBQUFBQ0FQd0FBQUFBQUFBQUFBQUNBUHdBQUFBQUFBQUFBQUFDQVB3QUFBQUFBQUFBQUFBQ0FQd0FBQUFBQUFBQUFBQUNBUHdBQUFBQUFBQUFBQUFDQXZ3QUFBQUFBQUFBQUFBQ0F2d0FBQUFBQUFBQUFBQUNBdndBQUFBQUFBQUFBQUFDQXZ3QUFBQUFBQUFBQUFBQ0F2d0FBQUFBQUFBQUFBQUNBdndBQUFBQUFBQUFBQUFBQUFBQUFnRDhBQUFBQUFBQUFBQUFBZ0Q4QUFBQUFBQUFBQUFBQWdEOEFBQUFBQUFBQUFBQUFnRDhBQUFBQUFBQUFBQUFBZ0Q4QUFBQUFBQUFBQUFBQWdEOEFBQUFBQUFBQUFBQUFnTDhBQUFBQUFBQUFBQUFBZ0w4QUFBQUFBQUFBQUFBQWdMOEFBQUFBQUFBQUFBQUFnTDhBQUFBQUFBQUFBQUFBZ0w4QUFBQUFBQUFBQUFBQWdMOEFBQUFBQUFBQUFBQUFBQUFBQUlBL0FBQUFBQUFBQUFBQUFJQS9BQUFBQUFBQUFBQUFBSUEvQUFBQUFBQUFBQUFBQUlBL0FBQUFBQUFBQUFBQUFJQS9BQUFBQUFBQUFBQUFBSUEvQUFBQUFBQUFBQUFBQUlDL0FBQUFBQUFBQUFBQUFJQy9BQUFBQUFBQUFBQUFBSUMvQUFBQUFBQUFBQUFBQUlDL0FBQUFBQUFBQUFBQUFJQy9BQUFBQUFBQUFBQUFBSUMvQUFBQUFPeFJPRDZrY0QwL1ptWm1Qd0FBQUFBQUFBQUFBQUFBQUFBQWdEOEFBQUFBT2w1V3ZRQUFBQUF2cG44L0FBQUFBTXB1TTc4QUFBQUFsWmMyUHdBQUFBRC9PVHUvQUFBQUFIS1hMajhBQUFBQUFBQUFBQUFBQUFBQUFJQS9BQUFBQURwZVZqMEFBQUFBTDZaL1B3QUFBQURLYmpNL0FBQUFBSldYTmo4QUFBQUEvems3UHdBQUFBQnlseTQvIn1dLCJidWZmZXJWaWV3cyI6W3siYnVmZmVyIjowLCJieXRlT2Zmc2V0IjowLCJieXRlTGVuZ3RoIjo0MzJ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo0MzIsImJ5dGVMZW5ndGgiOjQzMn0seyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjg2NCwiYnl0ZUxlbmd0aCI6MTZ9LHsiYnVmZmVyIjowLCJieXRlT2Zmc2V0Ijo4ODAsImJ5dGVMZW5ndGgiOjY0fSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6OTQ0LCJieXRlTGVuZ3RoIjo2NH1dLCJhY2Nlc3NvcnMiOlt7ImJ1ZmZlclZpZXciOjAsImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUMzIiwiY291bnQiOjM2LCJtaW4iOlstMC41LC0wLjUsLTAuNV0sIm1heCI6WzAuNSwwLjUsMC41XX0seyJidWZmZXJWaWV3IjoxLCJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiVkVDMyIsImNvdW50IjozNn0seyJidWZmZXJWaWV3IjoyLCJjb21wb25lbnRUeXBlIjo1MTI2LCJ0eXBlIjoiU0NBTEFSIiwiY291bnQiOjQsIm1pbiI6WzBdLCJtYXgiOlswLjldfSx7ImJ1ZmZlclZpZXciOjMsImNvbXBvbmVudFR5cGUiOjUxMjYsInR5cGUiOiJWRUM0IiwiY291bnQiOjR9LHsiYnVmZmVyVmlldyI6NCwiY29tcG9uZW50VHlwZSI6NTEyNiwidHlwZSI6IlZFQzQiLCJjb3VudCI6NH1dLCJhbmltYXRpb25zIjpbeyJuYW1lIjoiT3BlbiIsInNhbXBsZXJzIjpbeyJpbnB1dCI6Miwib3V0cHV0IjozLCJpbnRlcnBvbGF0aW9uIjoiTElORUFSIn0seyJpbnB1dCI6Miwib3V0cHV0Ijo0LCJpbnRlcnBvbGF0aW9uIjoiTElORUFSIn1dLCJjaGFubmVscyI6W3sic2FtcGxlciI6MCwidGFyZ2V0Ijp7Im5vZGUiOjMsInBhdGgiOiJyb3RhdGlvbiJ9fSx7InNhbXBsZXIiOjEsInRhcmdldCI6eyJub2RlIjoxNCwicGF0aCI6InJvdGF0aW9uIn19XX1dfQ==",
+      "properties": {
+        "size": 6115
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": "key-count",
+      "type": "counter",
+      "text": "vault.keys",
+      "x": 3,
+      "y": 4,
+      "anchor": "top-left",
+      "variable": "keys",
+      "fontSize": 20
+    },
+    {
+      "id": "vault-inventory",
+      "type": "button",
+      "text": "vault.inventory",
+      "x": 3,
+      "y": 12,
+      "anchor": "top-left",
+      "action": "input",
+      "target": "Interact"
+    },
+    {
+      "id": "room-label",
+      "type": "counter",
+      "text": "vault.room",
+      "x": 3,
+      "y": 4,
+      "anchor": "bottom-left",
+      "variable": "room"
+    },
+    {
+      "id": "inventory-title",
+      "type": "text",
+      "text": "vault.inventory",
+      "x": 0,
+      "y": -26,
+      "anchor": "center",
+      "screen": "satchel",
+      "fontSize": 30
+    },
+    {
+      "id": "inventory-keys",
+      "type": "counter",
+      "text": "vault.keys",
+      "x": 0,
+      "y": -12,
+      "anchor": "center",
+      "screen": "satchel",
+      "variable": "keys"
+    },
+    {
+      "id": "inventory-lamps",
+      "type": "counter",
+      "text": "vault.lanterns",
+      "x": 0,
+      "y": -4,
+      "anchor": "center",
+      "screen": "satchel",
+      "variable": "lanterns"
+    },
+    {
+      "id": "inventory-shop",
+      "type": "button",
+      "text": "vault.shop",
+      "x": 0,
+      "y": 8,
+      "anchor": "center",
+      "screen": "satchel",
+      "action": "open",
+      "target": "market"
+    },
+    {
+      "id": "inventory-back",
+      "type": "button",
+      "text": "vault.back",
+      "x": 0,
+      "y": 22,
+      "anchor": "center",
+      "screen": "satchel",
+      "action": "back"
+    },
+    {
+      "id": "market-title",
+      "type": "text",
+      "text": "vault.shop",
+      "x": 0,
+      "y": -26,
+      "anchor": "center",
+      "screen": "market",
+      "fontSize": 30
+    },
+    {
+      "id": "purse",
+      "type": "counter",
+      "text": "vault.seals",
+      "x": 0,
+      "y": -12,
+      "anchor": "center",
+      "screen": "market",
+      "variable": "seals"
+    },
+    {
+      "id": "goods",
+      "type": "counter",
+      "text": "vault.lanterns",
+      "x": 0,
+      "y": -4,
+      "anchor": "center",
+      "screen": "market",
+      "variable": "lanterns"
+    },
+    {
+      "id": "buy-lantern",
+      "type": "button",
+      "text": "vault.buy",
+      "x": 0,
+      "y": 9,
+      "anchor": "center",
+      "screen": "market",
+      "action": "event",
+      "event": "market.buy"
+    },
+    {
+      "id": "market-back",
+      "type": "button",
+      "text": "vault.back",
+      "x": 0,
+      "y": 23,
+      "anchor": "center",
+      "screen": "market",
+      "action": "back"
+    }
+  ],
+  "locales": {
+    "en": {
+      "vault.inventory": "Inventory",
+      "vault.shop": "Lantern shop",
+      "vault.keys": "Keys",
+      "vault.room": "Room",
+      "vault.lanterns": "Lanterns",
+      "vault.seals": "Seals",
+      "vault.back": "Back",
+      "vault.buy": "Buy lantern · 1 seal"
+    },
+    "ru": {
+      "vault.inventory": "Инвентарь",
+      "vault.shop": "Лавка фонарей",
+      "vault.keys": "Ключи",
+      "vault.room": "Зал",
+      "vault.lanterns": "Фонари",
+      "vault.seals": "Печати",
+      "vault.back": "Назад",
+      "vault.buy": "Купить фонарь · 1 печать"
+    }
+  },
+  "settings": {
+    "duration": 60,
+    "language": "en",
+    "mode": "scene",
+    "bounds": [
+      -3.5,
+      3.5,
+      -5,
+      5
+    ],
+    "variables": {
+      "keys": 0,
+      "seals": 2,
+      "lanterns": 0,
+      "room": "Passage"
+    }
+  },
+  "screens": [
+    {
+      "id": "satchel",
+      "name": "Inventory",
+      "phase": "window",
+      "safeArea": true,
+      "background": "#172137f5"
+    },
+    {
+      "id": "market",
+      "name": "Lantern shop",
+      "phase": "window",
+      "safeArea": true,
+      "background": "#243843fa"
+    }
+  ]
+}

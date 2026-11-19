@@ -1,3 +1,5 @@
+import {validateScreens, type UIScreen, type Anchor, type ButtonAction} from './screens'
+export * from './screens'
 // Project v1 is plain JSON. A component's type and an asset's ID are stable routing keys.
 export type Vec3 = [number, number, number]
 export type Transform = { position: Vec3; rotation: Vec3; scale: Vec3 }
@@ -40,6 +42,10 @@ export interface UIElement {
   text: string
   x: number
   y: number
+  screen?: string
+  anchor?: Anchor
+  action?: ButtonAction
+  target?: string
   [key: string]: any
 }
 export interface Project {
@@ -49,6 +55,7 @@ export interface Project {
   activeScene: string
   scenes: Scene[]
   assets: Asset[]
+  screens?: UIScreen[]
   ui: UIElement[]
   locales: Record<string, Record<string, string>>
   settings: { duration: number; language: string; [key: string]: any }
@@ -200,6 +207,7 @@ export function validateProject(input: unknown): Project {
       typeof input.settings.language === 'string',
     'invalid settings',
   )
+  validateScreens(input as Project)
   return input as Project
 }
 export const serializeProject = (project: Project): string =>

@@ -27,37 +27,25 @@ import {
   type Vec3,
 } from '../../../packages/project-schema/src'
 import ScriptParams from './ScriptParams'
+import { VisualFields } from './VisualFields'
 import { Section, Field, Numeric, Color } from './Fields'
 import './authoring.css'
 
-export const behaviorDefaults: Record<string, [string, Record<string, string | number | boolean>]> = {
-  rotate: ['Rotate Object', { axis: 'y', speed: 1 }],
-  move: ['Move Between Points', { x: 2, y: 0, z: 0, speed: 1 }],
-  follow: ['Follow Target', { target: '', speed: 2 }],
-  lookAt: ['Look At', { target: '' }],
-  player: ['Top Down Controller', { speed: 3, jumpHeight: 0.8 }],
-  'first-person': ['First Person Controller', { speed: 3, jumpHeight: 1 }],
-  collectible: ['Collectible', { points: 1, radius: 0.65 }],
-  damage: ['Damage', { amount: 1, radius: 0.7 }],
-  destroy: ['Destroy After Time', { seconds: 3 }],
-  timer: ['Timer', { seconds: 3, event: 'timer.done' }],
-  clickable: ['Clickable Object', { event: 'object.clicked' }],
-  setVariable: ['Set Variable', { event: 'object.clicked', key: 'score', value: 1 }],
-  sound: ['Play Sound', { event: 'coin.collected', asset: '' }],
-  changeScene: ['Change Scene', { event: 'level.completed', scene: '' }],
-  toggleUI: ['Show / Hide UI', { event: 'object.clicked', target: '' }],
-  reward: ['Ad Reward', { event: 'reward.request', points: 1 }],
-  spawn: ['Spawn Object', { event: 'spawn', target: '' }],
-}
+import {behaviorDefaults, eventNames} from '../../../packages/behaviors/src/catalog'
+import {RuleFields} from './RuleFields'
+export {behaviorDefaults}
 const names: Record<string, string> = {
   mesh: 'Mesh Renderer',
   behavior: 'Behavior',
+  rule: 'Event Rule',
   light: 'Light',
   camera: 'Camera',
   collider: 'Collider',
   body: 'Physics Body',
   script: 'Script',
   audio: 'Audio Source',
+  animation: 'Animation Player',
+  sprite: 'Billboard Sprite',
 }
 const icons = {
   mesh: Box,
@@ -129,8 +117,17 @@ export function Inspector({
     const assetId = uid('asset')
     const item: Component = { type: kind, enabled: true }
     switch (kind) {
+      case 'animation':
+        Object.assign(item, { clip: '', loop: true, autoplay: true, speed: 1, event: '' })
+        break
+      case 'sprite':
+        Object.assign(item, { texture: '', color: '#ffffff', opacity: 1, width: 1, height: 1 })
+        break
       case 'mesh':
         Object.assign(item, { shape: 'box', material: '' })
+        break
+      case 'rule':
+        Object.assign(item, { event: 'object.clicked', source: '', tag: '', actions: [{kind:'addVariable', key:'score', value:1}] })
         break
       case 'behavior':
         Object.assign(item, { kind: 'rotate', params: { ...behaviorDefaults.rotate[1] } })
@@ -215,6 +212,9 @@ export function Inspector({
           toggle={() => prop('enabled', c.enabled === false)}
           remove={() => editEntity((e) => e.components.splice(i, 1))}
         >
+          {(c.type === 'animation' || c.type === 'sprite') && (
+            <VisualFields c={c} assets={project.assets} modelId={entity?.components.find(part => part.type === 'mesh' && part.shape === 'model')?.asset} change={prop}/>
+          )}
           {c.type === 'mesh' && (
             <>
               {select(
@@ -285,6 +285,7 @@ export function Inspector({
               <ScriptParams project={project} component={c} change={(fields) => patch(i, fields)} />
             </>
           )}
+          {c.type === 'rule' && <RuleFields project={project} rule={c} change={data=>patch(i,data)} />}
           {c.type === 'behavior' && (
             <>
               <Field label="Behavior">
@@ -307,6 +308,12 @@ export function Inspector({
                 <Field key={key} label={titleCase(key)}>
                   {typeof v === 'number' ? (
                     <Numeric label={key} value={v} change={(n) => parameter(key, n)} />
+                  ) : typeof v === 'boolean' ? (
+                    <input type="checkbox" checked={v} onChange={e=>parameter(key,e.target.checked)} />
+                  ) : key === 'event' ? (
+                    <><input aria-label="Behavior event" list="mf-event-catalog" value={String(v)} onChange={e=>parameter(key,e.target.value)}/></>
+                  ) : key === 'prefab' ? (
+                    <AssetSelect label="Spawn prefab" assets={project.assets} type="prefab" value={String(v||'')} change={id=>parameter(key,id)}/>
                   ) : key === 'target' || key === 'scene' ? (
                     <select value={String(v ?? '')} onChange={(e) => parameter(key, e.target.value)}>
                       <option value="">Select…</option>
@@ -391,6 +398,7 @@ export function Inspector({
   }
   return (
     <aside className="mf-inspector">
+      <datalist id="mf-event-catalog">{eventNames.map(name=><option key={name} value={name}/>)}</datalist>
       <div className="mf-pane-heading">
         <SlidersHorizontal size={15} />
         <strong>Inspector</strong>
@@ -418,6 +426,7 @@ export function Inspector({
             />
           </div>
           <Section name="Transform" icon={Move}>
+            <Field label="Tags"><input key={entity.id+JSON.stringify(entity.properties.tags || [])} aria-label="Object tags" placeholder="Comma-separated tags" defaultValue={(Array.isArray(entity.properties.tags)?entity.properties.tags:[]).join(", ")} onBlur={e=>{const tags=[...new Set(e.target.value.split(",").map(s=>s.trim()).filter(Boolean))]; if(JSON.stringify(tags)!==JSON.stringify(entity.properties.tags||[]))editEntity(obj=>{obj.properties.tags=tags})}} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></Field>
             {(['position', 'rotation', 'scale'] as const).map((key) => (
               <div className="mf-transform" key={key}>
                 <span>{titleCase(key)}</span>

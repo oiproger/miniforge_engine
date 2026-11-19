@@ -1038,3 +1038,7 @@ input {
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   }
 }
+.project-issues{max-height:34vh;overflow:auto;font-size:12px;margin:12px 0}
+.project-issues>strong{color:#ffb984}
+.project-issues button{display:grid;justify-items:start;gap:3px;text-align:left;width:100%;margin-top:5px;padding:7px;background:var(--soft);border-radius:4px}
+.project-issues button span{color:var(--muted)}

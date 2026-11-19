@@ -1,5 +1,7 @@
 import { PerspectiveCamera, Object3D, Raycaster, Vector2, Vector3 } from 'three'
 import { createWorld } from '../../graphics/src'
+import { instantiatePrefab, makePrefab, subtree } from '../../project-schema/src'
+import { bindRule } from '../../behaviors/src/rules'
 import type { Component, Entity, Project, Vec3 } from '../../project-schema/src'
 import { behavior } from '../../behaviors/src'
 import { Input } from './input'
@@ -26,12 +28,17 @@ export async function startGame(
   const sdkStart = performance.now()
   await platform.initialize()
   const initializationMs = performance.now() - sdkStart
-  const world = createWorld(container, project, project.activeScene)
+  const world = createWorld(container, project, project.activeScene, {
+    onAnimationFinished: (id, clip) => emit('animation.finished', { source: id, clip }),
+  })
   const events = new Events(),
-    lifecycle = new Lifecycle((err) => {
-      console.error('Game script', err)
-      options.onEvent?.('script.error', String(err))
-    })
+    lifecycle = new Lifecycle(
+      (err) => {
+        console.error('Game script', err)
+        options.onEvent?.('script.error', String(err))
+      },
+      (id) => active(id),
+    )
   const signal = new AbortController(),
     vars: Record<string, any> = {},
     ray = new Raycaster()
@@ -63,7 +70,8 @@ export async function startGame(
   let player: Actor | undefined,
     coins: Actor[] = [],
     hazards: Actor[] = [],
-    solids: Actor[] = []
+    solids: Actor[] = [],
+    volumes: Actor[] = []
   const contacts = new Set<string>()
   let scene = project.scenes.find((s) => s.id === sceneId)!
   const stats = {
@@ -79,8 +87,15 @@ export async function startGame(
   }
   let language = project.settings.language,
     best = 0
-  const input = new Input(signal.signal, () =>
-    phase === 'playing' ? pause() : phase === 'paused' && resume(),
+  const input = new Input(
+    signal.signal,
+    () => {
+      if (!overlay.back()) {
+        if (phase === 'playing') pause()
+        else if (phase === 'paused') resume()
+      }
+    },
+    (action, down) => emit('input.' + action + (down ? '' : '.released'), { source: 'input', action }),
   )
   for (const [action, keys] of Object.entries(project.settings.bindings || {}))
     if (Array.isArray(keys)) input.bind(action, keys)
@@ -102,7 +117,7 @@ export async function startGame(
         void platform.saveData('language', language)
         updateUI()
       },
-      emit: (name) => events.emit(name),
+      emit: (name, source?: string) => emit(name, source),
     },
     input,
     t,
@@ -202,14 +217,138 @@ export async function startGame(
       gain.disconnect()
     }
   }
+  const registered = new Set<string>(),
+    toStart = new Set<string>(),
+    destroying = new Set<string>()
+  const subscriptions = new Map<string, Set<() => void>>()
+  let unloading = false,
+    sessionStarted = false,
+    startingScene = false,
+    queuedScene: string | undefined
+  function active(id: string) {
+    const object = world.objects.get(id)
+    return !!object && visible(object) && !destroying.has(id)
+  }
+  function install(entity: Entity) {
+    if (registered.has(entity.id) || !active(entity.id)) return
+    registered.add(entity.id)
+    toStart.add(entity.id)
+    const object = world.objects.get(entity.id)!
+    for (const component of entity.components) {
+      if (!registered.has(entity.id)) break
+      if (component.enabled !== false) register(entity, object, component)
+    }
+  }
+  function startEntities(ids: Iterable<string>) {
+    for (const id of [...ids]) if (active(id) && toStart.delete(id)) lifecycle.call('onStart', id)
+  }
+  function spawnPrefab(assetId: string, position?: Vec3, parent: string | null = null): string {
+    if (disposed || unloading) throw Error('Scene is unloading')
+    const asset =
+      project.assets.find((a) => a.id === assetId && a.type === 'prefab') ?? makePrefab(scene, assetId)
+    const offset = scene.entities.length
+    const root = instantiatePrefab(scene, asset, parent)
+    if (position) root.transform.position = [...position]
+    const nodes = scene.entities.slice(offset)
+    try {
+      world.addEntities(nodes)
+      for (const e of nodes) physics?.add(e)
+      for (const e of nodes) install(e)
+      startEntities(nodes.map((e) => e.id))
+      return root.id
+    } catch (err) {
+      destroy(root.id)
+      throw err
+    }
+  }
+  function destroy(id: string) {
+    if (destroying.has(id) || unloading) return
+    const nodes = subtree(scene, id),
+      ids = new Set(nodes.map((e) => e.id))
+    if (!ids.size) return
+    for (const key of ids) destroying.add(key)
+    for (const e of nodes.reverse()) {
+      const key = e.id
+      lifecycle.remove(key)
+      for (const off of subscriptions.get(key) ?? []) off()
+      subscriptions.delete(key)
+      registered.delete(key)
+      toStart.delete(key)
+      contacts.delete(key)
+      physics?.remove(key)
+    }
+    scene.entities = scene.entities.filter((e) => !ids.has(e.id))
+    coins = coins.filter((a) => !ids.has(a.entity.id))
+    hazards = hazards.filter((a) => !ids.has(a.entity.id))
+    solids = solids.filter((a) => !ids.has(a.entity.id))
+    volumes = volumes.filter((a) => !ids.has(a.entity.id))
+    if (player && ids.has(player.entity.id)) {
+      player = undefined
+      firstPerson = false
+    }
+    world.removeEntities([...ids])
+    for (const key of ids) destroying.delete(key)
+  }
+  function setActive(id: string, enabled: boolean) {
+    const nodes = subtree(scene, id)
+    if (!nodes.length || destroying.has(id) || unloading) return
+    nodes[0].active = enabled
+    world.setEntityActive(id, enabled)
+    for (const entity of nodes) {
+      physics?.setActive(entity.id, active(entity.id))
+      if (enabled) install(entity)
+      else contacts.delete(entity.id)
+    }
+    if (enabled) startEntities(nodes.map((e) => e.id))
+  }
+  function tags(id: string): string[] {
+    const value = scene.entities.find((e) => e.id === id)?.properties.tags
+    return Array.isArray(value) ? value : []
+  }
+  function requestScene(id: string) {
+    if (unloading || disposed || (startingScene && sceneId === id)) return
+    // Defer transitions requested inside event, script and physics callbacks until dispatch completes.
+    if (queuedScene !== undefined) return
+    queuedScene = id
+    const generation = revision
+    queueMicrotask(() => {
+      if (queuedScene !== id) return
+      queuedScene = undefined
+      if (!disposed && generation === revision)
+        void load(id, false).catch((err) => emit('scene.error', String(err)))
+    })
+  }
   function register(entity: Entity, object: Object3D, c: Component) {
+    const generation = revision
+    const alive = () =>
+      !disposed &&
+      !unloading &&
+      revision === generation &&
+      registered.has(entity.id) &&
+      !destroying.has(entity.id)
+    const scopedEvents: GameAPI['events'] = {
+      on(name, handler) {
+        const off = events.on(name, (payload) => {
+          if (alive() && active(entity.id)) handler(payload)
+        })
+        let group = subscriptions.get(entity.id)
+        if (!group) subscriptions.set(entity.id, (group = new Set()))
+        group.add(off)
+        return () => {
+          group.delete(off)
+          return off()
+        }
+      },
+      emit,
+    }
+
     const api: GameAPI = {
       entity,
       object,
       transform: object,
       params: c.params || {},
       input,
-      events,
+      events: scopedEvents,
       vars,
       platform,
       project,
@@ -217,13 +356,38 @@ export async function startGame(
         return elapsed
       },
       find: (id) => world.objects.get(id),
+      spawnPrefab: (asset, position, parent) => {
+        if (!alive()) throw Error('Object expired')
+        return spawnPrefab(asset, position, parent)
+      },
+      destroy: (id) => {
+        if (alive()) destroy(id)
+      },
+      setActive: (id, enabled) => {
+        if (alive()) setActive(id, enabled)
+      },
+      findByTag: (tag) =>
+        scene.entities
+          .filter((e) => Array.isArray(e.properties.tags) && e.properties.tags.includes(tag))
+          .map((e) => e.id),
       component: (type) => entity.components.find((v) => v.type === type && v.enabled !== false),
       t,
       audio: { play: playSound },
-      ui: { get: (id) => overlay.get(id) },
+      animation: {
+        play: (id, clip, loop = true, speed = 1) => world.playAnimation(id, clip, loop, speed),
+        stop: (id) => world.stopAnimation(id),
+        clips: (id) => world.animationClips(id),
+      },
+      ui: {
+        get: (id) => overlay.get(id),
+        open: (id) => overlay.open(id),
+        close: () => overlay.close(),
+        back: () => overlay.back(),
+        current: () => overlay.current(),
+      },
       scene: {
         load: (id) => {
-          void load(id, false).catch((err) => emit('scene.error', String(err)))
+          if (alive()) requestScene(id)
         },
       },
       physics: {
@@ -236,6 +400,35 @@ export async function startGame(
       },
       save: { get: (key) => platform.loadData(key), set: (key, value) => platform.saveData(key, value) },
     }
+    if (c.type === 'rule')
+      lifecycle.add(entity.id, () => ({
+        onDestroy: bindRule(c, {
+          events: scopedEvents,
+          vars,
+          selfId: entity.id,
+          sourceTags: tags,
+          setActive,
+          screen: (id: string, open: boolean) => {
+            if (open) overlay.open(id)
+            else if (overlay.current() === id) overlay.back()
+          },
+          loadScene: api.scene.load,
+          playSound,
+          playAnimation: (id: string, clip: string) => {
+            const animation = scene.entities
+              .find((e) => e.id === id)
+              ?.components.find((c) => c.type === 'animation' && c.enabled !== false)
+            world.playAnimation(id, clip || animation?.clip, animation?.loop ?? false, animation?.speed)
+          },
+          spawnPrefab: (prefab: string, at: string) => {
+            const anchor = world.objects.get(at || entity.id)
+            if (anchor) spawnPrefab(prefab, anchor.getWorldPosition(new Vector3()).toArray())
+          },
+        }),
+      }))
+    if (c.type === 'animation' && c.event)
+      scopedEvents.on(c.event, () => world.playAnimation(entity.id, c.clip, c.loop, c.speed))
+    if (c.type === 'collider' && c.trigger) volumes.push({ entity, object, params: c })
     if (c.type === 'script') {
       const module = options.scripts?.[c.asset]
       if (module)
@@ -272,8 +465,16 @@ export async function startGame(
     const generation = ++revision
     busy = true
     try {
+      unloading = true
       lifecycle.clear()
       events.clear()
+      subscriptions.clear()
+      registered.clear()
+      toStart.clear()
+      destroying.clear()
+      volumes = []
+      overlay.close()
+      unloading = false
       contacts.clear()
       physics?.dispose()
       physics = undefined
@@ -288,7 +489,7 @@ export async function startGame(
       clips.clear()
       if (last || id !== sceneId || reset) world.load(project, id)
       sceneId = id
-      scene = target
+      scene = structuredClone(target)
       if (reset || vars.time === undefined) {
         for (const key of Object.keys(vars)) delete vars[key]
         Object.assign(vars, project.settings.variables || {}, {
@@ -302,9 +503,8 @@ export async function startGame(
       await world.ready()
       if (generation !== revision || disposed) return
       if (
-        scene.entities.some(
-          (e) => e.active && e.components.some((c) => c.enabled !== false && c.type === 'body'),
-        )
+        options.physics ||
+        scene.entities.some((e) => e.components.some((c) => c.enabled !== false && c.type === 'body'))
       ) {
         if (!options.physics) throw Error('A physics body requires the Rapier module in this build')
         const result = await options.physics(world, scene)
@@ -314,11 +514,7 @@ export async function startGame(
         }
         physics = result
       }
-      for (const entity of scene.entities) {
-        const object = world.objects.get(entity.id)
-        if (object && visible(object))
-          for (const c of entity.components) if (c.enabled !== false) register(entity, object, c)
-      }
+      for (const entity of [...scene.entities]) install(entity)
       jumpTime = 0
       jumpHeld = false
       if (player) groundY = (player as Actor).object.getWorldPosition(point).y
@@ -351,7 +547,17 @@ export async function startGame(
       events.on('game.retry', () => {
         void restart()
       })
-      lifecycle.call('onStart')
+      startingScene = true
+      try {
+        startEntities(toStart)
+        emit('scene.start', sceneId)
+        if (!sessionStarted || reset) {
+          sessionStarted = true
+          emit('game.start', sceneId)
+        }
+      } finally {
+        startingScene = false
+      }
       updateUI()
       last = performance.now()
     } finally {
@@ -425,10 +631,13 @@ export async function startGame(
     if (enter || trigger) {
       lifecycle.call(hook, a, b)
       lifecycle.call(hook, b, a)
+      const name = trigger ? (enter ? 'trigger.enter' : 'trigger.exit') : 'collision.enter'
+      emit(name, { source: a, other: b })
+      emit(name, { source: b, other: a })
     }
   }
   function control(dt: number) {
-    if (!player) return
+    if (!player || !active(player.entity.id)) return
     const actor = player,
       node = actor.object,
       move = input.move,
@@ -471,14 +680,29 @@ export async function startGame(
       world.camera.lookAt(playerPoint.x, 0, playerPoint.z - 2)
     }
     if (!firstPerson && (x || z)) node.rotation.y = Math.atan2(x, z)
+    if (!physics)
+      for (const volume of volumes) {
+        if (!active(volume.entity.id) || volume.entity.id === actor.entity.id) continue
+        volume.object.getWorldPosition(point)
+        const size = volume.params.size ?? volume.entity.transform.scale
+        if (
+          Math.abs(playerPoint.x - point.x) > size[0] / 2 + 0.22 ||
+          Math.abs(playerPoint.y - point.y) > size[1] / 2 + 0.45 ||
+          Math.abs(playerPoint.z - point.z) > size[2] / 2 + 0.22
+        )
+          continue
+        next.add(volume.entity.id)
+        if (!contacts.has(volume.entity.id)) contact(actor.entity.id, volume.entity.id, true, true)
+      }
     for (const coin of coins) {
       if (!visible(coin.object)) continue
       coin.object.getWorldPosition(point)
       if (Math.hypot(playerPoint.x - point.x, playerPoint.z - point.z) > (coin.params.radius ?? 0.65))
         continue
       vars.score += Number(coin.params.points ?? coin.params.value ?? 1)
-      coin.object.visible = false
       contact(actor.entity.id, coin.entity.id, true, true)
+      if (!active(coin.entity.id)) continue
+      setActive(coin.entity.id, false)
       playSound()
       emit('coin.collected', coin.entity.id)
       if ((mode || runner) && coins.every((c) => !visible(c.object))) finish()
@@ -496,7 +720,11 @@ export async function startGame(
       }
     }
     for (const id of contacts)
-      if (!next.has(id) && hazards.some((h) => h.entity.id === id)) contact(actor.entity.id, id, false, true)
+      if (
+        !next.has(id) &&
+        (hazards.some((h) => h.entity.id === id) || volumes.some((v) => v.entity.id === id))
+      )
+        contact(actor.entity.id, id, false, true)
     if (runner && [...next].some((id) => hazards.some((h) => h.entity.id === id))) finish('player.dead')
     contacts.clear()
     for (const id of next) contacts.add(id)
@@ -523,6 +751,7 @@ export async function startGame(
       }
       if (phase === 'playing' && !busy) {
         lifecycle.call('onUpdate', undefined, dt)
+        world.updateAnimations(dt)
         if (mode) {
           vars.time = Math.max(0, vars.time - Math.max(0, frameMs) / 1000)
           if (!vars.time) finish('time.up')
@@ -607,7 +836,7 @@ export async function startGame(
     platform.loadingReady()
     stats.readyMs = performance.now() - started
     frame = requestAnimationFrame(loop)
-    if (!mode) resume()
+    if (!mode && !project.screens?.some((s) => s.phase === 'menu')) resume()
     return {
       pause,
       resume,

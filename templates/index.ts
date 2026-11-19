@@ -8,7 +8,10 @@ import {
 } from '../packages/project-schema/src/index.ts'
 import type { Component, Entity, Project, Vec3 } from '../packages/project-schema/src/index.ts'
 
+import { createKeyVault } from './key-vault'
+
 export const templates = [
+  { id: 'key-vault', name: 'Key Vault' },
   { id: 'coin-rush', name: 'Top Down Collectathon' },
   { id: 'empty', name: 'Empty 3D' },
   { id: 'first-person', name: 'First Person Prototype' },
@@ -513,6 +516,7 @@ function collectathon(): Project {
 
 export function createTemplate(key: string = 'coin-rush'): Project {
   if (key === 'coin-rush' || key === 'collectathon' || key === 'top-down') return collectathon()
+  if (key === 'key-vault') return createKeyVault()
   const name = templates.find((t) => t.id === key)?.name
   if (!name) throw new Error('Unknown template: ' + key)
   const p = makeProject(name)

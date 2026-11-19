@@ -1,5 +1,5 @@
 import * as T from 'three'
-import type { Project, Entity, Vec3 } from '../../project-schema/src'
+import type { Project, Entity, Vec3, Component } from '../../project-schema/src'
 
 export type ViewCamera = T.PerspectiveCamera | T.OrthographicCamera
 export interface RenderWorld {
@@ -8,6 +8,13 @@ export interface RenderWorld {
   camera: ViewCamera
   objects: Map<string, T.Object3D>
   load(project: Project, sceneId?: string): void
+  addEntities(entities: Entity[]): void
+  removeEntities(ids: string[]): void
+  setEntityActive(id: string, active: boolean): void
+  animationClips(id: string): string[]
+  playAnimation(id: string, clip?: string, loop?: boolean, speed?: number): boolean
+  stopAnimation(id: string): void
+  updateAnimations(delta: number): void
   setCamera(camera: ViewCamera): void
   resize(): void
   render(): void
@@ -37,7 +44,7 @@ export function createWorld(
   container: HTMLElement,
   project: Project,
   sceneId?: string,
-  options: { editor?: boolean } = {},
+  options: { editor?: boolean; onAnimationFinished?: (id: string, clip: string) => void } = {},
 ): RenderWorld {
   const renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
   renderer.shadowMap.type = T.PCFShadowMap
@@ -53,6 +60,60 @@ export function createWorld(
   const shadows = new Set<T.LightShadow>()
   const animatedMaterials = new Set<T.ShaderMaterial>()
   const batches = new Set<T.InstancedMesh>()
+  const batchSources = new Map<T.InstancedMesh, { parent: T.Object3D; mesh: T.Mesh }[]>()
+  const players = new Map<
+    string,
+    { mixer: T.AnimationMixer; clips: T.AnimationClip[]; root: T.Object3D; settings?: Component }
+  >()
+  let addEntities: (entities: Entity[]) => void = () => {}
+  function releasePlayer(id: string) {
+    const player = players.get(id)
+    if (!player) return
+    player.mixer.stopAllAction()
+    player.mixer.uncacheRoot(player.root)
+    players.delete(id)
+  }
+  function playAnimation(id: string, requestedClip?: string, loop?: boolean, speed?: number) {
+    const player = players.get(id)
+    if (!player) return false
+    const name = requestedClip || player.settings?.clip || ''
+    const repeats = loop ?? player.settings?.loop ?? true
+    const rate = speed ?? player.settings?.speed ?? 1
+    const clip = name ? player.clips.find((clip) => clip.name === name) : player.clips[0]
+    if (!clip) return false
+    player.mixer.stopAllAction()
+    const action = player.mixer.clipAction(clip).reset()
+    action.setLoop(repeats ? T.LoopRepeat : T.LoopOnce, repeats ? Infinity : 1)
+    action.clampWhenFinished = !repeats
+    action.timeScale = Number.isFinite(rate) ? rate : 1
+    if (action.timeScale < 0) action.time = clip.duration
+    action.play()
+    return true
+  }
+  function restoreBatches(nodes: Set<T.Object3D>) {
+    for (const [batch, sources] of batchSources) {
+      if (!sources.some((source) => nodes.has(source.parent))) continue
+      for (const source of sources) source.parent.add(source.mesh)
+      batch.removeFromParent()
+      batch.dispose()
+      batches.delete(batch)
+      batchSources.delete(batch)
+    }
+  }
+  function removeEntities(ids: string[]) {
+    const removal = new Set<T.Object3D>()
+    for (const id of ids) objects.get(id)?.traverse((node) => removal.add(node))
+    restoreBatches(removal)
+    for (const node of removal) {
+      if (node.userData.importedRoot) disposeTree(node)
+      if (node instanceof T.DirectionalLight && shadows.delete(node.shadow)) node.shadow.dispose()
+      if (node.userData.entityId && objects.get(node.userData.entityId) === node) {
+        releasePlayer(node.userData.entityId)
+        objects.delete(node.userData.entityId)
+        node.removeFromParent()
+      }
+    }
+  }
   const started = performance.now()
   let camera: ViewCamera = new T.PerspectiveCamera(42, 1, 0.05, 1000)
   let generation = 0
@@ -99,6 +160,8 @@ export function createWorld(
       })
     batches.forEach((batch) => batch.dispose())
     batches.clear()
+    batchSources.clear()
+    for (const id of players.keys()) releasePlayer(id)
     content.clear()
     objects.clear()
     geometry.forEach((g) => g.dispose())
@@ -192,110 +255,154 @@ export function createWorld(
     let chosenCamera:
       | { entity: Entity; target?: Vec3; projection: string; fov?: number; size?: number }
       | undefined
-    for (const entity of current.entities) {
-      const group = new T.Group()
-      group.userData.entityId = entity.id
-      group.name = entity.name
-      group.visible = entity.active
-      group.position.fromArray(entity.transform.position)
-      group.rotation.set(...entity.transform.rotation)
-      group.scale.fromArray(entity.transform.scale)
-      objects.set(entity.id, group)
-      for (const c of entity.components) {
-        if (c.enabled === false) continue
-        if (c.type === 'mesh') {
-          if (c.shape === 'model') {
-            const asset = c.asset && assets.get(c.asset)
-            if (asset?.data)
-              pending.push(
-                import('three/addons/loaders/GLTFLoader.js')
-                  .then(async ({ GLTFLoader }) => {
-                    const result = await new GLTFLoader().loadAsync(asset.data)
-                    if (generation !== version || disposed) {
-                      disposeTree(result.scene)
-                      return
-                    }
-                    result.scene.userData.importedRoot = true
-                    result.scene.traverse((obj) => {
-                      if (obj instanceof T.Mesh) obj.castShadow = obj.receiveShadow = true
+    addEntities = (entities) => {
+      const unique = new Set(entities.map((e) => e.id))
+      if (unique.size !== entities.length || entities.some((e) => objects.has(e.id)))
+        throw Error('Duplicate scene entity ID')
+      for (const entity of entities) {
+        const group = new T.Group()
+        group.userData.entityId = entity.id
+        group.name = entity.name
+        group.visible = entity.active
+        group.position.fromArray(entity.transform.position)
+        group.rotation.set(...entity.transform.rotation)
+        group.scale.fromArray(entity.transform.scale)
+        objects.set(entity.id, group)
+        for (const c of entity.components) {
+          if (c.enabled === false) continue
+          if (c.type === 'mesh') {
+            if (c.shape === 'model') {
+              const asset = c.asset && assets.get(c.asset)
+              if (asset?.data)
+                pending.push(
+                  import('three/addons/loaders/GLTFLoader.js')
+                    .then(async ({ GLTFLoader }) => {
+                      const result = await new GLTFLoader().loadAsync(asset.data)
+                      if (generation !== version || disposed || objects.get(entity.id) !== group) {
+                        disposeTree(result.scene)
+                        return
+                      }
+                      result.scene.userData.importedRoot = true
+                      result.scene.traverse((obj) => {
+                        if (obj instanceof T.Mesh) obj.castShadow = obj.receiveShadow = true
+                      })
+                      group.add(result.scene)
+                      const player = entity.components.find(
+                        (comp) => comp.type === 'animation' && comp.enabled !== false,
+                      )
+                      if (result.animations.length && !players.has(entity.id)) {
+                        const mixer = new T.AnimationMixer(result.scene)
+                        mixer.addEventListener('finished', ({ action }) => {
+                          const clip = action.getClip().name
+                          // A completion rule can destroy the scene. Finish the mixer update first.
+                          queueMicrotask(() => {
+                            if (players.get(entity.id)?.mixer === mixer)
+                              options.onAnimationFinished?.(entity.id, clip)
+                          })
+                        })
+                        players.set(entity.id, {
+                          root: result.scene,
+                          clips: result.animations,
+                          mixer,
+                          settings: player,
+                        })
+                        if (player && player.autoplay !== false)
+                          playAnimation(entity.id, player.clip, player.loop !== false, player.speed)
+                      }
                     })
-                    group.add(result.scene)
-                  })
-                  .catch((err) => {
-                    console.warn('Model load failed', asset.name, err)
-                  }),
-              )
-            continue
-          }
-          const n = Math.max(3, Math.min(96, Number(c.segments) || 12))
-          const key = [c.shape, n, c.radiusTop, c.radiusBottom].join('|')
-          let geo = geometry.get(key)
-          if (!geo) {
-            switch (c.shape) {
-              case 'plane':
-                geo = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
-                break
-              case 'sphere':
-                geo = new T.SphereGeometry(0.5, n, Math.max(4, Math.floor(n / 2)))
-                break
-              case 'capsule':
-                geo = new T.CapsuleGeometry(0.25, 0.5, 4, n)
-                break
-              case 'icosahedron':
-                geo = new T.IcosahedronGeometry(0.5, 0)
-                break
-              case 'cone':
-                geo = new T.ConeGeometry(c.radiusBottom ?? 0.5, 1, n)
-                break
-              case 'cylinder':
-                geo = new T.CylinderGeometry(c.radiusTop ?? 0.5, c.radiusBottom ?? 0.5, 1, n)
-                break
-              default:
-                geo = new T.BoxGeometry(1, 1, 1)
+                    .catch((err) => {
+                      console.warn('Model load failed', asset.name, err)
+                    }),
+                )
+              continue
             }
-            geometry.set(key, geo)
+            const n = Math.max(3, Math.min(96, Number(c.segments) || 12))
+            const key = [c.shape, n, c.radiusTop, c.radiusBottom].join('|')
+            let geo = geometry.get(key)
+            if (!geo) {
+              switch (c.shape) {
+                case 'plane':
+                  geo = new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
+                  break
+                case 'sphere':
+                  geo = new T.SphereGeometry(0.5, n, Math.max(4, Math.floor(n / 2)))
+                  break
+                case 'capsule':
+                  geo = new T.CapsuleGeometry(0.25, 0.5, 4, n)
+                  break
+                case 'icosahedron':
+                  geo = new T.IcosahedronGeometry(0.5, 0)
+                  break
+                case 'cone':
+                  geo = new T.ConeGeometry(c.radiusBottom ?? 0.5, 1, n)
+                  break
+                case 'cylinder':
+                  geo = new T.CylinderGeometry(c.radiusTop ?? 0.5, c.radiusBottom ?? 0.5, 1, n)
+                  break
+                default:
+                  geo = new T.BoxGeometry(1, 1, 1)
+              }
+              geometry.set(key, geo)
+            }
+            const mesh = new T.Mesh(geo, material(c.material))
+            mesh.castShadow = mesh.receiveShadow = true
+            group.add(mesh)
+          } else if (c.type === 'sprite') {
+            const key = JSON.stringify(['sprite', c.texture, c.color, c.opacity])
+            let mat = materials.get(key) as T.SpriteMaterial | undefined
+            if (!mat) {
+              mat = new T.SpriteMaterial({
+                map: texture(c.texture, true, {}),
+                color: c.color ?? '#ffffff',
+                opacity: c.opacity ?? 1,
+                transparent: true,
+                depthWrite: false,
+              })
+              materials.set(key, mat)
+            }
+            const sprite = new T.Sprite(mat)
+            sprite.scale.set(c.width ?? 1, c.height ?? 1, 1)
+            group.add(sprite)
+          } else if (c.type === 'light') {
+            let light: T.Light
+            if (c.kind === 'ambient')
+              light = new T.HemisphereLight(
+                c.color,
+                '#857962',
+                c.intensity * (Number(env.ambient ?? 1.5) / 1.5),
+              )
+            else if (c.kind === 'point') light = new T.PointLight(c.color, c.intensity)
+            else if (c.kind === 'spot') light = new T.SpotLight(c.color, c.intensity)
+            else {
+              const sun = new T.DirectionalLight(c.color, c.intensity)
+              sun.castShadow = true
+              const size = env.shadowQuality === 'low' ? 512 : env.shadowQuality === 'high' ? 2048 : 1024
+              sun.shadow.mapSize.set(size, size)
+              Object.assign(sun.shadow.camera, {
+                left: -11,
+                right: 11,
+                top: 11,
+                bottom: -11,
+                near: 0.1,
+                far: 85,
+              })
+              sun.shadow.normalBias = 0.018
+              sun.shadow.bias = -0.0002
+              shadows.add(sun.shadow)
+              light = sun
+            }
+            group.add(light)
+            lights++
+          } else if (c.type === 'camera' && !chosenCamera && entity.active) {
+            chosenCamera = { entity, projection: c.projection, target: c.target, fov: c.fov, size: c.size }
           }
-          const mesh = new T.Mesh(geo, material(c.material))
-          mesh.castShadow = mesh.receiveShadow = true
-          group.add(mesh)
-        } else if (c.type === 'light' && entity.active) {
-          let light: T.Light
-          if (c.kind === 'ambient')
-            light = new T.HemisphereLight(
-              c.color,
-              '#857962',
-              c.intensity * (Number(env.ambient ?? 1.5) / 1.5),
-            )
-          else if (c.kind === 'point') light = new T.PointLight(c.color, c.intensity)
-          else if (c.kind === 'spot') light = new T.SpotLight(c.color, c.intensity)
-          else {
-            const sun = new T.DirectionalLight(c.color, c.intensity)
-            sun.castShadow = true
-            const size = env.shadowQuality === 'low' ? 512 : env.shadowQuality === 'high' ? 2048 : 1024
-            sun.shadow.mapSize.set(size, size)
-            Object.assign(sun.shadow.camera, {
-              left: -11,
-              right: 11,
-              top: 11,
-              bottom: -11,
-              near: 0.1,
-              far: 85,
-            })
-            sun.shadow.normalBias = 0.018
-            sun.shadow.bias = -0.0002
-            shadows.add(sun.shadow)
-            light = sun
-          }
-          group.add(light)
-          lights++
-        } else if (c.type === 'camera' && !chosenCamera && entity.active) {
-          chosenCamera = { entity, projection: c.projection, target: c.target, fov: c.fov, size: c.size }
         }
       }
+      for (const entity of entities) {
+        ;((entity.parent && objects.get(entity.parent)) || content).add(objects.get(entity.id)!)
+      }
     }
-    for (const entity of current.entities) {
-      ;((entity.parent && objects.get(entity.parent)) || content).add(objects.get(entity.id)!)
-    }
+    addEntities(current.entities)
     // Keep interactive subtrees as normal objects. Scripts can access arbitrary scene nodes.
     if (
       !options.editor &&
@@ -330,6 +437,10 @@ export function createWorld(
         const first = meshes[0],
           batch = new T.InstancedMesh(first.geometry, first.material, meshes.length)
         batch.castShadow = batch.receiveShadow = true
+        batchSources.set(
+          batch,
+          meshes.map((mesh) => ({ parent: mesh.parent!, mesh })),
+        )
         batch.userData.entityIds = meshes.map((mesh, i) => {
           const id = mesh.parent!.userData.entityId
           batch.setMatrixAt(i, mesh.matrixWorld)
@@ -348,7 +459,9 @@ export function createWorld(
       content.add(key)
     }
     if (!options.editor) {
-      const c = chosenCamera
+      const c = chosenCamera as
+        | { entity: Entity; target?: Vec3; projection: string; fov?: number; size?: number }
+        | undefined
       orthoHeight = c?.size ?? 12
       camera =
         c?.projection === 'perspective'
@@ -378,6 +491,34 @@ export function createWorld(
       return camera
     },
     load,
+    addEntities(entities) {
+      addEntities(entities)
+      scene.updateMatrixWorld(true)
+    },
+    removeEntities,
+    setEntityActive(id, active) {
+      const group = objects.get(id)
+      if (!group || group.visible === active) return
+      const nodes = new Set<T.Object3D>()
+      group.traverse((node) => nodes.add(node))
+      restoreBatches(nodes)
+      group.visible = active
+    },
+    animationClips(id) {
+      return players.get(id)?.clips.map((clip) => clip.name) ?? []
+    },
+    playAnimation,
+    stopAnimation(id) {
+      players.get(id)?.mixer.stopAllAction()
+    },
+    updateAnimations(delta) {
+      if (!Number.isFinite(delta) || delta <= 0) return
+      for (const [id, player] of players) {
+        let node: T.Object3D | null = objects.get(id) ?? null
+        while (node?.visible) node = node.parent
+        if (!node) player.mixer.update(delta)
+      }
+    },
     resize,
     setCamera(value) {
       camera = value

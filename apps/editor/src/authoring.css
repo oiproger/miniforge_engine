@@ -463,3 +463,8 @@
   max-height: 280px;
   justify-self: center;
 }
+
+.rule-fields fieldset{min-width:0;margin:8px 0;padding:8px;border:1px solid #39424b;border-radius:5px}
+.rule-fields legend{font-size:11px;color:#b4c3ce;padding:0 4px}
+.rule-order{display:flex;gap:4px;align-items:center;justify-content:flex-end}
+.rule-order button{font:inherit;font-size:11px;padding:3px 6px}

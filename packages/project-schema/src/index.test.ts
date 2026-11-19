@@ -40,7 +40,9 @@ describe('versioned scene format', () => {
     expect(getScene(p).entities.some((e) => e.components.some((c) => c.type === 'light'))).toBe(true)
     for (const e of getScene(p).entities)
       for (const c of e.components.filter((c) => c.type === 'mesh')) {
-        expect(p.assets.some((a) => a.id === c.material)).toBe(true)
+        const assetId = c.shape === 'model' ? c.asset : c.material
+        const assetType = c.shape === 'model' ? 'model' : 'material'
+        expect(p.assets.some((a) => a.id === assetId && a.type === assetType)).toBe(true)
       }
   })
   it('opens the shipped Coin Rush project from disk', () => {

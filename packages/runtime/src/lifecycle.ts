@@ -20,7 +20,7 @@ export class Events {
     return () => group.delete(listener)
   }
   emit(name: string, data?: unknown) {
-    for (const listener of this.listeners.get(name) ?? []) {
+    for (const listener of [...(this.listeners.get(name) ?? [])]) {
       try {
         listener(data)
       } catch (err) {
@@ -35,14 +35,17 @@ export class Events {
 
 export class Lifecycle {
   private instances = new Map<string, ScriptLifecycle[]>()
-  constructor(private report: (error: unknown) => void = console.error) {}
+  constructor(
+    private report: (error: unknown) => void = console.error,
+    private active: (id: string) => boolean = () => true,
+  ) {}
   add(id: string, construct: () => ScriptLifecycle) {
     try {
       const instance = construct()
-      instance.onCreate?.()
       const group = this.instances.get(id) ?? []
       group.push(instance)
       this.instances.set(id, group)
+      instance.onCreate?.()
     } catch (err) {
       this.report(err)
     }
@@ -52,9 +55,11 @@ export class Lifecycle {
     id?: string,
     ...args: Parameters<NonNullable<ScriptLifecycle[K]>>
   ) {
-    const groups = id === undefined ? this.instances.values() : [this.instances.get(id) ?? []]
-    for (const group of groups)
-      for (const instance of group) {
+    const entries =
+      id === undefined ? [...this.instances.entries()] : [[id, this.instances.get(id) ?? []] as const]
+    for (const [key, group] of entries)
+      for (const instance of [...group]) {
+        if (this.instances.get(key) !== group || !this.active(key)) break
         try {
           ;(instance[name] as ((...a: unknown[]) => void) | undefined)?.apply(instance, args)
         } catch (err) {
@@ -63,8 +68,19 @@ export class Lifecycle {
         }
       }
   }
+  remove(id: string) {
+    const group = this.instances.get(id)
+    if (!group) return
+    this.instances.delete(id)
+    for (const instance of group) {
+      try {
+        instance.onDestroy?.()
+      } catch (err) {
+        this.report(err)
+      }
+    }
+  }
   clear() {
-    this.call('onDestroy')
-    this.instances.clear()
+    for (const id of [...this.instances.keys()]) this.remove(id)
   }
 }
