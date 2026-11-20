@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   SlidersHorizontal,
   Box,
@@ -11,6 +11,7 @@ import {
   Plus,
   AudioLines,
   Cuboid,
+  ChevronDown,
   ChevronRight,
   MousePointer2,
   Shapes,
@@ -40,6 +41,8 @@ import {
   makeParticleAsset,
   PARTICLE_PRESETS,
   makeNavZone,
+  makeDefaultEventGraph,
+  parseEventGraph,
   bakeNavZone,
   type NavZone,
   type Project,
@@ -81,7 +84,7 @@ const COMPONENT_CATALOG: ComponentMeta[] = [
   { type: 'body', name: 'Physics Body', category: 'Physics', desc: 'Dynamic, kinematic or static rigid body', icon: CircleDot, keywords: 'rigidbody mass gravity velocity' },
   { type: 'script', name: 'Script', category: 'Logic', desc: 'TypeScript GameAPI lifecycle behavior', icon: Code2, keywords: 'code ts logic controller' },
   { type: 'behavior', name: 'Behavior', category: 'Logic', desc: 'Built-in player, NPC, save & gameplay module', icon: Zap, keywords: 'player npc coin hazard save' },
-  { type: 'rule', name: 'Event Rule', category: 'Logic', desc: 'No-code event -> action trigger rule', icon: GitBranch, keywords: 'event trigger action score' },
+  { type: 'eventGraph', name: 'Event Graph', category: 'Logic', desc: 'Blueprint node graph (events, variables, functions)', icon: GitBranch, keywords: 'blueprint event graph logic rule trigger' },
   { type: 'audio', name: 'Audio Source', category: 'Audio', desc: '3D spatial or ambient sound emitter', icon: AudioLines, keywords: 'sound music sfx hrtf' },
   { type: 'animation', name: 'Animation Player', category: 'Animation', desc: 'Play glTF skeletal / transform clips', icon: Film, keywords: 'clip gltf keyframe' },
   { type: 'navZone', name: 'NavGrid Zone', category: 'Navigation', desc: 'Bakeable A* pathfinding grid + Off-Mesh Links', icon: Compass, keywords: 'navmesh pathfinding astar npc walk' },
@@ -117,6 +120,134 @@ export function AssetSelect({
     </select>
   )
 }
+
+function computePopoverBox(anchor: HTMLElement | null, preferredHeight = 320, minWidth = 240) {
+  if (!anchor || typeof window === 'undefined') {
+    return { top: 80, left: 16, width: minWidth, listMaxHeight: 240 }
+  }
+  const rect = anchor.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const topPad = 48
+  const bottomPad = 34
+  const width = Math.min(vw - 16, Math.max(minWidth, Math.round(rect.width)))
+  const left = Math.max(8, Math.min(vw - width - 8, Math.round(rect.left)))
+  const spaceBelow = vh - rect.bottom - bottomPad
+  const spaceAbove = rect.top - topPad
+  const openUp = spaceBelow < Math.min(preferredHeight, 260) && spaceAbove > spaceBelow
+  const avail = Math.max(150, openUp ? spaceAbove - 6 : spaceBelow - 6)
+  const boxHeight = Math.min(preferredHeight, avail)
+  const top = openUp
+    ? Math.max(topPad, Math.round(rect.top - boxHeight - 4))
+    : Math.min(vh - bottomPad - boxHeight, Math.round(rect.bottom + 4))
+  return {
+    top,
+    left,
+    width,
+    listMaxHeight: Math.max(100, Math.round(boxHeight - 50)),
+  }
+}
+
+function BehaviorPicker({
+  value,
+  onSelect,
+}: {
+  value: string
+  onSelect: (kind: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [box, setBox] = useState({ top: 80, left: 16, width: 240, listMaxHeight: 240 })
+  const btnRef = useRef<HTMLButtonElement | null>(null)
+  const popRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const updatePos = () => setBox(computePopoverBox(btnRef.current, 320, 230))
+    updatePos()
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (btnRef.current?.contains(t) || popRef.current?.contains(t)) return
+      setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('resize', updatePos)
+    window.addEventListener('scroll', updatePos, true)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', updatePos)
+      window.removeEventListener('scroll', updatePos, true)
+    }
+  }, [open])
+
+  const entries = Object.entries(behaviorDefaults)
+  const currentLabel = behaviorDefaults[value]?.[0] ?? value ?? 'Select behavior'
+  const filtered = entries.filter(([k, [label]]) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return label.toLowerCase().includes(q) || k.toLowerCase().includes(q)
+  })
+
+  return (
+    <div className="mf-behavior-select-wrap">
+      <button
+        ref={btnRef}
+        type="button"
+        className="mf-behavior-trigger"
+        aria-label="Behavior"
+        aria-expanded={open}
+        onClick={() => {
+          setQuery('')
+          setOpen((v) => !v)
+        }}
+      >
+        <span className="mf-behavior-trigger-label">{currentLabel}</span>
+        <ChevronDown size={13} />
+      </button>
+      {open && (
+        <div
+          ref={popRef}
+          className="mf-component-picker mf-floating-picker"
+          style={{ top: box.top, left: box.left, width: box.width }}
+        >
+          <div className="mf-comp-search">
+            <Search size={13} />
+            <input
+              autoFocus
+              placeholder="Search behaviors…"
+              aria-label="Search behaviors"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="mf-comp-list" style={{ maxHeight: box.listMaxHeight }}>
+            {filtered.map(([k, [label]]) => (
+              <button
+                key={k}
+                type="button"
+                className={'mf-behavior-option' + (k === value ? ' active' : '')}
+                onClick={() => {
+                  onSelect(k)
+                  setOpen(false)
+                }}
+              >
+                <span>{label}</span>
+                {k === value && <Check size={12} />}
+              </button>
+            ))}
+            {filtered.length === 0 && <div className="mf-picker-empty">No matching behaviors</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Inspector({
   project,
   entityId,
@@ -132,9 +263,36 @@ export function Inspector({
   terrainBrush?: TerrainBrushConfig
   onTerrainBrushChange?: (patch: Partial<TerrainBrushConfig>) => void
 }) {
-  const [adding, showAdd] = useState(false),
-    [compSearch, setCompSearch] = useState(''),
-    [feedback, setFeedback] = useState('')
+  const [adding, showAdd] = useState(false)
+  const [compBox, setCompBox] = useState({ top: 80, left: 16, width: 260, listMaxHeight: 260 })
+  const addBtnRef = useRef<HTMLButtonElement | null>(null)
+  const compPopRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!adding) return
+    const updatePos = () => setCompBox(computePopoverBox(addBtnRef.current, 360, 260))
+    updatePos()
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (addBtnRef.current?.contains(t) || compPopRef.current?.contains(t)) return
+      showAdd(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') showAdd(false)
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('resize', updatePos)
+    window.addEventListener('scroll', updatePos, true)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', updatePos)
+      window.removeEventListener('scroll', updatePos, true)
+    }
+  }, [adding])
+  const [compSearch, setCompSearch] = useState('')
+  const [feedback, setFeedback] = useState('')
   const scene = getScene(project),
     entity = scene.entities.find((e) => e.id === entityId)
   function edit(fn: (p: Project) => void) {
@@ -203,6 +361,12 @@ export function Inspector({
         break
       case 'mesh':
         Object.assign(item, { shape: 'box', material: '' })
+        break
+      case 'eventGraph':
+        Object.assign(item, {
+          asset: project.assets.find((a) => a.type === 'graph')?.id ?? '',
+          overrides: {},
+        })
         break
       case 'rule':
         Object.assign(item, {
@@ -855,24 +1019,97 @@ export function Inspector({
               <ScriptParams project={project} component={c} change={(fields) => patch(i, fields)} />
             </>
           )}
+          {c.type === 'eventGraph' && (() => {
+            const graphAsset = project.assets.find((a) => a.id === c.asset && a.type === 'graph')
+            const graphData = graphAsset ? parseEventGraph(graphAsset.data) : null
+            const exposedVars = (graphData?.variables || []).filter((v) => v.exposed !== false)
+            return (
+              <>
+                {link('Event Graph', 'graph', 'asset')}
+                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  {c.asset ? (
+                    <button
+                      type="button"
+                      className="mf-secondary"
+                      style={{ flex: 1 }}
+                      onClick={() => onEditAsset?.(c.asset)}
+                    >
+                      <GitBranch size={13} /> Open Event Graph <ChevronRight size={12} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="mf-secondary"
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        if (!entity) return
+                        const entId = entity.id
+                        const entName = entity.name
+                        const gid = uid('graph')
+                        edit((p) => {
+                          p.assets.push({
+                            id: gid,
+                            name: `${entName} Graph`,
+                            type: 'graph',
+                            data: JSON.stringify(makeDefaultEventGraph()),
+                            properties: {},
+                          })
+                          const target = getScene(p).entities.find((e) => e.id === entId)
+                          if (target && target.components[i]) target.components[i].asset = gid
+                        })
+                        onEditAsset?.(gid)
+                      }}
+                    >
+                      <Plus size={13} /> Create &amp; Open Event Graph
+                    </button>
+                  )}
+                </div>
+                {exposedVars.length > 0 && (
+                  <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ fontSize: 10.5, color: '#9aa7b8', marginBottom: 4, textTransform: 'uppercase' }}>
+                      Exposed Variables
+                    </div>
+                    {exposedVars.map((v) => {
+                      const val = c.overrides?.[v.name] !== undefined ? c.overrides[v.name] : v.defaultValue
+                      const setOvr = (nextVal: any) =>
+                        patch(i, { overrides: { ...(c.overrides || {}), [v.name]: nextVal } })
+                      return (
+                        <Field key={v.id} label={v.name}>
+                          {v.type === 'number' ? (
+                            <Numeric label={v.name} value={Number(val) || 0} change={setOvr} />
+                          ) : v.type === 'boolean' ? (
+                            <input
+                              type="checkbox"
+                              checked={Boolean(val)}
+                              onChange={(e) => setOvr(e.target.checked)}
+                            />
+                          ) : (
+                            <input
+                              value={Array.isArray(val) ? val.join(', ') : String(val ?? '')}
+                              onChange={(e) => {
+                                if (v.type === 'vec3') {
+                                  const arr = e.target.value.split(',').map((s) => Number(s.trim()) || 0)
+                                  setOvr([arr[0] ?? 0, arr[1] ?? 0, arr[2] ?? 0])
+                                } else setOvr(e.target.value)
+                              }}
+                            />
+                          )}
+                        </Field>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )
+          })()}
           {c.type === 'rule' && <RuleFields project={project} rule={c} change={(data) => patch(i, data)} />}
           {c.type === 'behavior' && (
             <>
               <Field label="Behavior">
-                <select
-                  aria-label="Behavior"
+                <BehaviorPicker
                   value={c.kind}
-                  onChange={(e) =>
-                    patch(i, { kind: e.target.value, params: { ...behaviorDefaults[e.target.value][1] } })
-                  }
-                >
-                  {Object.entries(behaviorDefaults).map(([k, [label]]) => (
-                    <option value={k} key={k}>
-                      {label}
-                    </option>
-                  ))}
-                  {!behaviorDefaults[c.kind] && <option value={c.kind}>{c.kind}</option>}
-                </select>
+                  onSelect={(kind) => patch(i, { kind, params: { ...behaviorDefaults[kind][1] } })}
+                />
               </Field>
               {Object.entries({ ...behaviorDefaults[c.kind]?.[1], ...c.params }).map(([key, v]) => (
                 <Field key={key} label={titleCase(key)}>
@@ -1130,6 +1367,8 @@ export function Inspector({
           {entity.components.map(renderComponent)}
           <div className="mf-inspector-actions">
             <button
+              ref={addBtnRef}
+              type="button"
               className="mf-add"
               aria-expanded={adding}
               onClick={() => {
@@ -1140,7 +1379,11 @@ export function Inspector({
               <Plus size={14} /> Add component
             </button>
             {adding && (
-              <div className="mf-component-picker">
+              <div
+                ref={compPopRef}
+                className="mf-component-picker mf-floating-picker"
+                style={{ top: compBox.top, left: compBox.left, width: compBox.width }}
+              >
                 <div className="mf-comp-search">
                   <Search size={13} />
                   <input
@@ -1151,7 +1394,7 @@ export function Inspector({
                     onChange={(e) => setCompSearch(e.target.value)}
                   />
                 </div>
-                <div className="mf-comp-list">
+                <div className="mf-comp-list" style={{ maxHeight: compBox.listMaxHeight }}>
                   {COMPONENT_CATALOG.filter((item) => {
                     const q = compSearch.trim().toLowerCase()
                     if (!q) return true

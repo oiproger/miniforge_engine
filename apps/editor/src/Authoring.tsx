@@ -1,3 +1,4 @@
+import { makeDefaultEventGraph } from '../../../packages/project-schema/src'
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   X,
@@ -22,6 +23,7 @@ import { ParticleEditor } from './ParticleEditor'
 import { HtmlEditor } from './HtmlEditor'
 import { PrefabEditor } from './PrefabEditor'
 import { ModelEditor } from './ModelEditor'
+import { EventGraphEditor } from './EventGraphEditor'
 import { downloadAssetFile } from './io'
 import { TextureGenerator, defaultProceduralTexture, renderProceduralTextureDataUrl } from './TextureGenerator'
 import { DEFAULT_TOUCH_CONTROLS } from '../../../packages/runtime/src/touch'
@@ -1195,6 +1197,14 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                     data: JSON.stringify([makeEntity('New Prefab', 'box')]),
                     properties: {},
                   }
+                : type === 'graph'
+                  ? {
+                      id,
+                      name: 'New Event Graph',
+                      type: 'graph' as const,
+                      data: JSON.stringify(makeDefaultEventGraph()),
+                      properties: {},
+                    }
                 : {
             id,
             type: type === 'shader' ? 'shader' : 'script',
@@ -1260,6 +1270,8 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                   ? 'Procedural Texture Generator'
                   : a?.type === 'prefab'
                     ? 'Prefab Editor'
+                  : a?.type === 'graph'
+                    ? 'Event Graph Editor (Blueprint)'
             : a?.type === 'shader'
               ? 'Shader editor'
               : a?.type === 'script'
@@ -1297,7 +1309,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
       }}
     >
       <div
-        className={activeTarget === 'ui' ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
+        className={(activeTarget === 'ui' || a?.type === 'graph') ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={name}
@@ -1408,6 +1420,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
               )}
               {a.type === 'audio' && <audio controls src={a.data} />}
               {a.type === 'prefab' && <PrefabEditor a={a} p={p} changeA={changeA} edit={edit} />}
+              {a.type === 'graph' && <EventGraphEditor a={a} changeA={changeA} />}
               {a.type === 'json' && (
                 <pre className="mf-readonly">{JSON.stringify(JSON.parse(a.data || '{}'), null, 2)}</pre>
               )}

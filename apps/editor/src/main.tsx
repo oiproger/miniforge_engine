@@ -33,6 +33,7 @@ import {
   PackageOpen,
   Terminal,
   Code2,
+  GitBranch,
   Hammer,
   Activity,
   Plus,
@@ -767,13 +768,17 @@ function App() {
     ['Save project', () => void save(false), Save, 'Ctrl S'],
     ['Save as…', () => void save(true), Save, 'Ctrl Shift S'],
     ['Export archive (.miniforge)', () => void saveArchive(), Upload],
-    ['Import assets', () => assetInput.current?.click(), Upload],
+  ]
+  const assetsMenu: MenuItem[] = [
+    ['Import assets…', () => assetInput.current?.click(), Upload],
+    ['New script', () => edit('new-script'), Code2],
+    ['New Event Graph', () => edit('new-graph'), GitBranch],
+    ['New prefab', () => edit('new-prefab'), Box],
     ['New material', () => edit('new-material'), CircleDot],
     ['New shader', () => edit('new-shader'), Code2],
-    ['New 3D particle', () => edit('new-particle'), Flame],
-    ['New HTML widget', () => edit('new-html'), Code2],
     ['New procedural texture', () => edit('new-texture'), Image],
-    ['New prefab', () => edit('new-prefab'), Box],
+    ['New 3D particle', () => edit('new-particle'), Flame],
+    ['New HTML widget', () => edit('new-html'), PanelTop],
   ]
   useEffect(() => {
     function key(e: KeyboardEvent) {
@@ -877,6 +882,7 @@ function App() {
                 ['Duplicate selection', () => duplicate(), Copy],
               ],
             ],
+            ['Assets', assetsMenu],
             [
               'Project',
               [

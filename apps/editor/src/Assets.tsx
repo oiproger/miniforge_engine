@@ -41,6 +41,7 @@ export default function Assets({
     'HTML UI': ['html'],
     Skyboxes: ['skybox'],
     Scripts: ['script'],
+    'Event Graphs': ['graph'],
     Models: ['model'],
     Media: ['audio', 'json', 'text'],
   }
@@ -123,6 +124,8 @@ export default function Assets({
                             ? editAsset('new-texture')
                             : folder === 'Prefabs'
                               ? editAsset('new-prefab')
+                              : folder === 'Event Graphs'
+                                ? editAsset('new-graph')
                         : importFiles()
                 }
               >

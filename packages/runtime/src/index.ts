@@ -1,3 +1,5 @@
+import { parseEventGraph } from '../../project-schema/src'
+import { createEventGraphLifecycle } from './eventGraph'
 import { SceneNode, Vector3 } from '../../graphics/src/scene'
 import { createWorld } from '../../graphics/src'
 import { bakeNavZone, findNavPath, sampleTerrainLayerAt, setNavAreaState, needsPhysics, instantiatePrefab, makePrefab, subtree, uid, type NavZone } from '../../project-schema/src'
@@ -954,7 +956,13 @@ export async function startGame(
       },
       save: { get: (key) => platform.loadData(key), set: (key, value) => platform.saveData(key, value) },
     }
-    if (c.type === 'rule')
+    if (c.type === 'eventGraph' || (c.type === 'rule' && c.asset)) {
+      const graphAsset = project.assets.find((a) => a.id === c.asset && a.type === 'graph')
+      if (graphAsset) {
+        const graphData = parseEventGraph(graphAsset.data)
+        lifecycle.add(entity.id, () => createEventGraphLifecycle(graphData, api, c.overrides || {}))
+      }
+    } else if (c.type === 'rule')
       lifecycle.add(entity.id, () => ({
         onDestroy: bindRule(c, {
           events: scopedEvents,
