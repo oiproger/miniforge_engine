@@ -1,3 +1,6 @@
+import { RuntimePluginHost } from './plugins'
+import { createDialogueRuntime } from './dialogue'
+import { SequencerPlayer } from './sequencer'
 import { parseEventGraph } from '../../project-schema/src'
 import { createEventGraphLifecycle } from './eventGraph'
 import { SceneNode, Vector3 } from '../../graphics/src/scene'
@@ -452,6 +455,10 @@ export async function startGame(
     },
   }
 
+  let lastApi: GameAPI | undefined
+  const dialogueRuntime = createDialogueRuntime(project, () => lastApi!)
+  const sequencerPlayer = new SequencerPlayer(project, () => lastApi!)
+  const pluginHost = new RuntimePluginHost(project)
   const saveManager = new SaveManager({
     projectId: project.id,
     platform,
@@ -892,6 +899,9 @@ export async function startGame(
         stopAll: () => audioEngine.stopAll(),
         setVolume: (handle, vol, fade) => audioEngine.setVolume(handle, vol, fade),
         setPitch: (handle, pitchVal) => audioEngine.setPitch(handle, pitchVal),
+        setSemitones: (handle, st) => audioEngine.setSemitones(handle, st),
+        setSpeed: (handle, sp) => audioEngine.setSpeed(handle, sp),
+        setLowpass: (handle, hz) => audioEngine.setLowpass(handle, hz),
         setPosition: (handle, pos) => audioEngine.setPosition(handle, pos),
         setBusVolume: (bus, vol) => audioEngine.setBusVolume(bus, vol),
       },
@@ -954,8 +964,15 @@ export async function startGame(
         listSlots: () => saveManager.listSlots(),
         deleteSlot: (slot) => saveManager.deleteSlot(slot),
       },
+      dialogue: dialogueRuntime,
+      sequencer: {
+        play: (id, opts) => sequencerPlayer.play(id, opts),
+        stop: (id) => sequencerPlayer.stop(id),
+        isPlaying: (id) => sequencerPlayer.isPlaying(id),
+      },
       save: { get: (key) => platform.loadData(key), set: (key, value) => platform.saveData(key, value) },
     }
+    lastApi = api
     if (c.type === 'eventGraph' || (c.type === 'rule' && c.asset)) {
       const graphAsset = project.assets.find((a) => a.id === c.asset && a.type === 'graph')
       if (graphAsset) {
@@ -1358,7 +1375,9 @@ export async function startGame(
         const fwd = cameraForward()
         audioEngine.updateListener(world.camera.position.toArray(), fwd.toArray())
         tweens.update(dt)
-        lifecycle.call('onUpdate', undefined, dt)
+        sequencerPlayer.update(dt)
+      if (lastApi) { pluginHost.start(lastApi); pluginHost.update(dt, lastApi) }
+      lifecycle.call('onUpdate', undefined, dt)
         world.updateAnimations(dt)
         stepNavAgents(dt)
         if (mode) {

@@ -25,6 +25,18 @@ export const behaviorDefaults: Record<string, [string, Record<string, string | n
   impulseZone: ['Impulse / Jump Pad Zone', { x: 0, y: 12, z: 0, continuous: false }],
   gravityZone: ['Gravity Anomaly Zone', { gravityScale: 0.25, restoreScale: 1 }],
   flickerLight: ['Flickering Lamp', { baseIntensity: 2, minIntensity: 0.2, speed: 12, chaos: 0.6 }],
+  audioMod: [
+    'Audio Modifier (Pitch / Speed / Filter)',
+    { asset: '', semitones: 0, speed: 1, volume: 0.9, lowpassHz: 18000, loop: true, autoplay: true, wobbleRate: 0, wobbleSemitones: 0, event: '' },
+  ],
+  dialogueTrigger: [
+    'Dialogue Trigger (NPC)',
+    { asset: '', onClick: true, onTrigger: false },
+  ],
+  sequencePlayer: [
+    'Keyframe Sequence Player',
+    { asset: '', autoplay: true, loop: false, speed: 1, event: '' },
+  ],
   saveManager: [
     'Save & Cloud Sync Manager',
     {

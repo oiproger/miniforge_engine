@@ -1,3 +1,4 @@
+import { collectEditorPluginActions } from './editorPlugins'
 import React, { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
@@ -34,6 +35,11 @@ import {
   Terminal,
   Code2,
   GitBranch,
+  Puzzle,
+  Paintbrush,
+  Clapperboard,
+  MessageSquare,
+  Volume2,
   Hammer,
   Activity,
   Plus,
@@ -779,6 +785,17 @@ function App() {
     ['New procedural texture', () => edit('new-texture'), Image],
     ['New 3D particle', () => edit('new-particle'), Flame],
     ['New HTML widget', () => edit('new-html'), PanelTop],
+    ['New Low-Poly Mesh (Builder)', () => edit('new-mesh'), Box],
+    ['New 2D Paint Texture', () => edit('new-paint'), Paintbrush],
+    ['New Sound / Music (Synth)', () => edit('new-sound'), Volume2],
+    ['New Dialogue & Quest Graph', () => edit('new-dialogue'), MessageSquare],
+    ['New Keyframe Sequence', () => edit('new-sequence'), Clapperboard],
+    ['New Plugin / Examples', () => edit('new-plugin'), Puzzle],
+  ]
+  const pluginActions = collectEditorPluginActions(p, patch, note)
+  const pluginsMenu: MenuItem[] = [
+    ['New Plugin / Browse Examples…', () => edit('new-plugin'), Puzzle],
+    ...pluginActions.map((act) => [act.label, act.run, Puzzle] as MenuItem),
   ]
   useEffect(() => {
     function key(e: KeyboardEvent) {
@@ -883,6 +900,7 @@ function App() {
               ],
             ],
             ['Assets', assetsMenu],
+            ['Plugins', pluginsMenu],
             [
               'Project',
               [

@@ -310,6 +310,60 @@ export function behavior(kind: string, api: GameAPI): ScriptLifecycle {
         const target = p.prefab || p.target
         if (target) api.spawnPrefab(target, obj.getWorldPosition(point).toArray())
       }, 'spawn')
+    case 'audioMod': {
+      let handle = ''
+      let phase = 0
+      const startSound = () => {
+        if (!p.asset) return
+        if (handle) api.audio.stop(handle)
+        const baseRate = (Number(p.speed) || 1) * Math.pow(2, (Number(p.semitones) || 0) / 12)
+        handle = api.audio.play(p.asset, {
+          volume: Number(p.volume ?? 0.9),
+          loop: p.loop !== false,
+          pitch: baseRate,
+        })
+        if (handle && Number(p.lowpassHz) > 0 && Number(p.lowpassHz) < 19500) {
+          api.audio.setLowpass(handle, Number(p.lowpassHz))
+        }
+      }
+      return {
+        onStart() {
+          if (p.autoplay !== false) startSound()
+          if (p.event) api.events.on(String(p.event), startSound)
+        },
+        onUpdate(dt: number) {
+          if (!handle || !(Number(p.wobbleRate) > 0) || !(Number(p.wobbleSemitones) > 0)) return
+          phase += dt * Number(p.wobbleRate) * Math.PI * 2
+          const modSt = (Number(p.semitones) || 0) + Math.sin(phase) * Number(p.wobbleSemitones)
+          api.audio.setPitch(handle, (Number(p.speed) || 1) * Math.pow(2, modSt / 12))
+        },
+        onDestroy() {
+          if (handle) api.audio.stop(handle)
+        },
+      }
+    }
+    case 'dialogueTrigger':
+      return {
+        onPointerClick() {
+          if (p.onClick !== false && p.asset) api.dialogue.start(String(p.asset))
+        },
+        onTriggerEnter() {
+          if (p.onTrigger && p.asset) api.dialogue.start(String(p.asset))
+        },
+      }
+    case 'sequencePlayer':
+      return {
+        onStart() {
+          if (p.autoplay !== false && p.asset) {
+            api.sequencer.play(String(p.asset), { loop: Boolean(p.loop), speed: Number(p.speed) || 1 })
+          }
+          if (p.event && p.asset) {
+            api.events.on(String(p.event), () =>
+              api.sequencer.play(String(p.asset), { loop: Boolean(p.loop), speed: Number(p.speed) || 1 }),
+            )
+          }
+        },
+      }
     default:
       return {}
   }

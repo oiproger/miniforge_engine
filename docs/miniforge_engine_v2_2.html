@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Miniforge Engine v2.2 — Полная документация</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-elev: #151b23;
+    --bg-card: #1a222d;
+    --border: #2a3442;
+    --text: #e6edf3;
+    --muted: #93a1b2;
+    --primary: #58a6ff;
+    --accent: #f0883e;
+    --code-bg: #0b0f14;
+    --callout-bg: rgba(88, 166, 255, 0.08);
+    --row-alt: rgba(255, 255, 255, 0.025);
+  }
+  [data-theme="light"] {
+    --bg: #f6f8fa;
+    --bg-elev: #ffffff;
+    --bg-card: #ffffff;
+    --border: #d8dee4;
+    --text: #1f2328;
+    --muted: #57606a;
+    --primary: #0969da;
+    --accent: #bc4c00;
+    --code-bg: #f0f3f7;
+    --callout-bg: rgba(9, 105, 218, 0.06);
+    --row-alt: #f6f8fa;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 18px;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .brand-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, var(--accent), var(--primary));
+    flex-shrink: 0;
+  }
+  .ver-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(240, 136, 62, 0.16);
+    color: var(--accent);
+    border: 1px solid rgba(240, 136, 62, 0.35);
+  }
+  .search-wrap {
+    flex: 1;
+    max-width: 440px;
+    position: relative;
+  }
+  .search-wrap input {
+    width: 100%;
+    padding: 7px 34px 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13.5px;
+    outline: none;
+  }
+  .search-wrap input:focus { border-color: var(--primary); }
+  .search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 2px 6px;
+    display: none;
+  }
+  .search-clear.visible { display: block; }
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    border-radius: 7px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--primary); }
+  .menu-toggle { display: none; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1fr);
+    max-width: 1360px;
+    margin: 0 auto;
+    min-height: calc(100vh - 54px);
+  }
+  .sidebar {
+    position: sticky;
+    top: 54px;
+    height: calc(100vh - 54px);
+    overflow-y: auto;
+    padding: 16px 14px 28px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .sidebar-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 4px 8px 10px;
+  }
+  .cat-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 4px 14px;
+  }
+  .cat-pill {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .cat-pill.active, .cat-pill:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .nav-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.35;
+    margin-bottom: 3px;
+  }
+  .nav-item:hover { background: var(--row-alt); }
+  .nav-item.active {
+    background: var(--callout-bg);
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .nav-num {
+    min-width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .nav-item.active .nav-num {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+
+  .content {
+    padding: 28px 36px 72px;
+    min-width: 0;
+  }
+  .hero {
+    background: linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(240, 136, 62, 0.1));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    margin: 0 0 8px;
+    font-size: 26px;
+    line-height: 1.25;
+  }
+  .hero p {
+    margin: 0 0 14px;
+    color: var(--muted);
+    max-width: 760px;
+  }
+  .stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .stat-chip {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+  }
+  .stat-chip strong { color: var(--accent); }
+
+  .search-status {
+    display: none;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--callout-bg);
+    border: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+  .search-status.visible { display: flex; justify-content: space-between; align-items: center; }
+
+  .doc-section {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 26px;
+    margin-bottom: 22px;
+    scroll-margin-top: 68px;
+  }
+  .doc-section.hidden { display: none; }
+  .sec-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .sec-badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+  }
+  .sec-cat {
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .doc-section h2 {
+    margin: 0 0 8px;
+    font-size: 21px;
+    line-height: 1.3;
+  }
+  .sec-lead {
+    color: var(--muted);
+    margin: 0 0 16px;
+    font-size: 14.5px;
+  }
+  .doc-section h3 {
+    margin: 22px 0 10px;
+    font-size: 16px;
+    color: var(--primary);
+  }
+  .doc-section p { margin: 0 0 12px; }
+  .doc-section ul, .doc-section ol { margin: 0 0 14px; padding-left: 22px; }
+  .doc-section li { margin-bottom: 6px; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .table-wrap {
+    overflow-x: auto;
+    margin: 14px 0 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--bg-card);
+    font-weight: 700;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .callout {
+    background: var(--callout-bg);
+    border-left: 4px solid var(--primary);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin: 16px 0;
+  }
+  .callout-title {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+  .callout p { margin: 0; font-size: 13.8px; }
+
+  .code-block {
+    margin: 14px 0 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+  .code-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 2px 9px;
+    font-size: 11.5px;
+    cursor: pointer;
+  }
+  .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .code-block pre {
+    margin: 0;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .code-block pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .empty-state {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+  }
+  .empty-state.visible { display: block; }
+
+  @media (max-width: 860px) {
+    .menu-toggle { display: inline-flex; }
+    .layout { grid-template-columns: 1fr; }
+    .sidebar {
+      display: none;
+      position: fixed;
+      left: 0;
+      top: 53px;
+      bottom: 0;
+      width: 280px;
+      z-index: 50;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+    .sidebar.open { display: block; }
+    .content { padding: 18px 14px 48px; }
+    .doc-section { padding: 18px 16px; }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button type="button" id="menuToggle" class="btn menu-toggle">Меню</button>
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>Miniforge Engine</span>
+        <span class="ver-pill">v2.2 Docs</span>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input id="searchInput" type="search" placeholder="Поиск по API, компонентам, студиям (напр. crossfade, getSurfaceAt, scatter)...">
+      <button type="button" id="searchClear" class="search-clear" aria-label="Очистить поиск">×</button>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="themeToggle" class="btn">Светлая тема</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-title">Фильтр разделов</div>
+      <div class="cat-bar" id="catBar"><button type="button" class="cat-pill active" data-cat="Все">Все</button><button type="button" class="cat-pill" data-cat="Основы">Основы</button><button type="button" class="cat-pill" data-cat="Редактор">Редактор</button><button type="button" class="cat-pill" data-cat="Ассеты">Ассеты</button><button type="button" class="cat-pill" data-cat="Blueprints">Blueprints</button><button type="button" class="cat-pill" data-cat="All-in-One">All-in-One</button><button type="button" class="cat-pill" data-cat="Сцена">Сцена</button><button type="button" class="cat-pill" data-cat="Скриптинг">Скриптинг</button><button type="button" class="cat-pill" data-cat="API Reference">API Reference</button><button type="button" class="cat-pill" data-cat="Графика">Графика</button><button type="button" class="cat-pill" data-cat="Рецепты">Рецепты</button><button type="button" class="cat-pill" data-cat="Релиз">Релиз</button><button type="button" class="cat-pill" data-cat="Расширения">Расширения</button></div>
+      <div class="sidebar-title">Содержание</div>
+      <nav id="tocNav"><a class="nav-item" href="#sec-start" data-nav="sec-start" data-cat="Основы"><span class="nav-num">1</span><span class="nav-text">Архитектура и быстрый старт</span></a><a class="nav-item" href="#sec-studios" data-nav="sec-studios" data-cat="Редактор"><span class="nav-num">2</span><span class="nav-text">Интерфейс редактора и встроенные студии</span></a><a class="nav-item" href="#sec-models" data-nav="sec-models" data-cat="Ассеты"><span class="nav-num">3</span><span class="nav-text">Импорт 3D-моделей и Model Editor (v1.2–v2.1)</span></a><a class="nav-item" href="#sec-blueprints" data-nav="sec-blueprints" data-cat="Blueprints"><span class="nav-num">4</span><span class="nav-text">Визуальное программирование: Event Graph (Blueprints)</span></a><a class="nav-item" href="#sec-all-in-one" data-nav="sec-all-in-one" data-cat="All-in-One"><span class="nav-num">5</span><span class="nav-text">All-in-One Creator Suite v2.0–v2.1: 5 встроенных студий и 3D-пипетка</span></a><a class="nav-item" href="#sec-components" data-nav="sec-components" data-cat="Сцена"><span class="nav-num">6</span><span class="nav-text">Полный справочник компонентов</span></a><a class="nav-item" href="#sec-lifecycle" data-nav="sec-lifecycle" data-cat="Скриптинг"><span class="nav-num">7</span><span class="nav-text">Жизненный цикл скриптов, Input и Multi-Touch</span></a><a class="nav-item" href="#sec-api-core" data-nav="sec-api-core" data-cat="API Reference"><span class="nav-num">8</span><span class="nav-text">Scripting API: Сущности, Камера, Игрок, Физика и Навигация</span></a><a class="nav-item" href="#sec-api-world" data-nav="sec-api-world" data-cat="API Reference"><span class="nav-num">9</span><span class="nav-text">Scripting API: Материалы, Террейн, Эффекты, Аудио, Tween, UI и Сохранения</span></a><a class="nav-item" href="#sec-graphics" data-nav="sec-graphics" data-cat="Графика"><span class="nav-num">10</span><span class="nav-text">Освещение, постпроцессинг, шейдеры и оптимизация</span></a><a class="nav-item" href="#sec-cookbook" data-nav="sec-cookbook" data-cat="Рецепты"><span class="nav-num">11</span><span class="nav-text">Практические рецепты (Cookbook)</span></a><a class="nav-item" href="#sec-export" data-nav="sec-export" data-cat="Релиз"><span class="nav-num">12</span><span class="nav-text">Сборка, экспорт и публикация (Web, Yandex, Poki, Desktop)</span></a><a class="nav-item" href="#sec-plugins" data-nav="sec-plugins" data-cat="Расширения"><span class="nav-num">13</span><span class="nav-text">Система плагинов (Plugin API v2.2): создание, импорт и разработка</span></a></nav>
+    </aside>
+
+    <main class="content">
+      <div class="hero">
+        <h1>Полная документация Miniforge Engine v2.2</h1>
+        <p>Исчерпывающий справочник по архитектуре, 13 встроенным студиям (включая новый Model Editor с нарезкой анимаций), всем 16 компонентам, полному Scripting API и сборке под Web, Яндекс Игры, Poki, Windows, macOS и Linux.</p>
+        <div class="stat-row">
+          <div class="stat-chip"><strong>12</strong> глав</div>
+          <div class="stat-chip"><strong>13</strong> студий редактора</div>
+          <div class="stat-chip"><strong>17</strong> компонентов</div>
+          <div class="stat-chip"><strong>20+</strong> модулей GameAPI</div>
+          <div class="stat-chip"><strong>4</strong> платформы экспорта</div>
+        </div>
+      </div>
+
+      <div id="searchStatus" class="search-status">
+        <span id="searchStatusText"></span>
+        <button type="button" id="resetFilterBtn" class="btn">Сбросить фильтр</button>
+      </div>
+
+      <section class="doc-section" id="sec-start" data-cat="Основы"><div class="sec-meta"><span class="sec-badge">Глава 1</span><span class="sec-cat">Основы</span></div><h2>Архитектура и быстрый старт</h2><p class="sec-lead">Стек Miniforge Engine v2.2, структура репозитория, требования к окружению и все основные команды сборки.</p><p>Miniforge Engine v2.2 — модульный 3D-движок и визуальный редактор на базе <strong>LittleJS 1.30.1</strong> (WebGL2 3D), <strong>Rapier3D</strong> (WASM-физика), <strong>React 19 + TypeScript 5.9</strong> и <strong>Tauri v2</strong> для десктопных сборок. Все проекты хранятся в открытом JSON-формате (<code>Project v1</code>) или архивах <code>.miniforge</code>.</p>
+<div class="table-wrap"><table><thead><tr><th>Слой / пакет</th><th>Назначение</th><th>Ключевые технологии</th></tr></thead><tbody><tr><td><code>packages/graphics</code></td><td>WebGL2-рендерер, тени, свет, постпроцессинг, glTF-анимации, батчинг, террейн</td><td>LittleJS 1.30.1, GLSL ES 3.00</td></tr><tr><td><code>packages/runtime</code></td><td>Игровой цикл, физика, скрипты, NavGrid, Audio, Tween, Touch, SaveSystem</td><td>Rapier3D WASM, Web Audio API</td></tr><tr><td><code>packages/project-schema</code></td><td>Схема JSON-проекта, живые префабы, террейн, NavGrid, экраны HUD</td><td>TypeScript 5.9 (zero-runtime deps)</td></tr><tr><td><code>packages/platform-sdk</code></td><td>Единый адаптер для Web/HTML5, Яндекс Игр и Poki (реклама, облако, язык)</td><td>Yandex SDK, Poki SDK, localStorage</td></tr><tr><td><code>packages/exporter</code></td><td>Сборка автономных игр и копирование <code>assimpjs.wasm</code> для редактора</td><td>esbuild, fflate</td></tr><tr><td><code>apps/editor</code> &amp; <code>editor-desktop</code></td><td>Визуальный редактор с 13 встроенными студиями и десктопная оболочка</td><td>React 19, Vite 7, Monaco, Tauri v2</td></tr></tbody></table></div>
+<h3>Установка и основные команды</h3>
+<div class="code-block"><div class="code-bar"><span>bash</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code># 1. Установка зависимостей (Node.js 20+, pnpm 11.x)
+pnpm install
+
+# 2. Запуск редактора в браузере (http://localhost:5173)
+pnpm dev
+
+# 3. Проверка типов TypeScript и продакшн-сборка веб-редактора
+pnpm typecheck
+pnpm build
+
+# 4. Сборка десктопного редактора (Windows / macOS / Linux, нужен Rust + Cargo)
+pnpm desktop:editor
+
+# 5. Сборка нативного десктопного билда игры
+pnpm desktop:game
+
+# 6. Модульные и E2E-тесты
+pnpm test
+pnpm test:e2e</code></pre></div>
+<div class="callout"><div class="callout-title">Изоляция зависимостей редактора</div><p>Скрипт <code>packages/exporter/prepare.mjs</code> автоматически запускается перед каждой сборкой и проверяет, чтобы тяжёлые пакеты редактора (<code>react</code>, <code>monaco-editor</code>, <code>typescript</code>, <code>assimpjs</code>) никогда не попали в экспортируемый игровой рантайм.</p></div></section><section class="doc-section" id="sec-studios" data-cat="Редактор"><div class="sec-meta"><span class="sec-badge">Глава 2</span><span class="sec-cat">Редактор</span></div><h2>Интерфейс редактора и встроенные студии</h2><p class="sec-lead">Обзор рабочих панелей и всех 7 специализированных студий редактирования ассетов прямо внутри Miniforge.</p><p>Главное окно редактора состоит из пяти зон: верхней панели меню (<code>File / Edit / Project / Play / Export</code>), дерева сцены (<strong>Hierarchy</strong>), центрального 3D-окна (<strong>Viewport</strong>) с увеличенным 18px-гизмо перемещения/вращения/масштаба, панели свойств (<strong>Inspector</strong>) и нижней библиотеки ресурсов (<strong>Assets / Console / Build</strong>).</p>
+<div class="table-wrap"><table><thead><tr><th>Студия</th><th>Как открыть</th><th>Основные возможности</th></tr></thead><tbody><tr><td><strong>Model Editor</strong> (v2.1)</td><td>ПКМ по модели в Assets → <em>Edit model</em> или кнопка у поля <code>Model</code></td><td>Живое 3D-превью с орбитой, назначение материалов по слотам, быстрые оверрайды, таймлайн-нарезка клипов, экспорт <code>.glb</code></td></tr><tr><td><strong>Prefab Editor</strong> (v1.0)</td><td><code>File → New prefab</code> или ПКМ по префабу → <em>Edit prefab</em></td><td>Живое 3D-превью, добавление дочерних Entity (16 пресетов) и любых компонентов, кнопка <em>Sync instances</em> по всем сценам</td></tr><tr><td><strong>Terrain Editor</strong> (v0.6–1.1)</td><td>Выбрать сущность с <code>Terrain</code> → вкладка кисти во Viewport</td><td>Скульпт высот (Raise/Lower/Smooth/Flatten), неограниченные слои материалов с <code>Hard ↔ Soft</code>, изменение размеров, кисть <em>Scatter / Erase scatter</em></td></tr><tr><td><strong>Particle Editor</strong></td><td><code>File → New 3D particle</code> или клик по ассету частицы</td><td>Пресеты (<code>steam</code>, <code>smoke</code>, <code>fire</code>, <code>sparks</code> и др.), настройка скорости, гравитации, цвета, размера, World/Local space</td></tr><tr><td><strong>HTML HUD Studio</strong></td><td><code>File → New HTML widget</code> или двойной клик по HTML-ассету</td><td>Редактор HTML/CSS/JS с предпросмотром поверх прозрачного фрейма, двусторонний мост <code>window.miniforge</code> и живой логгер событий</td></tr><tr><td><strong>Procedural Texture</strong></td><td><code>File → New procedural texture</code></td><td>Генерация шумов, кирпича, асфальта, дерева, бетона и режим <em>As Normal Map</em> (фильтр Собеля) прямо в PNG-ассет</td></tr><tr><td><strong>Code &amp; Shader Editor</strong></td><td>Двойной клик по <code>script</code> / <code>shader</code> в Assets</td><td>Monaco Editor с автодополнением <code>GameAPI</code>, диагностикой TS и шаблонами фрагментных/вершинных GLSL-шейдеров</td></tr></tbody></table></div>
+<h3>Живые префабы и синхронизация</h3>
+<p>Когда вы создаёте префаб из сущности (<code>ПКМ в Hierarchy → Save as prefab</code>) или с нуля (<code>File → New prefab</code>), каждый экземпляр на сцене получает ссылку <code>properties.prefabId</code>. После правок в <strong>Prefab Editor</strong> кнопка <strong>Sync instances</strong> обновляет геометрию, компоненты и дочерние объекты всех копий во всех сценах проекта, сохраняя их мировые позиции.</p>
+<h3>Террейн: слои, размеры и кисть Scatter</h3>
+<ul><li><strong>Неограниченные слои материалов:</strong> добавляйте любое число слоёв поверх базового (трава, асфальт, грязь, бетон). Ползунок <code>Hard ↔ Soft</code> для каждого слоя задаёт резкость границ смешивания.</li><li><strong>Изменение размеров (Resize Terrain):</strong> быстрые пресеты <code>16м / 32м / 64м / 128м</code> и ручной ввод ширины/глубины/сегментов с билинейной передискретизацией карты высот и весов всех слоёв.</li><li><strong>Кисть Multi-Model Scatter / Erase scatter:</strong> выберите несколько моделей или префабов (деревья, кусты, трава, камни), задайте плотность, разброс масштаба, случайный поворот по Y и привязку к нормали — кисть автоматически расставляет объекты по рельефу террейна.</li></ul></section><section class="doc-section" id="sec-models" data-cat="Ассеты"><div class="sec-meta"><span class="sec-badge">Глава 3</span><span class="sec-cat">Ассеты</span></div><h2>Импорт 3D-моделей и Model Editor (v1.2–v2.1)</h2><p class="sec-lead">Встроенная конвертация через assimpjs WASM, настройка слотов материалов и нарезка одной дорожки анимации на отдельные клипы.</p><p>Miniforge хранит 3D-модели в бинарном формате <strong>glTF 2.0 (.glb)</strong> — самом быстром и компактном формате для WebGL2. При импорте других форматов редактор автоматически конвертирует их в <code>.glb</code> прямо на лету.</p>
+<h3>Трёхуровневый конвейер импорта</h3>
+<ol><li><strong>Встроенный Assimp WASM (<code>assimpjs</code>):</strong> работает «из коробки» во всех сборках — в браузере, Windows, macOS и Linux без установки сторонних программ. Поддерживает <code>.x</code>, <code>.fbx</code>, <code>.smd</code>, <code>.obj</code>, <code>.dae</code>, <code>.3ds</code>, <code>.ms3d</code>, <code>.b3d</code>, <code>.ply</code>, <code>.stl</code>, <code>.md2</code>, <code>.md3</code>, <code>.md5mesh</code>. Вместе с моделью можно перетащить сопутствующие текстуры и <code>.mtl</code>-файлы.</li><li><strong>Чистый TypeScript-парсер <code>.x → .glb</code> (<code>xToGlb.ts</code>):</strong> мгновенный резервный конвертер для текстовых DirectX <code>.x</code> файлов со скелетом и анимациями.</li><li><strong>Нативный Assimp CLI (Desktop Tauri):</strong> дополнительный fallback в десктопной версии, если системный бинарник <code>assimp</code> доступен в PATH.</li></ol>
+<div class="callout"><div class="callout-title">Экспорт обратно в .glb для правок в Blender</div><p>В заголовке <strong>Model Editor</strong> есть кнопка <code>.glb</code> — она сохраняет сконвертированную модель на диск. Удобно, если нужно поправить ориентацию осей или скиннинг в Blender и загрузить обратно.</p></div>
+<h3>Настройка материалов в Model Editor</h3>
+<p>На вкладке <strong>Materials</strong> отображаются все меш-слоты (<code>Part #0, #1, ...</code>) с числом треугольников, цветом и флагом наличия встроенной текстуры. Для каждого слота доступны два режима:</p>
+<ul><li><strong>Назначение Material Asset проекта:</strong> выберите любой существующий материал из выпадающего списка или нажмите <code>+ New material</code>, чтобы создать новый ассет на базе цвета слота и сразу привязать его.</li><li><strong>Быстрые оверрайды встроенного GLB-материала:</strong> оставив <code>Embedded GLB default</code>, можно менять <code>Tint color</code>, <code>Opacity</code>, <code>Roughness</code>, <code>Metalness</code>, <code>Emissive</code>, <code>Unlit</code>, <code>Pixelated</code> и <code>Double-sided</code>, сохраняя оригинальную диффузную текстуру из файла.</li></ul>
+<h3>Нарезка анимаций из одной дорожки (Timeline Slicer)</h3>
+<p>Многие модели (особенно из паков <code>.x</code>, <code>.fbx</code>, Mixamo или Source) приходят с одной длинной дорожкой, где подряд записаны все движения. Вкладка <strong>Animations</strong> решает эту задачу неразрушающе — сам файл <code>.glb</code> не перезаписывается, а описания клипов хранятся в <code>asset.properties.clips</code> и нарезаются рендерером при загрузке с точной интерполяцией границ (включая SLERP кватернионов вращения костей).</p>
+<ol><li>Выберите исходную дорожку в <strong>Source track</strong> и удобную частоту кадров (<code>24 / 30 / 60 fps</code>) для отображения кадров.</li><li>Прокрутите ползунок таймлайна до начала движения и нажмите <code>[ Set Start</code>, затем до конца — и нажмите <code>] Set End</code> (либо введите точные секунды вручную).</li><li>Включите галочку <strong>Loop range</strong>, чтобы зациклить воспроизведение строго внутри выделенного зелёного отрезка и точно подогнать стык анимации.</li><li>Введите имя нового клипа (например, <code>Idle</code>, <code>Walk</code>, <code>Run</code>, <code>Attack</code>) и нажмите <strong>Add clip</strong>, затем <strong>Save changes</strong>.</li></ol>
+<p>Сразу после сохранения новые клипы появляются в выпадающем списке компонента <strong>Animation</strong> в инспекторе, в полях <code>walkClip / idleClip</code> у <strong>NavAgent</strong> и доступны из кода через <code>api.animation.play(id, 'Walk')</code> и <code>api.animation.crossfade(id, 'Run', 0.2)</code>.</p></section><section class="doc-section" id="sec-blueprints" data-cat="Blueprints"><div class="sec-meta"><span class="sec-badge">Глава 4</span><span class="sec-cat">Blueprints</span></div><h2>Визуальное программирование: Event Graph (Blueprints)</h2><p class="sec-lead">Аналог Unreal Engine Blueprints: 65+ нод под всё API движка, переменные (Local / HUD / WorldState), Exposed Variables и кастомные функции.</p><p>Компонент <strong>Event Graph</strong> (<code>type: "eventGraph"</code>) заменяет устаревшие линейные правила на полноценный нодовый граф, который хранится как переиспользуемый ассет <code>type: "graph"</code> (меню <strong>Assets → New Event Graph</strong>). Старые <code>Event Rule</code> сохраняют полную обратную совместимость.</p>
+<ul><li><strong>Типизированные пины и провода Безье:</strong> белый <code>exec</code> (поток выполнения), красный <code>boolean</code>, зелёный <code>number</code>, фиолетовый <code>string</code>, золотой <code>vec3</code>, голубой <code>entity</code> (со встроенной <strong>3D-пипеткой</strong> выбора объекта со сцены) и серый <code>any</code>.</li><li><strong>Переменные (My Blueprint → Variables):</strong> три области видимости — <code>Local</code> (локально в экземпляре), <code>HUD (vars)</code> (автосинхронизация с интерфейсом) и <code>WorldState</code> (переживает смену сцен). Флаг <em>Editable in Inspector</em> выводит переменную прямо на сущность для переопределения.</li><li><strong>Кастомные функции (Functions):</strong> создавайте собственные функции с произвольными входными и выходными параметрами (<code>Function Entry</code> → логика → <code>Return</code>) и вызывайте их из основного <code>EventGraph</code> или других функций через ноду <code>Call Function()</code>.</li><li><strong>Покрытие всего GameAPI:</strong> события жизненного цикла, <code>Branch / Sequence / ForLoop / Delay / DoOnce / FlipFlop / Gate</code>, математика/векторы, <code>Player / Camera / Physics Raycast</code>, <code>Play / Crossfade Animation</code>, <code>NavAgent</code>, <code>Get Surface Material At</code>, свет, частицы, декали, <code>Tween Move To</code>, звук, UI, сохранения и реклама платформ.</li></ul></section><section class="doc-section" id="sec-all-in-one" data-cat="All-in-One"><div class="sec-meta"><span class="sec-badge">Глава 5</span><span class="sec-cat">All-in-One</span></div><h2>All-in-One Creator Suite v2.0–v2.1: 5 встроенных студий и 3D-пипетка</h2><p class="sec-lead">Создание 3D-мешей, 2D-текстур, звуков/музыки, диалогов/квестов и катсцен прямо внутри Miniforge без сторонних программ.</p><div class="table-wrap"><table><thead><tr><th>Студия (меню Assets)</th><th>Формат ассета</th><th>Ключевые возможности</th></tr></thead><tbody><tr><td><strong>Low-Poly CSG Mesh Builder</strong></td><td><code>model</code> (<code>.glb</code>)</td><td>CSG-браши (Box, Wedge, Stairs, Cylinder, Cone, Sphere; Union/Subtract), <strong>Face Edit</strong> (<strong>Extrude</strong>, <strong>Inset</strong>, <strong>Subdivide ×4</strong>, <strong>Mirror X</strong>, <strong>Ground Y=0</strong>), быстрая <strong>UV-развёртка</strong> (Box/Planar/Cylindrical), настоящая <strong>3D-кисть по 512×512 UV-текстуре</strong> (вшивается в <code>.glb</code>) и неограниченные слои материалов (<code>+ Add Material</code>).</td></tr><tr><td><strong>2D Paint Editor</strong></td><td><code>texture</code> (<code>.png</code>)</td><td>Холст 32×32 – 512×512, 7 инструментов (Кисть, Ластик, Заливка, Пипетка, Линия, Прямоугольник, Круг), слои с видимостью, симметрия X/Y, <strong>бесшовный Wrap-режим</strong> и превью тайлинга <strong>3×3</strong>.</td></tr><tr><td><strong>Sound / SFX / Music Synth</strong></td><td><code>audio</code> (<code>.wav</code>)</td><td>9 пресетов SFX и эмбиента + <strong>16-шаговый музыкальный секвенсор</strong> (BPM, тональность, волна) с экспортом в <code>.wav</code>. В рантайме: <code>api.audio.setSemitones / setSpeed / setLowpass</code> и поведение <strong>Audio Modifier</strong>.</td></tr><tr><td><strong>Dialogue &amp; Quest Graph</strong></td><td><code>dialogue</code> (<code>.json</code>)</td><td>Нодовый редактор диалогов с панорамированием/зумом холста, ветвящимися ответами (с удалением и условиями), проверками <code>quest / worldState / vars</code>, квестами и встроенным UI-оверлеем (<code>api.dialogue.start(id)</code>).</td></tr><tr><td><strong>Keyframe Sequencer</strong></td><td><code>sequence</code> (<code>.json</code>)</td><td>Многодорожечный таймлайн для сущностей (position, rotation, scale, active, lightIntensity, playAnim), камеры (position, lookAt, fov) и событий/звука. Запуск через <code>api.sequencer.play(id)</code> или поведение <code>sequencePlayer</code>.</td></tr></tbody></table></div>
+<div class="callout"><div class="callout-title">3D-пипетка выбора Target Entity</div><p>Во всех полях выбора целевой сущности — в <strong>Keyframe Sequencer</strong>, <strong>Event Graph</strong> (все <code>entity</code>-пины), <strong>RuleFields</strong> (<code>Source / Target / Spawn at</code>) и <strong>Inspector</strong> — добавлена кнопка-пипетка. Она открывает живую 3D-сцену с подсветкой объекта при наведении и выбором в один клик.</p></div>
+<h3>Новые рантайм-API v2.0–v2.1</h3>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>// Диалоги и квесты
+api.dialogue.start(&#x27;dlg-petrovich&#x27;)
+const status = api.dialogue.getQuestStatus(&#x27;quest_intro&#x27;) // &#x27;inactive&#x27; | &#x27;active&#x27; | &#x27;completed&#x27; | &#x27;failed&#x27;
+api.dialogue.setQuestStatus(&#x27;quest_intro&#x27;, &#x27;completed&#x27;)
+
+// Катсцены и таймлайн-секвенсор
+api.sequencer.play(&#x27;seq-intro-cam&#x27;, { loop: false, speed: 1 })
+api.sequencer.stop(&#x27;seq-intro-cam&#x27;)
+
+// Модификация звука на лету (тональность, скорость, lowpass-фильтр)
+const h = api.audio.play(&#x27;sfx-engine&#x27;, { loop: true, volume: 0.7 })
+api.audio.setSemitones(h, -4)
+api.audio.setSpeed(h, 1.25)
+api.audio.setLowpass(h, 1200)</code></pre></div></section><section class="doc-section" id="sec-components" data-cat="Сцена"><div class="sec-meta"><span class="sec-badge">Глава 6</span><span class="sec-cat">Сцена</span></div><h2>Полный справочник компонентов</h2><p class="sec-lead">Все 16 типов компонентов сущностей Entity, их поля, значения по умолчанию и особенности поведения.</p><p>Каждая сущность (<code>Entity</code>) на сцене имеет уникальный <code>id</code>, имя, ссылку на родителя <code>parent</code>, флаг активности <code>active</code>, <code>transform</code> (<code>position</code>, <code>rotation</code> в градусах, <code>scale</code>) и массив компонентов <code>components</code>.</p>
+<div class="table-wrap"><table><thead><tr><th>Компонент</th><th>Ключевые поля</th><th>Назначение и нюансы</th></tr></thead><tbody><tr><td><code>mesh</code></td><td><code>shape</code> (<code>box|sphere|plane|cylinder|capsule|cone|model</code>), <code>asset</code>, <code>material</code>, <code>staticBatch</code>, <code>cullDistance</code></td><td>Визуальная 3D-геометрия. Для <code>shape: "model"</code> используется ассет <code>.glb</code>; для примитивов — ассет материала.</td></tr><tr><td><code>light</code></td><td><code>kind</code> (<code>directional|point|spot|ambient</code>), <code>color</code>, <code>intensity</code>, <code>range</code>, <code>angle</code>, <code>coneSoftness</code>, <code>glow</code>, <code>flare</code>, <code>gel</code>, <code>sunRays</code>, <code>castShadow</code></td><td>Источники освещения LittleJS. Для проекции <code>gel</code> (Gobo) на Spot Light движок автоматически привязывает <code>shadowLight</code>.</td></tr><tr><td><code>camera</code></td><td><code>projection</code> (<code>perspective|orthographic</code>), <code>fov</code> (по умолч. 50), <code>active</code></td><td>Камера сцены. Управляется в рантайме через <code>api.camera</code>.</td></tr><tr><td><code>body</code></td><td><code>kind</code> (<code>static|dynamic|kinematic</code>), <code>mass</code>, <code>friction</code>, <code>restitution</code>, <code>gravityScale</code>, <code>linearDamping</code></td><td>Твёрдое тело Rapier3D. Статические тела не двигаются; кинематические управляются контроллером персонажа.</td></tr><tr><td><code>collider</code></td><td><code>shape</code> (<code>box|sphere|capsule|mesh|terrain</code>), <code>size</code>, <code>radius</code>, <code>height</code>, <code>trigger</code></td><td>Физический коллайдер. При <code>trigger: true</code> генерирует события <code>onTriggerEnter / Stay / Exit</code> без столкновения.</td></tr><tr><td><code>animation</code></td><td><code>clip</code>, <code>autoplay</code>, <code>loop</code>, <code>speed</code>, <code>event</code></td><td>Проигрыватель скелетных и узловых glTF-анимаций (включая нарезанные клипы из Model Editor).</td></tr><tr><td><code>particle</code></td><td><code>preset</code>, <code>asset</code>, <code>rate</code>, <code>maxParticles</code>, <code>lifeMin/Max</code>, <code>speedMin/Max</code>, <code>gravity</code>, <code>startColor/EndColor</code>, <code>additive</code>, <code>worldSpace</code></td><td>3D-эмиттер частиц. Может ссылаться на ассет из Particle Editor или задавать параметры напрямую.</td></tr><tr><td><code>billboard</code></td><td><code>texture</code>, <code>color</code>, <code>width</code>, <code>height</code>, <code>opacity</code>, <code>lockY</code>, <code>columns</code>, <code>rows</code>, <code>fps</code>, <code>unlit</code></td><td>Всегда повёрнутый к камере 3D-спрайт (трава, иконки, дым, спрайтшит-эффекты). <code>lockY: true</code> вращает только вокруг оси Y.</td></tr><tr><td><code>decal</code></td><td><code>texture</code>, <code>color</code>, <code>width</code>, <code>height</code>, <code>opacity</code>, <code>normalOffset</code> (0.008), <code>blendMode</code>, <code>pixelated</code></td><td>Плоская наклейка на поверхность (лужи, трещины, следы, граффити) со смещением по нормали против Z-fighting.</td></tr><tr><td><code>volumetric</code></td><td><code>shape</code> (<code>cone|beam</code>), <code>color</code>, <code>intensity</code>, <code>softness</code>, <code>dustSpeed</code>, <code>topRadius</code>, <code>bottomRadius</code></td><td>Объёмный световой конус / луч с анимированной пылью (фонари, окна, фары).</td></tr><tr><td><code>terrain</code></td><td><code>width</code>, <code>depth</code>, <code>segments</code>, <code>heights</code>, <code>materials[]</code>, <code>splatWeights[][]</code>, <code>layerSoftness[]</code></td><td>Рельефная поверхность с многослойным текстурированием и коллайдером высот.</td></tr><tr><td><code>navZone</code></td><td><code>width</code>, <code>depth</code>, <code>cellSize</code>, <code>maxSlope</code>, <code>agentRadius</code>, <code>links[]</code> (Off-Mesh Links)</td><td>Сетка навигации A* для NPC. Поддерживает динамические препятствия, зоны стоимости и переходы (двери, лестницы, прыжки).</td></tr><tr><td><code>navAgent</code></td><td><code>speed</code>, <code>turnSpeed</code>, <code>stopDistance</code>, <code>walkClip</code>, <code>idleClip</code>, <code>crossfade</code></td><td>Агент автоматического перемещения по <code>NavZone</code> с плавным переключением анимаций ходьбы и покоя.</td></tr><tr><td><code>audio</code></td><td><code>asset</code>, <code>volume</code>, <code>loop</code>, <code>autoplay</code>, <code>spatial</code>, <code>bus</code> (<code>master|music|sfx|ambience|ui</code>)</td><td>Источник звука Web Audio с 3D-позиционированием и маршрутизацией по шинам.</td></tr><tr><td><code>script</code></td><td><code>asset</code>, <code>params</code> (объект настраиваемых параметров в Inspector)</td><td>Подключает TypeScript/JavaScript-скрипт логики к сущности.</td></tr><tr><td><code>behavior</code></td><td><code>kind</code> (<code>rotate|bob|patrol|trigger...</code>), <code>params</code></td><td>Встроенное поведение без написания кода (вращение, покачивание, простые триггеры).</td></tr></tbody></table></div></section><section class="doc-section" id="sec-lifecycle" data-cat="Скриптинг"><div class="sec-meta"><span class="sec-badge">Глава 7</span><span class="sec-cat">Скриптинг</span></div><h2>Жизненный цикл скриптов, Input и Multi-Touch</h2><p class="sec-lead">Структура скрипта, все 12 хуков жизненного цикла, система событий, биндинги клавиатуры и мобильное управление.</p><p>Каждый скрипт — это модуль с экспортом по умолчанию функции-фабрики <code>(api: GameAPI) =&gt; ScriptLifecycle</code>. Ошибки внутри одного скрипта изолированы и не останавливают игровой цикл остальных сущностей.</p>
+<h3>Хуки ScriptLifecycle</h3>
+<div class="table-wrap"><table><thead><tr><th>Хук</th><th>Когда вызывается</th><th>Типовое применение</th></tr></thead><tbody><tr><td><code>onCreate()</code></td><td>Один раз при присоединении скрипта</td><td>Регистрация сервисов, подписка на <code>api.events</code></td></tr><tr><td><code>onStart()</code></td><td>Один раз при первом входе сущности в активную сцену</td><td>Поиск других сущностей, инициализация HUD, запуск фоновых анимаций</td></tr><tr><td><code>onEnable()</code> / <code>onDisable()</code></td><td>При вызове <code>api.setActive(id, true/false)</code></td><td>Пауза таймеров, скрытие маркеров, сброс состояния</td></tr><tr><td><code>onUpdate(dt)</code></td><td>Каждый кадр рендера (<code>dt</code> в секундах)</td><td>Ввод игрока, плавное вращение, UI, камера</td></tr><tr><td><code>onFixedUpdate(dt)</code></td><td>Фиксированный шаг физики 60 Гц</td><td>Движение тела, импульсы, стабильная симуляция</td></tr><tr><td><code>onDestroy()</code></td><td>При удалении сущности или выгрузке сцены</td><td>Очистка ресурсов (твины и подписки <code>api.events</code> чистятся автоматически)</td></tr><tr><td><code>onCollisionEnter(otherId)</code></td><td>Начало твёрдого контакта в Rapier3D</td><td>Звук удара, урон от падения, отскок</td></tr><tr><td><code>onTriggerEnter / Stay / Exit(otherId, dt?)</code></td><td>Вход, нахождение и выход из триггер-зоны</td><td>Зоны подбора, чекпоинты, автоматические двери, урон от аномалий</td></tr><tr><td><code>onPointerClick()</code></td><td>Клик / взаимодействие под прицелом</td><td>Кнопки в мире, подбор предметов, начало диалога</td></tr></tbody></table></div>
+<h3>Клавиатура и виртуальный ввод (api.input)</h3>
+<p><code>api.input</code> объединяет физическую клавиатуру, виртуальный джойстик и экранные кнопки в единый слой действий. Стандартные биндинги: <code>left</code> (A / ArrowLeft), <code>right</code> (D / ArrowRight), <code>up</code> (W / ArrowUp), <code>down</code> (S / ArrowDown), <code>Jump</code> (Space), <code>Interact</code> (E), <code>Attack</code> (F), <code>Sprint</code> (Shift), <code>Crouch</code> (Ctrl / C), <code>Flashlight</code> (L), <code>Phone</code> (Tab / P), <code>Pause</code> (Escape).</p>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>export default function (api: GameAPI) {
+  return {
+    onStart() {
+      // Переназначение или добавление собственного действия
+      api.input.bind(&#x27;Reload&#x27;, [&#x27;KeyR&#x27;])
+    },
+    onUpdate(dt: number) {
+      const [mx, mz] = api.input.move // нормализованный вектор [-1..1, -1..1]
+      if (api.input.pressed(&#x27;Reload&#x27;)) {
+        api.events.emit(&#x27;weapon.reload&#x27;, { entity: api.entity.id })
+      }
+    },
+  }
+}</code></pre></div>
+<h3>Мобильный Multi-Touch и эмуляция Mouse ↔ Touch (api.touch)</h3>
+<p>Движок включает встроенный слой виртуальных контролов (джойстик <code>move</code>, кнопки <code>jump</code>, <code>interact</code>, <code>sprint</code>, <code>crouch</code>) и двустороннюю эмуляцию в стиле Godot 4 для тестирования мобильного управления мышью на ПК.</p>
+<div class="table-wrap"><table><thead><tr><th>Метод api.touch</th><th>Описание</th></tr></thead><tbody><tr><td><code>isTouchDevice()</code> / <code>isVisible()</code></td><td>Проверка сенсорного экрана и текущей видимости оверлея</td></tr><tr><td><code>setVisible(visible: boolean)</code></td><td>Принудительно показать или скрыть экранные кнопки</td></tr><tr><td><code>getJoystick(id = "move")</code></td><td>Возвращает нормализованный вектор <code>[x, y]</code> виртуального джойстика</td></tr><tr><td><code>isButtonPressed(id)</code></td><td>Проверка удержания виртуальной кнопки по её ID</td></tr><tr><td><code>addJoystick(cfg)</code> / <code>addButton(cfg)</code> / <code>removeControl(id)</code></td><td>Динамическое добавление и удаление элементов управления (позиция <code>x, y</code> в %)</td></tr><tr><td><code>setEmulation({ emulateTouchFromMouse, emulateMouseFromTouch })</code></td><td>Включает тестирование тач-управления мышью на десктопе и обратно</td></tr><tr><td><code>getPointers()</code></td><td>Возвращает массив активных указателей <code>{ id, x, y, type, down }</code></td></tr></tbody></table></div></section><section class="doc-section" id="sec-api-core" data-cat="API Reference"><div class="sec-meta"><span class="sec-badge">Глава 8</span><span class="sec-cat">API Reference</span></div><h2>Scripting API: Сущности, Камера, Игрок, Физика и Навигация</h2><p class="sec-lead">Полный справочник сигнатур GameAPI для управления объектами, камерой, физикой Rapier3D, анимациями и NavGrid.</p><h3>Базовые поля и управление сущностями (GameAPI)</h3>
+<div class="table-wrap"><table><thead><tr><th>Свойство / Метод</th><th>Сигнатура</th><th>Назначение</th></tr></thead><tbody><tr><td><code>entity</code> / <code>object</code> / <code>transform</code></td><td><code>Entity</code> / <code>SceneNode</code></td><td>Метаданные и трансформ (<code>position</code>, <code>rotation</code>, <code>scale</code>) текущей сущности</td></tr><tr><td><code>params</code> / <code>vars</code> / <code>time</code></td><td><code>Record&lt;string, any&gt;</code> / <code>number</code></td><td>Параметры скрипта из Inspector, общие переменные HUD и время симуляции (с)</td></tr><tr><td><code>find(id)</code> / <code>findByTag(tag)</code></td><td><code>SceneNode | undefined</code> / <code>string[]</code></td><td>Поиск узла по ID или списка ID сущностей по тегу</td></tr><tr><td><code>spawnPrefab(assetId, pos?, parent?)</code></td><td><code>string</code></td><td>Инстанцирует префаб на живой сцене и возвращает ID корневой сущности</td></tr><tr><td><code>destroy(id)</code> / <code>setActive(id, active)</code></td><td><code>void</code></td><td>Удаление или включение/выключение сущности с её поддеревом</td></tr><tr><td><code>component(type)</code></td><td><code>Component | undefined</code></td><td>Возвращает первый включённый компонент указанного типа на этой сущности</td></tr><tr><td><code>scene.load(id)</code></td><td><code>void</code></td><td>Переход на другую сцену проекта</td></tr></tbody></table></div>
+<h3>Камера (api.camera) и Игрок (api.player)</h3>
+<div class="table-wrap"><table><thead><tr><th>Модуль и метод</th><th>Сигнатура</th><th>Описание</th></tr></thead><tbody><tr><td><code>camera.position / forward / right</code></td><td><code>readonly Vector3</code></td><td>Мировая позиция и нормализованные векторы взгляда / вправо</td></tr><tr><td><code>camera.yaw / pitch / fov / eyeHeight</code></td><td><code>number</code> (r/w)</td><td>Углы обзора (в радианах), угол поля зрения (градусы) и высота глаз</td></tr><tr><td><code>camera.lookAt(target)</code> / <code>setLook(yaw, pitch)</code></td><td><code>void</code></td><td>Наведение камеры на точку или прямая установка углов</td></tr><tr><td><code>camera.shake(intensity, duration?)</code></td><td><code>void</code></td><td>Затухающая тряска камеры (взрывы, удары, шаги)</td></tr><tr><td><code>camera.worldToScreen(pos)</code></td><td><code>{ x, y, visible, depth }</code></td><td>Проекция 3D-точки в CSS-пиксели экрана (идеально для HTML-маркеров)</td></tr><tr><td><code>camera.screenToRay(x, y)</code></td><td><code>{ origin: Vec3, direction: Vec3 }</code></td><td>Луч из экранных координат в 3D-мир (клики по объектам)</td></tr><tr><td><code>player.position / isGrounded / isCrouching / isSprinting</code></td><td><code>readonly</code></td><td>Текущее состояние контроллера игрока</td></tr><tr><td><code>player.teleport(pos, yawDelta?, pitchDelta?)</code></td><td><code>void</code></td><td>Мгновенная телепортация с опциональным доворотом взгляда</td></tr><tr><td><code>player.setSpeed(speed)</code> / <code>setCrouch(bool)</code></td><td><code>void</code></td><td>Программное изменение скорости ходьбы и приседания</td></tr></tbody></table></div>
+<h3>Физика Rapier3D (api.physics)</h3>
+<div class="table-wrap"><table><thead><tr><th>Метод</th><th>Сигнатура</th><th>Описание</th></tr></thead><tbody><tr><td><code>raycast(origin, dir, length)</code></td><td><code>string | undefined</code></td><td>Быстрый луч — возвращает ID первой попавшейся сущности</td></tr><tr><td><code>raycastHit(origin, dir, length, excludeIds?)</code></td><td><code>{ id, distance, point, normal } | undefined</code></td><td>Полный хит с мировой точкой попадания и нормалью поверхности</td></tr><tr><td><code>applyImpulse(id, impulse)</code> / <code>applyForce(id, force)</code></td><td><code>void</code></td><td>Мгновенный импульс или непрерывная сила на динамическое тело</td></tr><tr><td><code>setVelocity(id, vel)</code> / <code>getVelocity(id)</code></td><td><code>void</code> / <code>Vec3 | undefined</code></td><td>Прямая установка или чтение линейной скорости тела</td></tr><tr><td><code>setGravityScale(id, scale)</code></td><td><code>void</code></td><td>Множитель гравитации для отдельного тела (0 — невесомость)</td></tr></tbody></table></div>
+<h3>Скелетные анимации (api.animation)</h3>
+<div class="table-wrap"><table><thead><tr><th>Метод</th><th>Сигнатура</th><th>Описание</th></tr></thead><tbody><tr><td><code>play(id, clip?, loop?, speed?, blendTime?)</code></td><td><code>boolean</code></td><td>Запуск клипа (нативного или нарезанного в Model Editor) с опциональным блендом</td></tr><tr><td><code>crossfade(id, clip, duration = 0.25, loop = true, speed = 1)</code></td><td><code>boolean</code></td><td>Плавный переход от текущей позы к новому клипу за <code>duration</code> секунд</td></tr><tr><td><code>stop(id)</code> / <code>pause(id)</code> / <code>resume(id)</code></td><td><code>void</code></td><td>Управление воспроизведением</td></tr><tr><td><code>setTime(id, time)</code></td><td><code>void</code></td><td>Установка точного времени (в секундах) внутри активного клипа</td></tr><tr><td><code>clips(id)</code> / <code>bones(id)</code></td><td><code>string[]</code></td><td>Список всех доступных клипов и имён костей/узлов модели</td></tr><tr><td><code>getState(id)</code></td><td><code>{ clip, time, duration, playing, speed, loop }</code></td><td>Текущее состояние плеера анимации</td></tr><tr><td><code>getBonePosition(id, boneName)</code></td><td><code>Vec3 | undefined</code></td><td>Мировая позиция кости (для прикрепления оружия, фонарика или партиклов)</td></tr></tbody></table></div>
+<h3>Навигация и ИИ (api.nav)</h3>
+<div class="table-wrap"><table><thead><tr><th>Метод</th><th>Сигнатура</th><th>Описание</th></tr></thead><tbody><tr><td><code>findPath(start, goal, { smooth?, zoneId? }?)</code></td><td><code>Vec3[]</code></td><td>Поиск пути A* с опциональным сглаживанием углов и учётом Off-Mesh Links</td></tr><tr><td><code>bake(zoneId?)</code></td><td><code>{ walkableCount, blockedCount, total }</code></td><td>Перезапекание сетки проходимости в рантайме</td></tr><tr><td><code>setObstacle(center, radius, blocked, zoneId?)</code></td><td><code>void</code></td><td>Динамически перекрыть или открыть участок (закрытая дверь, упавший ящик)</td></tr><tr><td><code>setAreaCost(center, radius, cost, zoneId?)</code></td><td><code>void</code></td><td>Повысить стоимость прохода (грязь, опасная зона, вода)</td></tr><tr><td><code>setLinkEnabled(linkId, enabled, zoneId?)</code></td><td><code>void</code></td><td>Включить или выключить Off-Mesh переход (разведённый мост, запертый проход)</td></tr><tr><td><code>moveAgent(id, goal, opts?)</code> / <code>stopAgent(id)</code></td><td><code>boolean</code> / <code>void</code></td><td>Запуск движения NPC с автопереключением <code>walkClip / idleClip</code> и <code>crossfade</code></td></tr><tr><td><code>getAgentPath(id)</code> / <code>isAgentMoving(id)</code></td><td><code>Vec3[]</code> / <code>boolean</code></td><td>Получение текущего маршрута агента и статуса движения</td></tr></tbody></table></div></section><section class="doc-section" id="sec-api-world" data-cat="API Reference"><div class="sec-meta"><span class="sec-badge">Глава 9</span><span class="sec-cat">API Reference</span></div><h2>Scripting API: Материалы, Террейн, Эффекты, Аудио, Tween, UI и Сохранения</h2><p class="sec-lead">Методы для поверхностей, частиц, декалей, 3D-звука, Godot-твинов, HTML-интерфейсов и облачных сохранений.</p><h3>Поверхности, Материалы и Террейн (api.materials &amp; api.terrain)</h3>
+<div class="table-wrap"><table><thead><tr><th>Метод</th><th>Возврат / Параметры</th><th>Назначение</th></tr></thead><tbody><tr><td><code>materials.getSurfaceAt(pos, dir = [0,-1,0], maxDist = 3)</code></td><td><code>SurfaceSample | undefined</code></td><td>Определяет материал под точкой на <strong>любой</strong> 3D-модели, примитиве или террейне: <code>{ entityId, entityName, materialId, materialName, tags, point, normal, isTerrain, layerIndex }</code></td></tr><tr><td><code>terrain.getLayerAt(x, z)</code></td><td><code>TerrainLayerSample | undefined</code></td><td>Точная высота рельефа и доминирующий слой террейна в мировых координатах <code>(x, z)</code>: <code>{ entityId, height, layerIndex, materialId, materialName, weights }</code></td></tr><tr><td><code>materials.set(entityId, materialAssetId)</code></td><td><code>void</code></td><td>Смена материала сущности в рантайме</td></tr><tr><td><code>materials.setColor(id, hex, opacity?)</code></td><td><code>void</code></td><td>Динамическая перекраска и прозрачность</td></tr><tr><td><code>materials.setEmissive(id, hex, intensity?)</code></td><td><code>void</code></td><td>Управление свечением объекта (индикаторы, экраны, лампы)</td></tr><tr><td><code>materials.setShader(id, shaderAssetId | null)</code></td><td><code>void</code></td><td>Назначение или снятие кастомного GLSL-шейдера</td></tr><tr><td><code>materials.create(name, props)</code></td><td><code>string</code></td><td>Создание нового ассета материала на лету</td></tr></tbody></table></div>
+<h3>Частицы, Билборды, Декали и Отладка</h3>
+<div class="table-wrap"><table><thead><tr><th>Модуль и методы</th><th>Описание</th></tr></thead><tbody><tr><td><code>particles.play / stop / burst(id, count?) / setRate / setColors</code></td><td>Управление 3D-эмиттерами частиц (включая разовый выброс <code>burst</code> при выстреле или взрыве)</td></tr><tr><td><code>billboards.setFrame(id, frame) / setOpacity / setSize</code></td><td>Переключение кадра спрайтшита, прозрачности и размера 3D-билборда</td></tr><tr><td><code>decals.spawn({ position, normal?, size?, color?, opacity?, texture?, lifetime?, blendMode? })</code></td><td>Динамический спавн 3D-декали (следы, пулевые отверстия, пятна) с автоудалением через <code>lifetime</code></td></tr><tr><td><code>decals.clear()</code> / <code>setOpacity(id, opacity)</code></td><td>Очистка всех динамических декалей или изменение прозрачности</td></tr><tr><td><code>debug.drawLine(from, to, color?, durationSec?)</code> / <code>drawBox(center, size, color?, durationSec?)</code></td><td>3D-отладочные линии и боксы поверх сцены (проверка лучей, путей ИИ, хитбоксов)</td></tr></tbody></table></div>
+<h3>Аудио (api.audio) и Твины (api.createTween)</h3>
+<p><code>api.audio</code> поддерживает 5 шин микшера (<code>master</code>, <code>music</code>, <code>sfx</code>, <code>ambience</code>, <code>ui</code>), пространственное 3D-панорамирование и плавные фейды: <code>play(assetId, opts)</code>, <code>stop(handle)</code>, <code>stopAll()</code>, <code>setVolume(handle, vol, fadeSec?)</code>, <code>setPitch(handle, pitch)</code>, <code>setPosition(handle, pos)</code>, <code>setBusVolume(bus, vol)</code>.</p>
+<p><code>api.createTween()</code> реализует цепочечный Tween в стиле Godot 4 с 11 кривыми (<code>linear, sine, quad, cubic, quart, quint, expo, circ, back, elastic, bounce</code>) и 4 режимами (<code>in, out, inOut, outIn</code>). Твины обновляются движком автоматически и очищаются при удалении сущности.</p>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>const tw = api.createTween()
+tw.tweenProperty(api.object.position, &#x27;y&#x27;, 2.4, 0.6).setTrans(&#x27;back&#x27;).setEase(&#x27;out&#x27;)
+tw.parallel().tweenProperty(api.object.rotation, &#x27;y&#x27;, Math.PI, 0.6)
+tw.tweenCallback(() =&gt; api.audio.play(&#x27;sfx-click&#x27;, { bus: &#x27;sfx&#x27; }))</code></pre></div>
+<h3>UI, HTML Frame и мост window.miniforge</h3>
+<p>Через <code>api.ui</code> можно переключать экраны HUD (<code>open(id)</code>, <code>close()</code>, <code>back()</code>, <code>current()</code>), менять размытие фона <code>setBlur(id, px)</code>, патчить CSS <code>setStyle(id, styles)</code> и монтировать произвольные DOM-виджеты <code>mount(id, html, css?)</code>. Для виджетов из <strong>HTML HUD Studio</strong> доступен встроенный двусторонний мост <code>window.miniforge</code>:</p>
+<div class="code-block"><div class="code-bar"><span>js</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>// Внутри HTML-виджета (HTML HUD Studio):
+window.miniforge.emit(&#x27;shop.buy&#x27;, { itemId: &#x27;bread&#x27;, price: 45 })
+window.miniforge.on(&#x27;player.stats&#x27;, (data) =&gt; {
+  document.getElementById(&#x27;hp&#x27;).textContent = data.hp + &#x27;%&#x27;
+})
+const currentMoney = window.miniforge.vars.money</code></pre></div>
+<h3>Сервисы, WorldState, SaveSystem и Platform SDK</h3>
+<div class="table-wrap"><table><thead><tr><th>API</th><th>Ключевые методы</th><th>Назначение</th></tr></thead><tbody><tr><td><code>api.services</code></td><td><code>register(name, svc)</code>, <code>get(name)</code>, <code>has(name)</code></td><td>Сервис-локатор для обмена между скриптами (<code>DayCycle</code>, <code>Inventory</code>, <code>QuestManager</code>)</td></tr><tr><td><code>api.worldState</code></td><td><code>get(key, fallback)</code>, <code>set(key, val)</code>, <code>all()</code>, <code>save(slot?)</code>, <code>load(slot?)</code></td><td>Постоянное состояние мира, переживающее переходы между сценами</td></tr><tr><td><code>api.saveSystem</code></td><td><code>save(slot?, opts?)</code>, <code>load(slot?, opts?)</code>, <code>capture()</code>, <code>exportJSON()</code>, <code>downloadJSON()</code>, <code>importJSON()</code>, <code>listSlots()</code>, <code>deleteSlot()</code></td><td>Полные снимки игры (сцена, игрок, переменные, worldState, сущности) с автосинхронизацией между localStorage и облаком платформы</td></tr><tr><td><code>api.platform</code></td><td><code>loadingReady()</code>, <code>gameplayStart/Stop()</code>, <code>showInterstitial()</code>, <code>showRewarded()</code>, <code>getLanguage()</code>, <code>saveData/loadData()</code></td><td>Единый интерфейс для Яндекс Игр, Poki и Web с автопаузой при показе рекламы</td></tr><tr><td><code>api.t(key, params?)</code></td><td><code>string</code></td><td>Локализация строк из словаря <code>project.locales</code> с подстановкой параметров</td></tr></tbody></table></div></section><section class="doc-section" id="sec-graphics" data-cat="Графика"><div class="sec-meta"><span class="sec-badge">Глава 10</span><span class="sec-cat">Графика</span></div><h2>Освещение, постпроцессинг, шейдеры и оптимизация</h2><p class="sec-lead">Настройка света, теней, Gel/Gobo, Sun Rays, Lens Flare, постпроцессинга, кастомных шейдеров и оптимизации FPS (Волны 1 и 2).</p><h3>Окружение, Освещение и Тени (api.environment &amp; api.lights)</h3>
+<ul><li><strong>Небо и туман:</strong> <code>setSky(top, horizon, bottom)</code>, процедурное небо с облаками и звёздами <code>setProceduralSky(opts)</code>, 6-гранный скайбокс <code>setSkyboxFaces(faces)</code>, плотность тумана <code>setFog(density, color)</code> и плавное затухание по глубине <code>setFogFade(start, end, depthMode)</code>.</li><li><strong>Свет и тени:</strong> <code>setSun(dir, color, intensity)</code>, полусферический отражённый свет от земли <code>setAmbientGround(hex, intensity)</code>, <code>graphics.setShadows(enabled, range, softShadowHeight)</code> и <code>graphics.setShadowParams({ softness, bias, followCamera })</code> — при <code>followCamera: true</code> область теней следует за камерой игрока.</li><li><strong>Gel (Gobo), Lens Flare и Sun Rays:</strong> <code>lights.setGel(spotId, textureAssetId)</code> проецирует текстуру через Spot Light (решётка, листва, окно); <code>lights.setSunRays(id, true, intensity, decay)</code> включает экранные лучи (God Rays); встроенный фонарик камеры управляется через <code>lights.setFlashlight({ enabled, color, intensity, range, angle })</code>.</li><li><strong>Отражения:</strong> <code>graphics.setReflections("baked" | "realtime" | "off", resolution, interval)</code> и локальные зоны отражений <code>bakeLighting(zoneId?)</code> / <code>updateZoneProbe(zoneId)</code>.</li></ul>
+<h3>Постпроцессинг (api.graphics.setPostProcess)</h3>
+<p>WebGL2-стек постпроцессинга поддерживает в одном проходе: <code>ao</code> (Ambient Occlusion), <code>dof</code> (Depth of Field), <code>bloom</code>, <code>tonemap</code> (ACES), <code>vignette</code>, <code>chromatic</code> (хроматическая аберрация), <code>grain</code> (плёночное зерно), <code>scanlines</code> и <code>exposure</code>.</p>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>api.graphics.setPostProcess({
+  bloom: 0.35,
+  tonemap: true,
+  vignette: 0.28,
+  grain: 0.08,
+  chromatic: 0.002,
+})</code></pre></div>
+<h3>Оптимизация производительности (Волны 1 и 2)</h3>
+<div class="table-wrap"><table><thead><tr><th>Механизм</th><th>Где настраивается</th><th>Эффект и ограничения</th></tr></thead><tbody><tr><td><strong>Static Mesh Batching</strong></td><td><code>Project Settings</code> (Auto) или флаг на <code>mesh</code></td><td>Склеивает статичные непрозрачные меши с одинаковым материалом в один draw call. Прозрачные, additive и кастом-шейдерные материалы пропускаются автоматически.</td></tr><tr><td><strong>Resolution Scale</strong></td><td><code>Project Settings</code> или <code>api.graphics.setResolutionScale(0.4..1.0)</code></td><td>Снижает внутреннее разрешение рендера на HiDPI/встройках без размытия HTML-интерфейса (идеально для 0.75–0.85 на слабых ПК).</td></tr><tr><td><strong>Distance Culling (v1.0)</strong></td><td>Глобально <code>setCullDistance(m)</code> или per-entity <code>cullDistance</code></td><td>Отключает отрисовку дальних объектов (декор, трава, мелкий реквизит) за порогом дистанции.</td></tr><tr><td><strong>Light / Particle Culling</strong></td><td><code>api.graphics.setOptimization({ lightCullDistance, particleCullDistance })</code></td><td>Отсекает удалённые источники света и эмиттеры частиц.</td></tr><tr><td><strong>glTF Animation Throttling</strong></td><td><code>api.graphics.setOptimization({ animationThrottle: true })</code></td><td>Обновляет скелеты дальних NPC с шагом 1/2 (дальше 20м) и 1/4 кадра (дальше 40м), экономя CPU.</td></tr></tbody></table></div></section><section class="doc-section" id="sec-cookbook" data-cat="Рецепты"><div class="sec-meta"><span class="sec-badge">Глава 11</span><span class="sec-cat">Рецепты</span></div><h2>Практические рецепты (Cookbook)</h2><p class="sec-lead">Готовые рабочие шаблоны скриптов для типовых игровых механик: шаги по материалу, ИИ-патруль, цикл дня и ночи, сохранения.</p><h3>Рецепт 1. Звук шагов по материалу под ногами (террейн + любые 3D-модели)</h3>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>export default function (api: GameAPI) {
+  let stepTimer = 0
+  const footstepMap: Record&lt;string, string&gt; = {
+    Asphalt: &#x27;sfx-step-asphalt&#x27;,
+    Grass: &#x27;sfx-step-grass&#x27;,
+    Mud: &#x27;sfx-step-mud&#x27;,
+    Wood: &#x27;sfx-step-wood&#x27;,
+  }
+  return {
+    onUpdate(dt: number) {
+      const [mx, mz] = api.input.move
+      if (!api.player.isGrounded || Math.hypot(mx, mz) &lt; 0.15) return
+      stepTimer -= dt * (api.player.isSprinting ? 1.55 : 1)
+      if (stepTimer &gt; 0) return
+      stepTimer = 0.42
+
+      // Работает и на террейне (учитывает слой кисти), и на любом 3D-меше
+      const hit = api.materials.getSurfaceAt(api.player.position, [0, -1, 0], 2.0)
+      const sfx = (hit &amp;&amp; footstepMap[hit.materialName]) || &#x27;sfx-step-default&#x27;
+      api.audio.play(sfx, { bus: &#x27;sfx&#x27;, volume: 0.7, pitch: 0.92 + Math.random() * 0.16 })
+    },
+  }
+}</code></pre></div>
+<h3>Рецепт 2. ИИ-патруль NPC на NavAgent с нарезанными анимациями</h3>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>export default function (api: GameAPI) {
+  const waypoints: [number, number, number][] = [
+    [0, 0, 0], [12, 0, 4], [10, 0, -10], [-4, 0, -6],
+  ]
+  let idx = 0
+  let wait = 0
+
+  const goNext = () =&gt; {
+    api.nav.moveAgent(api.entity.id, waypoints[idx], {
+      speed: 2.4,
+      stopDistance: 0.45,
+      walkClip: &#x27;Walk&#x27;,   // клип, нарезанный в Model Editor
+      idleClip: &#x27;Idle&#x27;,
+      crossfade: 0.25,
+    })
+  }
+  return {
+    onStart() { goNext() },
+    onUpdate(dt: number) {
+      if (api.nav.isAgentMoving(api.entity.id)) return
+      wait += dt
+      if (wait &gt;= 2.0) {
+        wait = 0
+        idx = (idx + 1) % waypoints.length
+        goNext()
+      }
+    },
+  }
+}</code></pre></div>
+<h3>Рецепт 3. Динамический цикл дня и ночи + фонарик + Sun Rays</h3>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>export default function (api: GameAPI) {
+  let hour = 10 // 0..24
+  let torchOn = false
+  return {
+    onUpdate(dt: number) {
+      hour = (hour + dt * 0.15) % 24
+      const angle = ((hour - 6) / 24) * Math.PI * 2
+      const sunY = Math.sin(angle)
+      const dayFactor = Math.max(0, sunY)
+
+      api.environment.setSun([Math.cos(angle), Math.max(0.08, sunY), 0.35],
+        dayFactor &gt; 0.2 ? &#x27;#fff4de&#x27; : &#x27;#ff9f68&#x27;, 0.25 + dayFactor * 1.45)
+      api.environment.setAmbient(0.22 + dayFactor * 0.65)
+      api.environment.setFog(dayFactor &gt; 0.1 ? 0.012 : 0.028, dayFactor &gt; 0.1 ? &#x27;#b7c7d6&#x27; : &#x27;#141c28&#x27;)
+
+      if (api.input.pressed(&#x27;Flashlight&#x27;)) {
+        torchOn = !torchOn
+        api.lights.setFlashlight({ enabled: torchOn, color: &#x27;#fff3d6&#x27;, intensity: 3.2, range: 22, angle: 0.55 })
+      }
+    },
+  }
+}</code></pre></div>
+<h3>Рецепт 4. Автосохранение с облаком Яндекс Игр / Poki и JSON-бэкапом</h3>
+<div class="code-block"><div class="code-bar"><span>ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>export default function (api: GameAPI) {
+  return {
+    async onStart() {
+      const loaded = await api.saveSystem.load(&#x27;autosave&#x27;)
+      if (!loaded) {
+        api.worldState.set(&#x27;day&#x27;, 1)
+        api.vars.money = 150
+      }
+      api.platform.loadingReady()
+      api.platform.gameplayStart()
+    },
+    async onDestroy() {
+      await api.saveSystem.save(&#x27;autosave&#x27;)
+    },
+  }
+}</code></pre></div></section><section class="doc-section" id="sec-export" data-cat="Релиз"><div class="sec-meta"><span class="sec-badge">Глава 12</span><span class="sec-cat">Релиз</span></div><h2>Сборка, экспорт и публикация (Web, Yandex, Poki, Desktop)</h2><p class="sec-lead">Экспорт готовой игры из редактора, требования площадок и сборка нативных приложений для Windows, macOS и Linux.</p><p>Кнопка <strong>Export</strong> в верхней панели редактора собирает полностью автономный архив игры с выбранным профилем платформы. Перед сборкой редактор автоматически прогоняет валидатор <code>projectIssues</code> и подсвечивает битые ссылки, отсутствующие ассеты и ошибки скриптов.</p>
+<div class="table-wrap"><table><thead><tr><th>Профиль экспорта</th><th>Что входит в сборку</th><th>Особенности интеграции</th></tr></thead><tbody><tr><td><strong>Web (HTML5)</strong></td><td><code>index.html</code>, минифицированный <code>web.js</code>, <code>physics.js</code>, ассеты</td><td>Работает на любом статическом хостинге (itch.io, GitHub Pages, свой сервер)</td></tr><tr><td><strong>Yandex Games</strong></td><td>Профиль <code>yandex.js</code> с подключением Yandex Games SDK</td><td>Автоматические вызовы <code>loadingReady()</code>, <code>gameplayStart/Stop()</code>, реклама и облачные сохранения <code>saveSystem</code></td></tr><tr><td><strong>Poki</strong></td><td>Профиль <code>poki.js</code> с Poki SDK</td><td>Автопауза звука и симуляции на время <code>showInterstitial / showRewarded</code></td></tr><tr><td><strong>Desktop (Windows / Linux / macOS)</strong></td><td>Исходники Tauri v2 + собранный веб-бандл (<code>pnpm desktop:game</code>)</td><td>Нативный бинарник / установщик (NSIS/MSI на Windows, AppImage/deb на Linux, .dmg на macOS) на системном WebView</td></tr></tbody></table></div>
+<h3>Требования для сборки Desktop-редактора и игр на Windows</h3>
+<ul><li><strong>Node.js 20+</strong> и <strong>pnpm 11.x</strong> (активируется через <code>corepack enable</code>).</li><li><strong>Rustup + Cargo</strong> (toolchain <code>stable-x86_64-pc-windows-msvc</code>).</li><li><strong>Visual Studio Build Tools</strong> с компонентом <em>Desktop development with C++</em> (MSVC + Windows SDK).</li><li><strong>WebView2 Runtime</strong> (уже предустановлен в Windows 10/11). Никаких отдельных установщиков Assimp не требуется — <code>assimpjs.wasm</code> вкладывается автоматически в <code>dist/editor/assimpjs.wasm</code> на всех ОС.</li></ul></section><section class="doc-section" id="sec-plugins" data-cat="Расширения"><div class="sec-meta"><span class="sec-badge">Глава 13</span><span class="sec-cat">Расширения</span></div><h2>Система плагинов (Plugin API v2.2): создание, импорт и разработка</h2><p class="sec-lead">Архитектура плагинов Miniforge Engine v2.2, формат .mfplugin.json, полный справочник EditorPluginContext и RuntimePluginContext, разбор 4 встроенных примеров от простого HUD до RPG-инвентаря.</p><p>Начиная с версии <strong>v2.2</strong>, в Miniforge Engine встроена полноценная модульная <strong>система плагинов</strong>. Плагины хранятся прямо в проекте как ассеты типа <code>plugin</code>, поддерживают экспорт/импорт в одном файле (<code>.mfplugin.json</code> или <code>.js</code>), умеют расширять как <strong>Редактор</strong> (добавлять команды в верхнее меню <code>Plugins</code>, модифицировать сцену и ассеты), так и <strong>Рантайм</strong> (регистрировать собственные Behavior-компоненты, глобальные сервисы, HUD-интерфейсы и хуки игрового цикла).</p>
+<h3>1. Где управлять плагинами и как их импортировать</h3>
+<ul><li><strong>Создание нового плагина:</strong> в верхнем меню нажмите <code>Plugins → + New Plugin</code> или в панели <code>Assets → + New → Plugin</code>. Откроется встроенный <strong>Plugin Manager</strong> с редактором метаданных, редактором кода, валидатором синтаксиса и кнопкой <code>Save changes</code>.</li><li><strong>Импорт готовых плагинов:</strong> перетащите файл <code>.mfplugin.json</code> прямо на панель <code>Assets</code> (Drag &amp; Drop) или нажмите <code>Import .mfplugin.json / .js</code> внутри Plugin Manager. Импортированный плагин автоматически включается и активирует свои пункты в меню <code>Plugins</code>.</li><li><strong>Экспорт и распространение:</strong> кнопка <code>Export .mfplugin.json</code> выгружает самодостаточный JSON-манифест со всем кодом и метаданными — его можно передать другому разработчику или перенести в другой проект Miniforge.</li><li><strong>Встроенная галерея примеров:</strong> во вкладке <code>Example Plugins</code> внутри Plugin Manager доступны 4 готовых плагина возрастающей сложности с установкой в один клик (<code>Install</code>).</li></ul>
+<h3>2. Формат манифеста .mfplugin.json</h3>
+<p>Каждый плагин описывается структурой <code>PluginManifest</code> (определена в <code>packages/project-schema/src/plugins.ts</code>). Поле <code>code</code> содержит обычный JavaScript-модуль (CommonJS-стиль с объектом <code>exports</code>):</p>
+<div class="code-block"><div class="code-bar"><span>json</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>{
+  &quot;id&quot;: &quot;my-custom-plugin&quot;,
+  &quot;name&quot;: &quot;My Custom Plugin&quot;,
+  &quot;version&quot;: &quot;1.0.0&quot;,
+  &quot;author&quot;: &quot;Indie Dev&quot;,
+  &quot;description&quot;: &quot;Краткое описание возможностей плагина&quot;,
+  &quot;category&quot;: &quot;runtime&quot;,
+  &quot;enabled&quot;: true,
+  &quot;code&quot;: &quot;exports.registerRuntime = function(ctx) { ... };&quot;
+}</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>Поле</th><th>Тип</th><th>Описание</th></tr></thead><tbody><tr><td><code>id</code></td><td><code>string</code></td><td>Уникальный идентификатор плагина (slug), например <code>fps-counter-hud</code>.</td></tr><tr><td><code>name</code></td><td><code>string</code></td><td>Отображаемое название плагина в списке ассетов и Plugin Manager.</td></tr><tr><td><code>version</code></td><td><code>string</code></td><td>Версия плагина в формате SemVer (например, <code>1.0.0</code>).</td></tr><tr><td><code>author</code></td><td><code>string</code></td><td>Имя автора или студии.</td></tr><tr><td><code>category</code></td><td><code>"gameplay" | "editor" | "ui" | "world" | "utility" | "runtime"</code></td><td>Категория для визуальной группировки в менеджере плагинов.</td></tr><tr><td><code>enabled</code></td><td><code>boolean</code></td><td>Флаг активности. Отключённый плагин остаётся в проекте, но его хуки не запускаются ни в редакторе, ни в рантайме.</td></tr><tr><td><code>code</code></td><td><code>string</code></td><td>Исходный JavaScript-код плагина с точками входа <code>exports.registerEditor</code> и/или <code>exports.registerRuntime</code>.</td></tr></tbody></table></div>
+<h3>3. Точки входа и жизненный цикл плагина</h3>
+<p>Код плагина компилируется изолированно через <code>new Function('exports', code)</code> и может экспортировать одну или обе функции регистрации:</p>
+<ul><li><code>exports.registerEditor(ctx)</code> — вызывается в редакторе при загрузке проекта, переключении флага <code>enabled</code> или сохранении кода плагина. Используется для регистрации пунктов меню <code>Plugins</code> и инструментов генерации контента на сцене.</li><li><code>exports.registerRuntime(ctx)</code> — вызывается при старте игровой сессии (Play в редакторе или экспортированный билд) до инициализации сущностей сцены. Регистрирует кастомные Behavior-компоненты, сервисы и хуки игрового цикла.</li></ul>
+<h3>4. Справочник методов EditorPluginContext</h3>
+<p>Передаётся в <code>exports.registerEditor(ctx)</code> (реализован в <code>apps/editor/src/editorPlugins.ts</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Метод / Свойство</th><th>Сигнатура</th><th>Назначение</th></tr></thead><tbody><tr><td><code>ctx.pluginId</code></td><td><code>string</code></td><td>Идентификатор текущего плагина.</td></tr><tr><td><code>ctx.project</code></td><td><code>Project</code></td><td>Текущий объект проекта (только для чтения; изменения вносить через <code>patchProject</code>/<code>patchScene</code>).</td></tr><tr><td><code>ctx.uid(prefix?)</code></td><td><code>(prefix?: string) =&gt; string</code></td><td>Генератор уникальных ID для новых сущностей, ассетов или компонентов.</td></tr><tr><td><code>ctx.notify(msg)</code></td><td><code>(message: string) =&gt; void</code></td><td>Показывает всплывающее уведомление (toast) в интерфейсе редактора.</td></tr><tr><td><code>ctx.patchProject(fn)</code></td><td><code>(updater: (p: Project) =&gt; Project) =&gt; void</code></td><td>Иммутабельно обновляет состояние проекта с поддержкой Undo/Redo.</td></tr><tr><td><code>ctx.patchScene(fn)</code></td><td><code>(updater: (s: Scene) =&gt; Scene) =&gt; void</code></td><td>Иммутабельно обновляет активную сцену (добавление/удаление сущностей, правка трансформов и компонентов).</td></tr><tr><td><code>ctx.registerMenuAction(action)</code></td><td><code>({ id, label, run }) =&gt; void</code></td><td>Добавляет команду в верхнее выпадающее меню <code>Plugins</code>. При клике вызывается <code>run()</code>.</td></tr></tbody></table></div>
+<h3>5. Справочник методов RuntimePluginContext</h3>
+<p>Передаётся в <code>exports.registerRuntime(ctx)</code> (реализован в <code>packages/runtime/src/plugins.ts</code> и интегрирован в <code>packages/runtime/src/index.ts</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Метод / Свойство</th><th>Сигнатура</th><th>Назначение</th></tr></thead><tbody><tr><td><code>ctx.pluginId</code></td><td><code>string</code></td><td>Идентификатор текущего плагина.</td></tr><tr><td><code>ctx.onGameStart(fn)</code></td><td><code>(api: GameAPI) =&gt; void</code></td><td>Вызывается один раз после загрузки стартовой сцены и готовности всех систем движка.</td></tr><tr><td><code>ctx.onUpdate(fn)</code></td><td><code>(dt: number, api: GameAPI) =&gt; void</code></td><td>Вызывается каждый рендер-кадр с переменным шагом <code>dt</code> (в секундах).</td></tr><tr><td><code>ctx.onFixedUpdate(fn)</code></td><td><code>(dt: number, api: GameAPI) =&gt; void</code></td><td>Вызывается с фиксированным шагом физики (60 Гц) — идеально для перемещения и проверок коллизий.</td></tr><tr><td><code>ctx.onDestroy(fn)</code></td><td><code>() =&gt; void</code></td><td>Вызывается при остановке игры (Stop) или перезагрузке сцены — для очистки таймеров, слушателей и DOM-узлов.</td></tr><tr><td><code>ctx.registerBehavior(kind, factory)</code></td><td><code>(kind: string, factory: (api, params) =&gt; BehaviorHooks) =&gt; void</code></td><td>Регистрирует новый тип Behavior-компонента. После регистрации его можно назначить любой сущности на сцене; <code>factory</code> возвращает объект с опциональными методами <code>onStart</code>, <code>onUpdate(dt)</code>, <code>onFixedUpdate(dt)</code>, <code>onCollision(other)</code>, <code>onDestroy</code>.</td></tr><tr><td><code>ctx.registerService(name, svc, api)</code></td><td><code>(name: string, service: unknown, api: GameAPI) =&gt; void</code></td><td>Регистрирует именованный глобальный сервис, доступный из любого скрипта, Event Graph и других плагинов через <code>api.services.get(name)</code>.</td></tr></tbody></table></div>
+<h3>6. Четыре встроенных примера плагинов (от простого к сложному)</h3>
+<p>В <code>packages/project-schema/src/pluginExamples.ts</code> поставляются 4 эталонных плагина, демонстрирующих все ключевые сценарии расширения Miniforge Engine:</p>
+<div class="table-wrap"><table><thead><tr><th>Плагин</th><th>Уровень</th><th>Тип</th><th>Какие API использует и что делает</th></tr></thead><tbody><tr><td><strong>FPS &amp; Coords HUD</strong><br><code>fps-counter-hud</code></td><td>Простой</td><td>Runtime / UI</td><td><code>onGameStart</code>, <code>onUpdate</code>, <code>onDestroy</code>, <code>api.ui.mount()</code>. Отображает сглаженный FPS и текущие координаты игрока <code>X/Y/Z</code> в углу экрана.</td></tr><tr><td><strong>Quick Prop Spawner</strong><br><code>quick-prop-spawner</code></td><td>Средний</td><td>Editor Tool</td><td><code>registerMenuAction</code>, <code>patchScene</code>, <code>uid</code>, <code>notify</code>. Добавляет в меню <code>Plugins</code> команды <em>Spawn Street Lamp</em> и <em>Spawn Crates Cluster</em> для мгновенной расстановки префаб-групп на сцене.</td></tr><tr><td><strong>Dynamic Weather System</strong><br><code>dynamic-weather-system</code></td><td>Продвинутый</td><td>Runtime / World</td><td><code>registerService('weather')</code>, <code>registerBehavior('weatherZone')</code>, <code>onUpdate</code>. Переключает режимы погоды (<code>clear / fog / storm</code>) клавишей <code>G</code>, управляет вспышками молний, тряской камеры и триггер-зонами погоды.</td></tr><tr><td><strong>RPG Inventory &amp; Loot</strong><br><code>rpg-inventory-loot</code></td><td>Сложный</td><td>Runtime / Gameplay + UI</td><td><code>registerService('inventory')</code>, <code>registerBehavior('lootPickup')</code>, <code>api.worldState</code>, <code>api.ui.mount()</code>. Полная система инвентаря с сохранением состояния в <code>worldState</code>, интерактивной HTML-панелью по клавише <code>I</code> (использование/выбрасывание предметов) и подбираемым лутом на сцене.</td></tr></tbody></table></div>
+<h3>7. Пошаговый пример разработки собственного плагина</h3>
+<p>Ниже показан минимальный гибридный плагин, который одновременно добавляет инструмент в редактор и регистрирует кастомный Behavior в рантайме:</p>
+<div class="code-block"><div class="code-bar"><span>js</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code>exports.registerEditor = function(ctx) {
+  ctx.registerMenuAction({
+    id: &#x27;spawn-beacon&#x27;, label: &#x27;Spawn Rotating Beacon&#x27;,
+    run: function() {
+      ctx.patchScene(function(scene) {
+        var entity = {
+          id: ctx.uid(&#x27;beacon&#x27;), name: &#x27;Signal Beacon&#x27;,
+          transform: { position: [0, 1.5, 0], rotation: [0, 0, 0], scale: [0.6, 1.8, 0.6] },
+          components: [
+            { type: &#x27;mesh&#x27;, primitive: &#x27;cylinder&#x27;, color: &#x27;#f59e0b&#x27; },
+            { type: &#x27;behavior&#x27;, kind: &#x27;beaconSpinner&#x27;, params: { speed: 2.2 } }
+          ]
+        };
+        return Object.assign({}, scene, { entities: scene.entities.concat([entity]) });
+      });
+      ctx.notify(&#x27;Signal Beacon добавлен на сцену&#x27;);
+    }
+  });
+};
+exports.registerRuntime = function(ctx) {
+  ctx.registerBehavior(&#x27;beaconSpinner&#x27;, function(api, params) {
+    var speed = (params &amp;&amp; params.speed) || 1.5;
+    return { onUpdate: function(dt) { api.transform.rotation[1] += speed * dt; } };
+  });
+};</code></pre></div>
+<h3>8. Рекомендации по разработке и отладке плагинов</h3>
+<ul><li><strong>Проверяйте синтаксис до запуска:</strong> кнопка <code>Validate</code> в Plugin Manager прогоняет компиляцию кода и сразу показывает строку ошибки без перезапуска сцены.</li><li><strong>Всегда очищайте ресурсы в <code>onDestroy</code>:</strong> если плагин монтирует DOM-элементы через <code>api.ui.mount()</code> или вешает слушатели <code>window.addEventListener</code>, удаляйте их в <code>ctx.onDestroy</code>, чтобы не оставлять «призраков» после выхода из режима Play.</li><li><strong>Общайтесь между плагинами через сервисы:</strong> вместо глобальных переменных на <code>window</code> регистрируйте API через <code>ctx.registerService('mySys', apiObj, api)</code> и получайте его из других плагинов или Event Graph через <code>api.services.get('mySys')</code>.</li><li><strong>Сохраняйте прогресс через <code>api.worldState</code>:</strong> данные, записанные в <code>worldState</code> (как в примере <code>rpg-inventory-loot</code>), автоматически переживают смену сцен и участвуют в системе сохранений движка.</li></ul></section>
+
+      <div id="emptyState" class="empty-state">
+        <p>По вашему запросу ничего не найдено. Попробуйте другой термин (например, <code>animation</code>, <code>terrain</code>, <code>nav</code>, <code>saveSystem</code>).</p>
+      </div>
+    </main>
+  </div>
+
+<script>
+  (function () {
+    const root = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    const searchStatus = document.getElementById('searchStatus');
+    const searchStatusText = document.getElementById('searchStatusText');
+    const resetFilterBtn = document.getElementById('resetFilterBtn');
+    const emptyState = document.getElementById('emptyState');
+    const catBar = document.getElementById('catBar');
+    const sections = Array.from(document.querySelectorAll('.doc-section'));
+    const navItems = Array.from(document.querySelectorAll('.nav-item'));
+
+    let currentCat = 'Все';
+
+    function applyTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      themeToggle.textContent = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
+      try { localStorage.setItem('mf_docs_theme', theme); } catch (e) {}
+    }
+    try {
+      const saved = localStorage.getItem('mf_docs_theme');
+      if (saved === 'light' || saved === 'dark') applyTheme(saved);
+    } catch (e) {}
+
+    themeToggle.addEventListener('click', () => {
+      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    });
+
+    menuToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+
+    function updateFilter() {
+      const q = searchInput.value.trim().toLowerCase();
+      searchClear.classList.toggle('visible', q.length > 0);
+      let shown = 0;
+      sections.forEach((sec) => {
+        const catOk = currentCat === 'Все' || sec.dataset.cat === currentCat;
+        const textOk = !q || sec.textContent.toLowerCase().includes(q);
+        const visible = catOk && textOk;
+        sec.classList.toggle('hidden', !visible);
+        if (visible) shown++;
+      });
+      navItems.forEach((nav) => {
+        const sec = document.getElementById(nav.dataset.nav);
+        nav.style.display = sec && !sec.classList.contains('hidden') ? 'flex' : 'none';
+      });
+      const filtering = currentCat !== 'Все' || q.length > 0;
+      searchStatus.classList.toggle('visible', filtering);
+      if (filtering) {
+        searchStatusText.textContent = 'Показано глав: ' + shown + ' из ' + sections.length + (q ? ' по запросу «' + searchInput.value.trim() + '»' : '');
+      }
+      emptyState.classList.toggle('visible', shown === 0);
+    }
+
+    catBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.cat-pill');
+      if (!btn) return;
+      currentCat = btn.dataset.cat;
+      catBar.querySelectorAll('.cat-pill').forEach((b) => b.classList.toggle('active', b === btn));
+      updateFilter();
+    });
+
+    searchInput.addEventListener('input', updateFilter);
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      updateFilter();
+      searchInput.focus();
+    });
+    resetFilterBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      currentCat = 'Все';
+      catBar.querySelectorAll('.cat-pill').forEach((b) => b.classList.toggle('active', b.dataset.cat === 'Все'));
+      updateFilter();
+    });
+
+    navItems.forEach((item) => {
+      item.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        navItems.forEach((n) => n.classList.toggle('active', n === item));
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-copy]');
+      if (!btn) return;
+      const codeEl = btn.closest('.code-block').querySelector('code');
+      const text = codeEl ? codeEl.textContent : '';
+      const markCopied = () => {
+        btn.textContent = 'Скопировано';
+        setTimeout(() => { btn.textContent = 'Копировать'; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(markCopied).catch(() => {
+          fallbackCopy(text);
+          markCopied();
+        });
+      } else {
+        fallbackCopy(text);
+        markCopied();
+      }
+    });
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            navItems.forEach((n) => n.classList.toggle('active', n.dataset.nav === id));
+          }
+        });
+      }, { rootMargin: '-20% 0px -65% 0px' });
+      sections.forEach((s) => obs.observe(s));
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Box, FileCode2, FileJson, Music2, Braces, Flame, GitBranch } from 'lucide-react'
+import { Box, FileCode2, FileJson, Music2, Braces, Flame, GitBranch, MessageSquare, Clapperboard, Puzzle } from 'lucide-react'
 import { createWorld, type RenderWorld } from '../../../packages/graphics/src'
 import { Vector3 } from '../../../packages/graphics/src/scene'
 import {
@@ -80,6 +80,12 @@ export function Thumb({ asset, project }: { asset: Asset; project: Project }) {
               ? Flame
               : asset.type === 'graph'
                 ? GitBranch
+                : asset.type === 'dialogue'
+                  ? MessageSquare
+                  : asset.type === 'sequence'
+                    ? Clapperboard
+                    : asset.type === 'plugin'
+                      ? Puzzle
               : Box
   return url || asset.type === 'texture' ? <img alt="" src={url || asset.data} /> : <Icon size={28} />
 }

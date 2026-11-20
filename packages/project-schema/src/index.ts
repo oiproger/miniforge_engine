@@ -2,6 +2,10 @@ import {validTerrain} from './terrain'
 export * from './terrain'
 export * from './nav'
 export * from './eventGraph'
+export * from './dialogue'
+export * from './sequencer'
+export * from './plugins'
+export * from './pluginExamples'
 import {validateScreens, type UIScreen, type Anchor, type ButtonAction} from './screens'
 export * from './screens'
 // Project v1 is plain JSON. A component's type and an asset's ID are stable routing keys.
@@ -32,7 +36,7 @@ export interface Scene {
   environment: Environment
   entities: Entity[]
 }
-export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox' | 'text' | 'particle' | 'html' | 'graph'
+export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox' | 'text' | 'particle' | 'html' | 'graph' | 'dialogue' | 'sequence' | 'plugin'
 export interface ModelAnimationClip {
   id: string
   name: string

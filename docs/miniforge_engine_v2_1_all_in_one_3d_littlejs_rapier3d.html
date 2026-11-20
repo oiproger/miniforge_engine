@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Miniforge Engine v0.7 — Лёгкий 3D-движок на LittleJS + Rapier3D</title>
+  <title>Miniforge Engine v2.1 All-in-One — Лёгкий 3D-движок на LittleJS + Rapier3D</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -89,7 +89,7 @@
         </span>
         <span class="flex flex-col leading-none">
           <span class="text-sm font-extrabold tracking-wider uppercase">Miniforge</span>
-          <span class="font-mono text-[10px] text-amber-400">ENGINE v0.7 · LITTLEJS 3D</span>
+          <span class="font-mono text-[10px] text-amber-400">ENGINE v2.1 · ALL-IN-ONE 3D</span>
         </span>
       </a>
 
@@ -131,7 +131,7 @@
       <div class="lg:col-span-5">
         <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-mono text-xs text-amber-300">
           <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
-          v0.7 · LittleJS 1.30.1 + Rapier3D + Tauri
+          v2.1 All-in-One · LittleJS 1.30.1 + Rapier3D + Tauri
         </div>
         <h1 class="text-3xl font-extrabold tracking-tight text-white sm:text-5xl leading-[1.08]">
           Карманная кузница <span class="bg-gradient-to-r from-amber-400 via-orange-400 to-cyan-300 bg-clip-text text-transparent">3D-игр</span> для веба и десктопа
@@ -224,7 +224,7 @@
   <section id="features" class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
     <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
       <div>
-        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-amber-400">Арсенал v0.7</div>
+        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-amber-400">Арсенал v2.1 All-in-One · 13 студий</div>
         <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Все ключевые возможности движка</h2>
       </div>
       <div id="featureFilters" class="flex flex-wrap gap-2">
@@ -328,7 +328,7 @@
         <button type="button" data-demo="nav" class="example-tab flex flex-col rounded-xl border border-white/10 bg-[#111720] p-3.5 text-left transition hover:border-amber-400/40">
           <div class="flex items-center justify-between">
             <span class="text-sm font-bold text-white">4. NavGrid A* &amp; Animated NPC</span>
-            <span class="rounded bg-cyan-500/20 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v0.7 AI</span>
+            <span class="rounded bg-cyan-500/20 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v2.1 All-in-One AI</span>
           </div>
           <span class="mt-1 text-xs text-slate-400">Кликни по любой точке двора — NPC построит сглаженный A*-путь и обойдёт стены и закрытые ворота.</span>
         </button>
@@ -380,7 +380,7 @@
     <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
       <div>
         <div class="font-mono text-xs font-semibold uppercase tracking-widest text-cyan-400">Полный справочник</div>
-        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Документация и GameAPI v0.7</h2>
+        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Документация и GameAPI v2.1 All-in-One</h2>
       </div>
       <div class="relative w-full sm:w-80">
         <input id="docSearch" type="search" placeholder="Поиск по методам (crossfade, nav, terrain...)" class="w-full rounded-xl border border-white/15 bg-[#111720] px-4 py-2 text-xs text-white placeholder-slate-400 outline-none focus:border-cyan-400/60" />
@@ -397,7 +397,7 @@
   <footer class="mt-10 border-t border-white/10 bg-[#080b10] py-8">
     <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-slate-400 sm:flex-row sm:px-6">
       <div class="flex items-center gap-2">
-        <span class="font-bold text-white">MINIFORGE ENGINE v0.7</span>
+        <span class="font-bold text-white">MINIFORGE ENGINE v2.1 All-in-One</span>
         <span>·</span>
         <span>LittleJS 1.30.1 · Rapier3D · React · TypeScript · Tauri</span>
       </div>
@@ -466,8 +466,14 @@
         { cat: 'graphics', tag: 'v0.5 VFX', title: '3D-частицы, Билборды и Декали', desc: 'Отдельный 3D Particle Editor с 7 пресетами, камера-ориентированные билборды со спрайтовыми атласами и декали с динамическим api.decals.spawn().' },
         { cat: 'editor', tag: 'v0.6 Terrain', title: 'Террейн во вьюпорте + N слоёв', desc: 'Прямая лепка и покраска в 3D-вьюпорте с конформным 3D-кольцом кисти, неограниченные слои материалов и ползунок мягкости Hard ↔ Soft на каждый слой.' },
         { cat: 'editor', tag: 'Godot-style', title: 'Script Workspace & Поиск компонентов', desc: 'Вкладка Script с Monaco, Ctrl+H, встроенной справкой API, сворачиваемыми Project Settings и списком Add Component с иконками и поиском.' },
-        { cat: 'ai', tag: 'v0.7 Skinning', title: 'glTF Скелетные анимации и Кости', desc: 'Плавный кроссфейд между клипами (api.animation.crossfade), пауза/перемотка, чтение костей и getBonePosition для предметов в руках NPC.' },
-        { cat: 'ai', tag: 'v0.7 Navigation', title: 'NavGrid + A* и Off-Mesh Links', desc: 'Запекаемая навигационная сетка по террейну и коллайдерам, сглаживание пути, динамические препятствия, Nav Agent (NPC) и связи для лестниц/дверей.' },
+        { cat: 'ai', tag: 'v2.1 All-in-One Skinning', title: 'glTF Скелетные анимации и Кости', desc: 'Плавный кроссфейд между клипами (api.animation.crossfade), пауза/перемотка, чтение костей и getBonePosition для предметов в руках NPC.' },
+        { cat: 'tools', tag: 'v1.4 Blueprints', title: 'Event Graph (Аналог Unreal Blueprints)', desc: 'Визуальный нодовый редактор с 65+ узлами под всё GameAPI, локальными/HUD/WorldState переменными, Exposed Variables, кастомными функциями и 3D-пипеткой.' },
+        { cat: 'tools', tag: 'v2.1 Modeling', title: 'Low-Poly CSG Mesh Builder + 3D Кисть', desc: 'CSG-браши (Union/Subtract), Face Edit (Extrude, Inset, Subdivide, Mirror X, Ground Y=0), быстрая UV-развёртка, настоящая 3D-кисть по 512×512 текстуре и экспорт в .glb.' },
+        { cat: 'tools', tag: 'v2.0 Paint', title: '2D Paint Editor со слоями и тайлингом', desc: 'Холст 32–512px, 7 инструментов (кисть, ластик, заливка, пипетка, фигуры), слои, симметрия X/Y, бесшовный Wrap-режим и 3×3 превью.' },
+        { cat: 'tools', tag: 'v2.0 Audio', title: 'Sound / SFX / 16-Step Music Synth', desc: 'Процедурный синтезатор звуков, эмбиента и 16-шаговых лупов с экспортом в .wav + рантайм-модификаторы тональности, скорости и фильтра.' },
+        { cat: 'tools', tag: 'v2.1 Narrative', title: 'Dialogue & Quest Graph + Sequencer', desc: 'Нодовый редактор ветвящихся диалогов и квестов с панорамированием/зумом, многодорожечный Keyframe Sequencer и 3D-пипетка выбора Target Entity.' },
+        { cat: 'tools', tag: 'v1.3 Models', title: 'Model Editor + Assimp WASM + Live Prefabs', desc: 'Встроенный импорт .x, .fbx, .smd, .obj, .dae прямо в .glb, нарезка анимаций по таймлайну, слоты материалов и живые префабы с 3D-превью.' },
+        { cat: 'ai', tag: 'v2.1 All-in-One Navigation', title: 'NavGrid + A* и Off-Mesh Links', desc: 'Запекаемая навигационная сетка по террейну и коллайдерам, сглаживание пути, динамические препятствия, Nav Agent (NPC) и связи для лестниц/дверей.' },
         { cat: 'ai', tag: 'Rapier3D', title: '3D-физика, RaycastHit и Твины', desc: 'Полная физика Rapier3D (импульсы, силы, триггеры, character controller, raycastHit с нормалью) и Godot-style createTween() для плавных анимаций.' },
         { cat: 'ui', tag: 'HTML / Touch', title: 'HTML/CSS HUD + Тач-контроллеры', desc: 'Монтирование любых HTML-виджетов (api.ui.mount), 3D→2D проекция worldToScreen, виртуальные джойстики/кнопки и эмуляция мышь ↔ тач как в Godot.' },
       ];
@@ -895,27 +901,27 @@
         fog: {
           title: '1. Volumetric Fog & Dynamic Lights (LittleJS 3D)',
           hint: 'Перетаскивай для вращения. Меняй плотность тумана, силу свечения (glow) и палитру огней.',
-          code: `// Miniforge v0.7 — Volumetric Fog Glow (LittleJS Light3D)\napi.environment.setFog(0.055, '#111924');\napi.lights.setGlow('lantern_amber', 2.0, 1.2);\napi.lights.setGlow('beacon_cyan', 1.6, 1.4);\napi.lights.setShadowLight('spot_main');`,
+          code: `// Miniforge v2.1 All-in-One — Volumetric Fog Glow (LittleJS Light3D)\napi.environment.setFog(0.055, '#111924');\napi.lights.setGlow('lantern_amber', 2.0, 1.2);\napi.lights.setGlow('beacon_cyan', 1.6, 1.4);\napi.lights.setShadowLight('spot_main');`,
         },
         particles: {
           title: '2. 3D Particle Editor Live',
           hint: 'Выбирай пресеты (Steam, Fire, Sparks, Snow, Rain, Dust), крути Rate/Gravity и жми Burst!',
-          code: `// Miniforge v0.7 — 3D Particle System\napi.particles.play('chimney_steam');\napi.particles.setRate('chimney_steam', 45);\napi.particles.setColors('chimney_steam', '#ffd875', '#ff4411');\napi.particles.burst('chimney_steam', 40);`,
+          code: `// Miniforge v2.1 All-in-One — 3D Particle System\napi.particles.play('chimney_steam');\napi.particles.setRate('chimney_steam', 45);\napi.particles.setColors('chimney_steam', '#ffd875', '#ff4411');\napi.particles.burst('chimney_steam', 40);`,
         },
         terrain: {
           title: '3. Interactive Viewport Terrain & Multi-Material Splat',
           hint: 'ЛКМ по террейну — лепить или красить выбранным материалом! ПКМ — вращать камеру.',
-          code: `// Miniforge v0.7 — Multi-Material Terrain\n// В редакторе: выдели Terrain -> Terrain Brush: ON\n// + Add Layer в Inspector для неограниченных материалов\n// Ползунок Hard <-> Soft управляет мягкостью границы каждого слоя`,
+          code: `// Miniforge v2.1 All-in-One — Multi-Material Terrain\n// В редакторе: выдели Terrain -> Terrain Brush: ON\n// + Add Layer в Inspector для неограниченных материалов\n// Ползунок Hard <-> Soft управляет мягкостью границы каждого слоя`,
         },
         nav: {
           title: '4. NavGrid A* Pathfinding & Animated NPC',
           hint: 'Кликни ЛКМ по полу двора — NPC построит сглаженный A*-маршрут и пойдёт к цели!',
-          code: `// Miniforge v0.7 — NavGrid + A* + glTF Crossfade\napi.nav.setObstacle([0, 0, 0], 1.5, gateClosed);\napi.nav.moveAgent('npc_worker', targetPos, {\n  speed: 3.4, walkClip: 'Walk', idleClip: 'Idle', crossfade: 0.25\n});`,
+          code: `// Miniforge v2.1 All-in-One — NavGrid + A* + glTF Crossfade\napi.nav.setObstacle([0, 0, 0], 1.5, gateClosed);\napi.nav.moveAgent('npc_worker', targetPos, {\n  speed: 3.4, walkClip: 'Walk', idleClip: 'Idle', crossfade: 0.25\n});`,
         },
         water: {
           title: '5. Animated Water, Reflections & Emissive Bake',
           hint: 'Волны на вершинном меше воды, отражающие сферы и неоновые emissive-колонны.',
-          code: `// Miniforge v0.7 — Water + Cubemap Reflections + Emissive Bake\napi.graphics.setReflections('realtime', 128, 4);\napi.graphics.bakeLighting(); // учитывает emissive-объекты!\napi.materials.setEmissive('neon_pillar', '#58d8ff', 1.8);`,
+          code: `// Miniforge v2.1 All-in-One — Water + Cubemap Reflections + Emissive Bake\napi.graphics.setReflections('realtime', 128, 4);\napi.graphics.bakeLighting(); // учитывает emissive-объекты!\napi.materials.setEmissive('neon_pillar', '#58d8ff', 1.8);`,
         },
       };
 

@@ -8,6 +8,10 @@ import type { AudioBus, AudioPlayOptions } from './audio'
 import type { Tween } from './tween'
 import type { SaveSnapshot, SaveOptions, LoadOptions } from './saveSystem'
 import type { TouchAPI, TouchPointerState, TouchEmulationOptions } from './touch'
+import type { DialogueAPI } from './dialogue'
+import type { SequencerAPI } from './sequencer'
+export type { DialogueAPI } from './dialogue'
+export type { SequencerAPI } from './sequencer'
 export type { TouchAPI, TouchPointerState, TouchEmulationOptions } from './touch'
 
 export type { Tween, PropertyTweener, TweenTrans, TweenEase } from './tween'
@@ -397,6 +401,9 @@ export interface GameAPI {
     stopAll(): void
     setVolume(handle: string, volume: number, fadeSeconds?: number): void
     setPitch(handle: string, pitch: number): void
+    setSemitones(handle: string, semitones: number): void
+    setSpeed(handle: string, speed: number): void
+    setLowpass(handle: string, frequencyHz: number): void
     setPosition(handle: string, position: Vec3): void
     setBusVolume(bus: AudioBus, volume: number): void
   }
@@ -416,6 +423,10 @@ export interface GameAPI {
     /** Remove a previously mounted custom widget. */
     unmount(id: string): void
   }
+  /** Branching NPC Dialogue & Quest state manager. */
+  dialogue: DialogueAPI
+  /** Keyframe Cutscene & Timeline Sequencer player. */
+  sequencer: SequencerAPI
   /** Scene switching. */
   scene: { load(id: string): void }
   /** Physics raycasting and rigid-body force/impulse/gravity controls. */

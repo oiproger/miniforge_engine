@@ -16,6 +16,7 @@ interface ActiveVoice {
   id: string
   gain: GainNode
   panner?: PannerNode
+  filter?: BiquadFilterNode
   source?: AudioBufferSourceNode
   element?: HTMLAudioElement
   stopped: boolean
@@ -204,6 +205,33 @@ export class AudioEngine {
     else voice.gain.gain.setTargetAtTime(v, this.ctx.currentTime, fadeSeconds)
   }
 
+  setSemitones(handle: string, semitones: number) {
+    this.setPitch(handle, Math.pow(2, (Number(semitones) || 0) / 12))
+  }
+
+  setSpeed(handle: string, speed: number) {
+    this.setPitch(handle, Math.max(0.1, Number(speed) || 1))
+  }
+
+  setLowpass(handle: string, frequencyHz: number) {
+    const voice = this.voices.get(handle)
+    if (!voice || !this.ctx) return
+    const freq = Math.max(80, Math.min(20000, Number(frequencyHz) || 20000))
+    if (!voice.filter && voice.source) {
+      const f = this.ctx.createBiquadFilter()
+      f.type = 'lowpass'
+      f.frequency.setValueAtTime(freq, this.ctx.currentTime)
+      try {
+        voice.source.disconnect()
+        voice.source.connect(f)
+        f.connect(voice.panner ?? voice.gain)
+        voice.filter = f
+      } catch {}
+    } else if (voice.filter) {
+      voice.filter.frequency.setValueAtTime(freq, this.ctx.currentTime)
+    }
+  }
+
   setPitch(handle: string, pitch: number) {
     const voice = this.voices.get(handle)
     if (!voice?.source || !this.ctx) return
@@ -230,6 +258,7 @@ export class AudioEngine {
       /* already stopped */
     }
     voice.source?.disconnect()
+    voice.filter?.disconnect()
     voice.panner?.disconnect()
     voice.gain?.disconnect()
     if (voice.element) {

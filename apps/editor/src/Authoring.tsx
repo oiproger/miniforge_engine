@@ -1,3 +1,11 @@
+import { makeDefaultPlugin } from '../../../packages/project-schema/src'
+import { PluginEditor } from './PluginManager'
+import { makeDefaultDialogueGraph, makeDefaultSequence } from '../../../packages/project-schema/src'
+import { MeshBuilder, defaultMeshBuilderRecipe, buildRecipeToGlbDataUrl } from './MeshBuilder'
+import { PaintEditor } from './PaintEditor'
+import { SoundSynth } from './SoundSynth'
+import { DialogueEditor } from './DialogueEditor'
+import { SequencerEditor } from './SequencerEditor'
 import { makeDefaultEventGraph } from '../../../packages/project-schema/src'
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
@@ -1205,6 +1213,57 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                       data: JSON.stringify(makeDefaultEventGraph()),
                       properties: {},
                     }
+                  : type === 'mesh'
+                    ? (() => {
+                        const recipe = defaultMeshBuilderRecipe()
+                        return {
+                          id,
+                          name: 'Low-Poly Mesh.glb',
+                          type: 'model' as const,
+                          data: buildRecipeToGlbDataUrl(recipe),
+                          properties: { meshBuilder: recipe },
+                        }
+                      })()
+                    : type === 'paint'
+                      ? {
+                          id,
+                          name: 'Painted Texture.png',
+                          type: 'texture' as const,
+                          data: '',
+                          properties: { paintEditor: true },
+                        }
+                      : type === 'sound'
+                        ? {
+                            id,
+                            name: 'Synth Sound.wav',
+                            type: 'audio' as const,
+                            data: '',
+                            properties: { synth: true },
+                          }
+                        : type === 'dialogue'
+                          ? {
+                              id,
+                              name: 'NPC Dialogue',
+                              type: 'dialogue' as const,
+                              data: JSON.stringify(makeDefaultDialogueGraph()),
+                              properties: {},
+                            }
+                          : type === 'sequence'
+                            ? {
+                                id,
+                                name: 'Cutscene Sequence',
+                                type: 'sequence' as const,
+                                data: JSON.stringify(makeDefaultSequence()),
+                                properties: {},
+                              }
+                            : type === 'plugin'
+                              ? {
+                                  id,
+                                  name: 'My Custom Plugin',
+                                  type: 'plugin' as const,
+                                  data: JSON.stringify(makeDefaultPlugin('My Custom Plugin'), null, 2),
+                                  properties: {},
+                                }
                 : {
             id,
             type: type === 'shader' ? 'shader' : 'script',
@@ -1272,6 +1331,16 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                     ? 'Prefab Editor'
                   : a?.type === 'graph'
                     ? 'Event Graph Editor (Blueprint)'
+                  : a?.type === 'dialogue'
+                    ? 'Dialogue & Quest Graph Editor'
+                  : a?.type === 'sequence'
+                    ? 'Keyframe Sequencer'
+                  : a?.type === 'plugin'
+                    ? 'Plugin Editor & Examples'
+                  : a?.type === 'audio'
+                    ? 'Sound / SFX / Music Synth'
+                  : a?.type === 'model' && a.properties?.meshBuilder
+                    ? 'Low-Poly CSG Mesh Builder'
             : a?.type === 'shader'
               ? 'Shader editor'
               : a?.type === 'script'
@@ -1309,7 +1378,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
       }}
     >
       <div
-        className={(activeTarget === 'ui' || a?.type === 'graph') ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
+        className={(activeTarget === 'ui' || a?.type === 'graph' || a?.type === 'dialogue' || a?.type === 'sequence' || a?.type === 'plugin' || (a?.type === 'model' && Boolean(a.properties?.meshBuilder))) ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' || a?.type === 'audio' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={name}
@@ -1396,7 +1465,9 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                 </Suspense>
               )}
               {a.type === 'texture' && (
-                a.properties?.procedural ? (
+                a.properties?.paintEditor ? (
+                  <PaintEditor a={a} changeA={changeA} />
+                ) : a.properties?.procedural ? (
                   <TextureGenerator a={a} changeA={changeA} edit={edit} />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1415,23 +1486,41 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                     >
                       Convert to Procedural Texture Generator
                     </button>
+                    <button
+                      type="button"
+                      className="mf-btn"
+                      onClick={() =>
+                        changeA((asset) => {
+                          asset.properties = { ...(asset.properties || {}), paintEditor: true }
+                        })
+                      }
+                    >
+                      Open in 2D Paint Editor
+                    </button>
                   </div>
                 )
               )}
-              {a.type === 'audio' && <audio controls src={a.data} />}
+              {a.type === 'audio' && <SoundSynth a={a} changeA={changeA} />}
               {a.type === 'prefab' && <PrefabEditor a={a} p={p} changeA={changeA} edit={edit} />}
-              {a.type === 'graph' && <EventGraphEditor a={a} changeA={changeA} />}
+              {a.type === 'graph' && <EventGraphEditor a={a} p={p} changeA={changeA} />}
+              {a.type === 'dialogue' && <DialogueEditor a={a} changeA={changeA} />}
+              {a.type === 'sequence' && <SequencerEditor a={a} p={p} changeA={changeA} />}
+              {a.type === 'plugin' && <PluginEditor a={a} p={p} changeA={changeA} edit={edit} />}
               {a.type === 'json' && (
                 <pre className="mf-readonly">{JSON.stringify(JSON.parse(a.data || '{}'), null, 2)}</pre>
               )}
               {a.type === 'model' && (
-                <ModelEditor
-                  a={a}
-                  p={p}
-                  changeA={changeA}
-                  edit={edit}
-                  onDownload={() => void downloadAssetFile(a)}
-                />
+                a.properties?.meshBuilder ? (
+                  <MeshBuilder a={a} p={p} changeA={changeA} />
+                ) : (
+                  <ModelEditor
+                    a={a}
+                    p={p}
+                    changeA={changeA}
+                    edit={edit}
+                    onDownload={() => void downloadAssetFile(a)}
+                  />
+                )
               )}
             </>
           )}

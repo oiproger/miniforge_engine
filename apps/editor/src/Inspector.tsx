@@ -60,6 +60,7 @@ import './authoring.css'
 
 import { behaviorDefaults, eventNames } from '../../../packages/behaviors/src/catalog'
 import { RuleFields } from './RuleFields'
+import { SceneEntityPickerButton } from './SceneEntityPicker'
 export { behaviorDefaults }
 interface ComponentMeta {
   type: string

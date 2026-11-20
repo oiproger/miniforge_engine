@@ -25,7 +25,9 @@ import {
   type GraphNode,
   type GraphVariable,
   type PinType,
+  type Project,
 } from '../../../packages/project-schema/src'
+import { SceneEntityPickerButton } from './SceneEntityPicker'
 
 const VAR_TYPES: Exclude<PinType, 'exec'>[] = ['number', 'boolean', 'string', 'vec3', 'entity', 'any']
 
@@ -49,9 +51,11 @@ function bezierPath(x1: number, y1: number, x2: number, y2: number) {
 
 export function EventGraphEditor({
   a,
+  p,
   changeA,
 }: {
   a: Asset
+  p?: Project
   changeA: (fn: (asset: Asset) => void) => void
 }) {
   const graph: EventGraphData = useMemo(() => parseEventGraph(a.data), [a.data])
@@ -815,18 +819,27 @@ export function EventGraphEditor({
                                       onChange={(e) => updateNodeInput(node.id, inp.id, e.target.checked)}
                                     />
                                   ) : (
-                                    <input
-                                      className="mf-bp-inline-val"
-                                      value={Array.isArray(inpVal) ? inpVal.join(',') : String(inpVal ?? '')}
-                                      onChange={(e) => {
-                                        const raw = e.target.value
-                                        if (inp.type === 'number') updateNodeInput(node.id, inp.id, Number(raw))
-                                        else if (inp.type === 'vec3') {
-                                          const arr = raw.split(',').map((s) => Number(s.trim()) || 0)
-                                          updateNodeInput(node.id, inp.id, [arr[0] ?? 0, arr[1] ?? 0, arr[2] ?? 0])
-                                        } else updateNodeInput(node.id, inp.id, raw)
-                                      }}
-                                    />
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                      <input
+                                        className="mf-bp-inline-val"
+                                        value={Array.isArray(inpVal) ? inpVal.join(',') : String(inpVal ?? '')}
+                                        onChange={(e) => {
+                                          const raw = e.target.value
+                                          if (inp.type === 'number') updateNodeInput(node.id, inp.id, Number(raw))
+                                          else if (inp.type === 'vec3') {
+                                            const arr = raw.split(',').map((s) => Number(s.trim()) || 0)
+                                            updateNodeInput(node.id, inp.id, [arr[0] ?? 0, arr[1] ?? 0, arr[2] ?? 0])
+                                          } else updateNodeInput(node.id, inp.id, raw)
+                                        }}
+                                      />
+                                      {inp.type === 'entity' && p && (
+                                        <SceneEntityPickerButton
+                                          project={p}
+                                          value={String(inpVal ?? '')}
+                                          onPick={(id) => updateNodeInput(node.id, inp.id, id)}
+                                        />
+                                      )}
+                                    </span>
                                   )
                                 )}
                               </>

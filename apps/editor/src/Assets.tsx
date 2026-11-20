@@ -42,6 +42,9 @@ export default function Assets({
     Skyboxes: ['skybox'],
     Scripts: ['script'],
     'Event Graphs': ['graph'],
+    Dialogues: ['dialogue'],
+    Sequences: ['sequence'],
+    Plugins: ['plugin'],
     Models: ['model'],
     Media: ['audio', 'json', 'text'],
   }
@@ -126,6 +129,12 @@ export default function Assets({
                               ? editAsset('new-prefab')
                               : folder === 'Event Graphs'
                                 ? editAsset('new-graph')
+                                : folder === 'Dialogues'
+                                  ? editAsset('new-dialogue')
+                                  : folder === 'Sequences'
+                                    ? editAsset('new-sequence')
+                                    : folder === 'Plugins'
+                                      ? editAsset('new-plugin')
                         : importFiles()
                 }
               >
