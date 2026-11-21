@@ -6,8 +6,8 @@ A lightweight (~15 MB desktop build), browser-based 3D game engine and all-in-on
 
 Designed for solo indie developers, web portals, and game jams: model low-poly assets, paint 2D/3D materials, synthesize SFX/music, wire gameplay with visual Blueprints, write dialogues/cutscenes, and export playable Web or Desktop builds without leaving the editor.
 
-- **Live Web Editor:** `https://oiproger.github.io/miniforge-engine/editor/`
-- **Interactive Documentation (v2.6.7):** `https://oiproger.github.io/miniforge-engine/docs/`
+- **Live Web Editor:** `https://oiproger.github.io/miniforge_engine/editor/`
+- **Interactive Documentation (v2.6.7):** `https://oiproger.github.io/miniforge_engine/docs/`
 
 ## Built-in Tools
 

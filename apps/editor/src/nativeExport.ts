@@ -59,7 +59,7 @@ async function resolveTemplateBinary(
   localBinary?: Uint8Array,
 ): Promise<Uint8Array | null> {
   if (localBinary && localBinary.byteLength > 1024) return localBinary
-  const base = (cfg.templateBaseUrl || 'https://github.com/oiproger/miniforge-engine/releases/latest/download/').replace(/\/+$/, '')
+  const base = (cfg.templateBaseUrl || 'https://github.com/oiproger/miniforge_engine/releases/latest/download/').replace(/\/+$/, '')
   const fileName =
     platform === 'windows'
       ? 'miniforge-player-windows.exe'
@@ -189,7 +189,7 @@ export async function desktopSources(
   const templateNote =
     cfg.desktopMode === 'template'
       ? '\nNOTE: Prebuilt Export Template binary was not found at ' +
-        (cfg.templateBaseUrl || 'https://github.com/oiproger/miniforge-engine/releases/latest/download/') +
+        (cfg.templateBaseUrl || 'https://github.com/oiproger/miniforge_engine/releases/latest/download/') +
         ', so a full Tauri source project was generated instead. Upload a prebuilt player binary in Export Settings for 1-second instant executables.\n'
       : ''
 

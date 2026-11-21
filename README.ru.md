@@ -6,8 +6,8 @@
 
 Создан для инди-разработчиков, веб-порталов и геймджемов: моделируйте low-poly ассеты, красьте 2D/3D-материалы, синтезируйте звуки и музыку, собирайте логику нодами (Blueprints), делайте диалоги и катсцены и экспортируйте игры под Web или Desktop, не покидая редактор.
 
-- **Запустить редактор в браузере:** `https://oiproger.github.io/miniforge-engine/editor/`
-- **Полная документация (v2.6.7):** `https://oiproger.github.io/miniforge-engine/docs/`
+- **Запустить редактор в браузере:** `https://oiproger.github.io/miniforge_engine/editor/`
+- **Полная документация (v2.6.7):** `https://oiproger.github.io/miniforge_engine/docs/`
 
 ## Что внутри
 
