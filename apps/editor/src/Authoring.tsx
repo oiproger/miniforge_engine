@@ -1,3 +1,4 @@
+import { captureProjectThumbnail } from './ProjectHub'
 import { makeDefaultPlugin } from '../../../packages/project-schema/src'
 import { PluginEditor } from './PluginManager'
 import { makeDefaultDialogueGraph, makeDefaultSequence } from '../../../packages/project-schema/src'
@@ -165,6 +166,67 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
         <div className="mf-form-grid">
           <Field label="Name">
             <input value={p.name} onChange={(e) => edit((n) => (n.name = e.target.value))} />
+          </Field>
+          <Field label="Description">
+            <textarea
+              rows={2}
+              placeholder="Short description shown in Project Hub..."
+              value={p.description || ''}
+              onChange={(e) => edit((n) => (n.description = e.target.value))}
+              style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: 12 }}
+            />
+          </Field>
+          <Field label="Project image (Thumbnail)">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {p.thumbnail ? (
+                <img
+                  src={p.thumbnail}
+                  alt="Project thumbnail"
+                  style={{ width: 220, height: 124, objectFit: 'cover', borderRadius: 6, border: '1px solid #30363d' }}
+                />
+              ) : (
+                <div style={{ width: 220, height: 76, borderRadius: 6, border: '1px dashed #30363d', display: 'grid', placeItems: 'center', fontSize: 11, color: '#8b9bb0' }}>
+                  Auto-generated from 3D scene
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <label className="mf-btn" style={{ fontSize: 11, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = () => edit((n) => (n.thumbnail = String(reader.result || '')))
+                      reader.readAsDataURL(file)
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="mf-btn"
+                  style={{ fontSize: 11 }}
+                  onClick={() => {
+                    void captureProjectThumbnail(p).then((url) => edit((n) => (n.thumbnail = url)))
+                  }}
+                >
+                  Capture 3D Screenshot
+                </button>
+                {p.thumbnail && (
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    style={{ fontSize: 11 }}
+                    onClick={() => edit((n) => { delete n.thumbnail })}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
           </Field>
           <Field label="Game duration (s)">
             <Numeric

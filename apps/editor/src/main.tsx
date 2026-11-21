@@ -1,3 +1,4 @@
+import { ProjectHub } from './ProjectHub'
 import { collectEditorPluginActions } from './editorPlugins'
 import React, { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -160,6 +161,8 @@ function App() {
   const [p, setP] = useState<Project>(() => createTemplate('coin-rush')),
     [selection, sel] = useState<string[]>(['player']),
     [ready, setReady] = useState(false),
+    [hasSessionProject, setHasSessionProject] = useState(false),
+    [showHub, setShowHub] = useState(false),
     [saved, setSaved] = useState('Loading')
   const [history, setHistory] = useState<Project[]>([]),
     [future, setFuture] = useState<Project[]>([])
@@ -242,6 +245,8 @@ function App() {
     setHistory([])
     setFuture([])
     select(getScene(next).entities.find((e) => e.id === 'player')?.id ?? null)
+    setHasSessionProject(true)
+    setShowHub(false)
     modal('')
   }
   function undo() {
@@ -261,13 +266,24 @@ function App() {
   useEffect(() => {
     restore()
       .then((stored) => {
-        if (stored) replace(stored)
+        if (stored) {
+          replace(stored)
+          setHasSessionProject(true)
+          setShowHub(false)
+        } else {
+          setHasSessionProject(false)
+          setShowHub(true)
+          setSaved('Not saved')
+        }
       })
-      .catch((e) => note(String(e)))
+      .catch((e) => {
+        note(String(e))
+        setShowHub(true)
+      })
       .finally(() => setReady(true))
   }, [])
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !hasSessionProject) return
     let current = true
     setSaved('Saving')
     const id = setTimeout(
@@ -919,6 +935,26 @@ function App() {
         </nav>
         <i className="separator" />
         <div className="project-breadcrumb">
+          <button
+            type="button"
+            title="Return to Project Hub (Create / Open / Examples)"
+            onClick={() => { setPreview(null); setShowHub(true) }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '3px 8px',
+              marginRight: 6,
+              borderRadius: 5,
+              border: '1px solid rgba(255,255,255,0.14)',
+              background: 'rgba(255,255,255,0.05)',
+              color: '#cbd5e1',
+              fontSize: 11.5,
+              cursor: 'pointer',
+            }}
+          >
+            <FolderOpen size={12} /> Projects
+          </button>
           <span className="project-glyph">
             <Boxes size={14} />
           </span>
@@ -1456,6 +1492,40 @@ function App() {
             <X />
           </button>
         </div>
+      )}
+      {showHub && (
+        <ProjectHub
+          currentProject={hasSessionProject ? p : null}
+          canResume={hasSessionProject}
+          onResume={() => setShowHub(false)}
+          onCreateBlank={(name, description) => {
+            const np = freshTemplate('empty')
+            if (name) np.name = name
+            if (description) np.description = description
+            clearLinkedDiskPath()
+            replace(np)
+            note('Created new project: ' + np.name)
+          }}
+          onOpenExample={(exProj) => {
+            clearLinkedDiskPath()
+            replace(exProj)
+            note('Opened example: ' + exProj.name)
+          }}
+          onOpenFromFile={() => {
+            if (canSaveToDisk()) {
+              void openProjectFromDisk()
+                .then((res) => {
+                  if (res) {
+                    replace(res.project)
+                    note('Opened from disk: ' + res.label)
+                  }
+                })
+                .catch((e) => note(String(e)))
+            } else {
+              fileInput.current?.click()
+            }
+          }}
+        />
       )}
     </div>
   )

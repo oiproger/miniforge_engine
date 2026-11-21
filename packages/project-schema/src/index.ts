@@ -80,6 +80,8 @@ export interface Project {
   version: 1
   id: string
   name: string
+  description?: string
+  thumbnail?: string
   activeScene: string
   scenes: Scene[]
   assets: Asset[]

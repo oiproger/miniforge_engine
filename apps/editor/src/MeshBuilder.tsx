@@ -4,7 +4,6 @@ import {
   Trash2,
   Paintbrush,
   Orbit,
-  Grid,
   Save,
   Layers,
   RotateCcw,
@@ -14,6 +13,7 @@ import {
   Minimize2,
   FlipHorizontal2,
   Sparkles,
+  Move,
 } from 'lucide-react'
 import { createWorld, type RenderWorld } from '../../../packages/graphics/src'
 import { Vector3 } from '../../../packages/graphics/src/scene'
@@ -29,6 +29,7 @@ import { Field, Numeric, Color } from './Fields'
 export type CsgShapeKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'wedge' | 'stairs'
 export type CsgOp = 'union' | 'subtract'
 export type UvMode = 'box' | 'planar' | 'cylindrical'
+export type MaterialPattern = 'concrete' | 'wood' | 'rust' | 'brick' | 'moss' | 'solid'
 
 export interface MeshBuilderNode {
   id: string
@@ -46,6 +47,7 @@ export interface MeshBuilderSlot {
   color: string
   roughness: number
   metalness: number
+  pattern?: MaterialPattern
   materialId?: string
 }
 
@@ -74,10 +76,10 @@ export function defaultMeshBuilderRecipe(): MeshBuilderRecipe {
       { id: 'mb-2', name: 'Roof / Top', shape: 'cone', op: 'union', pos: [0, 1.45, 0], rot: [0, 45, 0], scale: [1.7, 0.9, 1.7], slot: 1 },
     ],
     slots: [
-      { name: 'Concrete', color: '#9aa4ad', roughness: 0.88, metalness: 0.05 },
-      { name: 'Roof Rust', color: '#8f4a36', roughness: 0.78, metalness: 0.15 },
-      { name: 'Accent Wood', color: '#8c6642', roughness: 0.82, metalness: 0 },
-      { name: 'Glass / Trim', color: '#4f7a96', roughness: 0.25, metalness: 0.4 },
+      { name: 'Concrete', color: '#9aa4ad', roughness: 0.88, metalness: 0.05, pattern: 'concrete' },
+      { name: 'Roof Rust', color: '#8f4a36', roughness: 0.78, metalness: 0.15, pattern: 'rust' },
+      { name: 'Accent Wood', color: '#8c6642', roughness: 0.82, metalness: 0, pattern: 'wood' },
+      { name: 'Brick / Trim', color: '#8f5b4a', roughness: 0.85, metalness: 0.05, pattern: 'brick' },
     ],
     uvMode: 'box',
     uvScale: 1,
@@ -236,7 +238,6 @@ function applyMeshEditOps(tris: Tri[], ops: MeshEditOp[]): Tri[] {
       ]
       const e0 = shift(t.v0), e1 = shift(t.v1), e2 = shift(t.v2)
       const sl = op.slot ?? t.slot
-      // Replace cap with extruded cap + 3 side quads (6 triangles)
       out[op.faceIndex] = makeTri(e0, e1, e2, sl)
       out.push(
         makeTri(t.v0, t.v1, e1, sl), makeTri(t.v0, e1, e0, sl),
@@ -364,6 +365,15 @@ function hexToRgbLinear(hex: string): [number, number, number, number] {
   return [toLin(r), toLin(g), toLin(b), 1]
 }
 
+function hexToRgb255(hex: string): [number, number, number] {
+  const clean = (hex || '#ffffff').replace('#', '')
+  return [
+    parseInt(clean.slice(0, 2) || 'ff', 16),
+    parseInt(clean.slice(2, 4) || 'ff', 16),
+    parseInt(clean.slice(4, 6) || 'ff', 16),
+  ]
+}
+
 function dataUrlToBytes(url: string): Uint8Array | null {
   const idx = url.indexOf(',')
   if (idx < 0) return null
@@ -371,6 +381,82 @@ function dataUrlToBytes(url: string): Uint8Array | null {
   const arr = new Uint8Array(bin.length)
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
   return arr
+}
+
+/** Generate a 128x128 tileable procedural material pattern canvas for rich 3D material brush painting */
+function buildProceduralMaterialTile(colorHex: string, pattern: MaterialPattern): HTMLCanvasElement {
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const ctx = c.getContext('2d')!
+  const [r, g, b] = hexToRgb255(colorHex)
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
+  const rgba = (dr: number, dg: number, db: number, a = 1) =>
+    `rgba(${clamp(r + dr)},${clamp(g + dg)},${clamp(b + db)},${a})`
+
+  ctx.fillStyle = colorHex
+  ctx.fillRect(0, 0, size, size)
+
+  // Deterministic pseudo-random helper
+  let seed = (r * 73856093) ^ (g * 19349663) ^ (b * 83492791) ^ pattern.length
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0
+    return seed / 4294967296
+  }
+
+  if (pattern === 'concrete') {
+    for (let i = 0; i < 650; i++) {
+      const d = (rand() - 0.5) * 46
+      ctx.fillStyle = rgba(d, d, d, 0.35 + rand() * 0.35)
+      const s = 1 + rand() * 3.5
+      ctx.fillRect(rand() * size, rand() * size, s, s)
+    }
+    ctx.strokeStyle = rgba(-35, -35, -35, 0.25)
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(0, 64); ctx.lineTo(size, 64)
+    ctx.stroke()
+  } else if (pattern === 'wood') {
+    for (let y = 0; y < size; y += 2) {
+      const wave = Math.sin(y * 0.22) * 18 + (rand() - 0.5) * 14
+      ctx.fillStyle = rgba(wave, wave * 0.85, wave * 0.6, 0.45)
+      ctx.fillRect(0, y, size, 2)
+    }
+    ctx.strokeStyle = rgba(-45, -38, -28, 0.55)
+    ctx.lineWidth = 1.5
+    for (const py of [32, 64, 96]) {
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(size, py); ctx.stroke()
+    }
+  } else if (pattern === 'rust') {
+    for (let i = 0; i < 180; i++) {
+      const x = rand() * size, y = rand() * size, rad = 3 + rand() * 11
+      const warm = rand() > 0.45
+      ctx.fillStyle = warm ? rgba(38, -8, -24, 0.32) : rgba(-32, -26, -22, 0.34)
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill()
+    }
+  } else if (pattern === 'brick') {
+    const bh = 16, bw = 32
+    ctx.fillStyle = rgba(-42, -40, -38, 0.7)
+    ctx.fillRect(0, 0, size, size)
+    for (let row = 0; row < size / bh; row++) {
+      const off = (row % 2) * (bw / 2)
+      for (let col = -1; col <= size / bw; col++) {
+        const shade = (rand() - 0.5) * 28
+        ctx.fillStyle = rgba(shade, shade * 0.7, shade * 0.5, 1)
+        ctx.fillRect(col * bw + off + 1.5, row * bh + 1.5, bw - 3, bh - 3)
+      }
+    }
+  } else if (pattern === 'moss') {
+    for (let i = 0; i < 420; i++) {
+      const d = (rand() - 0.45) * 44
+      ctx.fillStyle = rgba(d * 0.5, d + 12, d * 0.4, 0.45)
+      ctx.beginPath()
+      ctx.arc(rand() * size, rand() * size, 1.5 + rand() * 4.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  return c
 }
 
 /** Encode built multi-material triangles + optional painted 512x512 PNG texture directly into binary .glb */
@@ -469,7 +555,7 @@ export function buildRecipeToGlbDataUrl(recipe: MeshBuilderRecipe): string {
   const materials = recipe.slots.map((s) => ({
     name: s.name,
     pbrMetallicRoughness: {
-      baseColorFactor: hexToRgbLinear(s.color),
+      baseColorFactor: paintTexIndex !== undefined ? [1, 1, 1, 1] : hexToRgbLinear(s.color),
       ...(paintTexIndex !== undefined ? { baseColorTexture: { index: paintTexIndex } } : {}),
       roughnessFactor: s.roughness,
       metallicFactor: s.metalness,
@@ -477,7 +563,7 @@ export function buildRecipeToGlbDataUrl(recipe: MeshBuilderRecipe): string {
   }))
 
   const gltf: any = {
-    asset: { version: '2.0', generator: 'Miniforge Mesh Builder v2.1' },
+    asset: { version: '2.0', generator: 'Miniforge Mesh Builder v2.3' },
     scene: 0,
     scenes: [{ nodes: [0] }],
     nodes: [{ name: 'LowPolyMesh', mesh: 0 }],
@@ -535,14 +621,17 @@ export function MeshBuilder({
 
   const [selectedNodeId, setSelectedNodeId] = useState<string>(recipe.nodes[0]?.id ?? '')
   const [toolMode, setToolMode] = useState<'orbit' | 'face' | 'paint'>('orbit')
+  const [faceDragTool, setFaceDragTool] = useState<'extrude' | 'inset' | 'select'>('extrude')
   const [selectedFace, setSelectedFace] = useState<number | null>(null)
   const [extrudeDist, setExtrudeDist] = useState(0.35)
   const [insetAmt, setInsetAmt] = useState(0.25)
+  const [dragHud, setDragHud] = useState<string>('')
 
-  // 3D Texture Brush state
+  // 3D Material / Texture Brush state
+  const [paintMode, setPaintMode] = useState<'material' | 'color' | 'faceSlot'>('material')
   const [brushColor, setBrushColor] = useState('#d96b38')
-  const [brushPx, setBrushPx] = useState(22)
-  const [brushOpacity, setBrushOpacity] = useState(0.85)
+  const [brushPx, setBrushPx] = useState(24)
+  const [brushOpacity, setBrushOpacity] = useState(0.92)
   const [brushSlot, setBrushSlot] = useState(0)
   const [savedMsg, setSavedMsg] = useState('')
 
@@ -551,6 +640,47 @@ export function MeshBuilder({
   const orbitRef = useRef({ yaw: 0.65, pitch: 0.42, dist: 4.8, dragging: false, lx: 0, ly: 0 })
   const texCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const paintDirtyRef = useRef(false)
+  const lastPaintUvRef = useRef<[number, number] | null>(null)
+  const skipNextWorldReloadRef = useRef(false)
+  const loadedMatTexMapRef = useRef<Map<string, HTMLImageElement>>(new Map())
+
+  // Interactive mouse-drag face modeling state
+  const faceDragRef = useRef<{
+    active: boolean
+    kind: 'extrude' | 'inset'
+    faceIndex: number
+    startX: number
+    startY: number
+    amount: number
+    lastPreviewMs: number
+  } | null>(null)
+
+  const matAssets = useMemo(() => p.assets.filter((x) => x.type === 'material'), [p.assets])
+  const texAssets = useMemo(() => p.assets.filter((x) => x.type === 'texture'), [p.assets])
+
+  // Preload project material textures so Material Brush can stamp real textures synchronously at 60fps
+  useEffect(() => {
+    for (const m of matAssets) {
+      const mapId = m.properties?.map
+      const texAsset = mapId ? texAssets.find((t) => t.id === mapId) : null
+      const src = texAsset?.data || (typeof mapId === 'string' && mapId.startsWith('data:') ? mapId : '')
+      if (src && !loadedMatTexMapRef.current.has(m.id)) {
+        const img = new Image()
+        img.src = src
+        loadedMatTexMapRef.current.set(m.id, img)
+      }
+    }
+  }, [matAssets, texAssets])
+
+  // Cache procedural material pattern tile for the active brushSlot
+  const activeSlot = recipe.slots[brushSlot] ?? recipe.slots[0]
+  const activeMaterialTile = useMemo(() => {
+    if (!activeSlot) return null
+    const linkedMat = activeSlot.materialId ? matAssets.find((m) => m.id === activeSlot.materialId) : null
+    const col = linkedMat?.properties?.color || activeSlot.color || '#9aa4ad'
+    const pat: MaterialPattern = activeSlot.pattern || 'concrete'
+    return buildProceduralMaterialTile(col, pat)
+  }, [activeSlot?.color, activeSlot?.pattern, activeSlot?.materialId, matAssets])
 
   // Initialize 512x512 offscreen UV texture canvas
   useEffect(() => {
@@ -558,19 +688,21 @@ export function MeshBuilder({
     c.width = 512
     c.height = 512
     const ctx = c.getContext('2d')!
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = recipe.slots[0]?.color || '#ffffff'
     ctx.fillRect(0, 0, 512, 512)
     texCanvasRef.current = c
     if (recipe.paintTexture) {
       const img = new Image()
       img.onload = () => {
+        ctx.clearRect(0, 0, 512, 512)
         ctx.drawImage(img, 0, 0, 512, 512)
+        worldRef.current?.setEntityLiveCanvasTexture('mb-preview', c)
       }
       img.src = recipe.paintTexture
     }
   }, [])
 
-  const commitRecipe = (fn: (r: MeshBuilderRecipe) => void) => {
+  const commitRecipe = (fn: (r: MeshBuilderRecipe) => void, skipReload = false) => {
     const next = structuredClone(recipe)
     fn(next)
     const glb = buildRecipeToGlbDataUrl(next)
@@ -578,6 +710,7 @@ export function MeshBuilder({
     next.slots.forEach((s, idx) => {
       if (s.materialId) partMaterials[String(idx)] = s.materialId
     })
+    if (skipReload) skipNextWorldReloadRef.current = true
     changeA((asset) => {
       asset.data = glb
       asset.properties = {
@@ -586,6 +719,25 @@ export function MeshBuilder({
         partMaterials,
       }
     })
+  }
+
+  // Fast non-React preview load for live mouse-drag Extrude/Inset
+  const loadPreviewRecipe = (previewRecipe: MeshBuilderRecipe) => {
+    const w = worldRef.current
+    if (!w) return
+    const glb = buildRecipeToGlbDataUrl(previewRecipe)
+    const tempAsset: Asset = { ...a, data: glb }
+    const sample = makeProject('Mesh Builder Preview')
+    sample.assets = p.assets.map((x) => (x.id === a.id ? tempAsset : x))
+    if (!sample.assets.some((x) => x.id === a.id)) sample.assets.push(tempAsset)
+    sample.scenes[0].environment.background = '#171d26'
+    sample.scenes[0].environment.ambient = 1.5
+    const ent = makeEntity('BuiltMesh')
+    ent.id = 'mb-preview'
+    ent.components = [{ type: 'mesh', shape: 'model', asset: a.id }]
+    sample.scenes[0].entities = [ent]
+    w.load(sample)
+    w.setGrid(true, -0.01)
   }
 
   const tris = useMemo(() => buildRecipeTriangles(recipe), [recipe])
@@ -636,6 +788,10 @@ export function MeshBuilder({
   }, [])
 
   useEffect(() => {
+    if (skipNextWorldReloadRef.current) {
+      skipNextWorldReloadRef.current = false
+      return
+    }
     const w = worldRef.current
     if (!w) return
     const sample = makeProject('Mesh Builder Preview')
@@ -706,11 +862,56 @@ export function MeshBuilder({
     return best
   }
 
-  // Paint brush stroke directly onto 512x512 UV texture at hit barycentric UV
-  const paintUvAtPointer = (clientX: number, clientY: number) => {
+  // Stamp single brush dab onto 512x512 canvas using either Material Pattern/Texture or Solid Color
+  const stampBrushDab = (ctx: CanvasRenderingContext2D, px: number, py: number) => {
+    ctx.save()
+    ctx.globalAlpha = brushOpacity
+    if (paintMode === 'material') {
+      // Soft circular clip so material texture stamps seamlessly with feathered edge
+      ctx.beginPath()
+      ctx.arc(px, py, brushPx, 0, Math.PI * 2)
+      ctx.clip()
+      const linkedImg = activeSlot?.materialId ? loadedMatTexMapRef.current.get(activeSlot.materialId) : undefined
+      const sourceTex = linkedImg && linkedImg.complete && linkedImg.naturalWidth > 0 ? linkedImg : activeMaterialTile
+      if (sourceTex) {
+        const pat = ctx.createPattern(sourceTex, 'repeat')
+        if (pat) {
+          ctx.fillStyle = pat
+          ctx.fillRect(px - brushPx, py - brushPx, brushPx * 2, brushPx * 2)
+        }
+      } else {
+        ctx.fillStyle = activeSlot?.color || brushColor
+        ctx.fillRect(px - brushPx, py - brushPx, brushPx * 2, brushPx * 2)
+      }
+    } else {
+      const grad = ctx.createRadialGradient(px, py, 0, px, py, brushPx)
+      grad.addColorStop(0, brushColor)
+      grad.addColorStop(0.65, brushColor)
+      grad.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = grad
+      ctx.beginPath()
+      ctx.arc(px, py, brushPx, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
+  }
+
+  // Instant 60 FPS GPU-direct 3D brush painting (zero 2-second lag!)
+  const paintUvAtPointer = (clientX: number, clientY: number, isStart = false) => {
     const hit = raycastMesh(clientX, clientY)
+    if (!hit) return
+
+    if (paintMode === 'faceSlot') {
+      if (recipe.faceSlots[hit.faceIndex] !== brushSlot) {
+        commitRecipe((r) => {
+          r.faceSlots[hit.faceIndex] = brushSlot
+        })
+      }
+      return
+    }
+
     const c = texCanvasRef.current
-    if (!hit || !c) return
+    if (!c) return
     const tr = tris[hit.faceIndex]
     const uv0 = computeUv(tr.v0, tr.n, recipe.uvMode, recipe.uvScale)
     const uv1 = computeUv(tr.v1, tr.n, recipe.uvMode, recipe.uvScale)
@@ -724,31 +925,42 @@ export function MeshBuilder({
     const py = vv * 512
 
     const ctx = c.getContext('2d')!
-    const grad = ctx.createRadialGradient(px, py, 0, px, py, brushPx)
-    grad.addColorStop(0, brushColor)
-    grad.addColorStop(0.65, brushColor)
-    grad.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.save()
-    ctx.globalAlpha = brushOpacity
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.arc(px, py, brushPx, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
+    const prev = isStart ? null : lastPaintUvRef.current
+    if (prev) {
+      const dx = px - prev[0]
+      const dy = py - prev[1]
+      const dist = Math.hypot(dx, dy)
+      // Interpolate continuous dabs unless UV jumped across a seam
+      if (dist > 2 && dist < 140) {
+        const steps = Math.min(24, Math.ceil(dist / Math.max(3, brushPx * 0.35)))
+        for (let s = 1; s <= steps; s++) {
+          stampBrushDab(ctx, prev[0] + (dx * s) / steps, prev[1] + (dy * s) / steps)
+        }
+      } else {
+        stampBrushDab(ctx, px, py)
+      }
+    } else {
+      stampBrushDab(ctx, px, py)
+    }
+    lastPaintUvRef.current = [px, py]
     paintDirtyRef.current = true
+
+    // Upload canvas straight to GPU WebGL2 texture via texSubImage2D (<0.3ms, instant feedback!)
+    worldRef.current?.setEntityLiveCanvasTexture('mb-preview', c)
   }
 
   const flushPaintTexture = () => {
+    lastPaintUvRef.current = null
     if (!paintDirtyRef.current || !texCanvasRef.current) return
     paintDirtyRef.current = false
     const url = texCanvasRef.current.toDataURL('image/png')
+    // Skip redundant world.load() flash since GPU texture already matches the canvas!
     commitRecipe((r) => {
       r.paintTexture = url
-    })
+    }, true)
   }
 
   const curNode = recipe.nodes.find((n) => n.id === selectedNodeId) ?? recipe.nodes[0]
-  const matAssets = p.assets.filter((x) => x.type === 'material')
 
   return (
     <div className="mf-bp-editor">
@@ -758,10 +970,10 @@ export function MeshBuilder({
             <Orbit size={13} /> Orbit / CSG
           </button>
           <button type="button" className={'mf-bp-tab' + (toolMode === 'face' ? ' active' : '')} onClick={() => setToolMode('face')}>
-            <MousePointerClick size={13} /> Face Edit (Extrude / Inset)
+            <MousePointerClick size={13} /> Face Edit (Drag Extrude / Inset)
           </button>
           <button type="button" className={'mf-bp-tab' + (toolMode === 'paint' ? ' active' : '')} onClick={() => setToolMode('paint')}>
-            <Paintbrush size={13} /> 3D Texture Brush
+            <Paintbrush size={13} /> 3D Material Brush
           </button>
           <span style={{ fontSize: 11, color: '#9aa7b8', marginLeft: 8 }}>
             {tris.length} tris · {recipe.slots.length} materials
@@ -786,13 +998,33 @@ export function MeshBuilder({
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1.05fr) minmax(420px, 1.15fr)', flex: 1, minHeight: 0 }}>
         {/* Left: Live 3D Viewport */}
-        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #2b323b', background: '#141920' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #2b323b', background: '#141920', position: 'relative' }}>
+          {dragHud && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                zIndex: 10,
+                padding: '5px 10px',
+                borderRadius: 6,
+                background: 'rgba(13,17,23,0.88)',
+                border: '1px solid #f59e0b',
+                color: '#fbbf24',
+                fontSize: 12,
+                fontWeight: 700,
+                pointerEvents: 'none',
+              }}
+            >
+              {dragHud}
+            </div>
+          )}
           <div
             ref={hostRef}
             style={{
               flex: 1,
               minHeight: 440,
-              cursor: toolMode === 'orbit' ? 'grab' : 'crosshair',
+              cursor: toolMode === 'orbit' ? 'grab' : toolMode === 'face' && faceDragTool !== 'select' ? 'ns-resize' : 'crosshair',
               overflow: 'hidden',
             }}
             onContextMenu={(e) => e.preventDefault()}
@@ -806,20 +1038,59 @@ export function MeshBuilder({
               }
               if (toolMode === 'face' && e.button === 0) {
                 const hit = raycastMesh(e.clientX, e.clientY)
-                if (hit) setSelectedFace(hit.faceIndex)
+                if (!hit) return
+                setSelectedFace(hit.faceIndex)
+                if (faceDragTool === 'extrude' || faceDragTool === 'inset') {
+                  e.currentTarget.setPointerCapture(e.pointerId)
+                  faceDragRef.current = {
+                    active: true,
+                    kind: faceDragTool,
+                    faceIndex: hit.faceIndex,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    amount: faceDragTool === 'extrude' ? 0.05 : 0.15,
+                    lastPreviewMs: 0,
+                  }
+                  setDragHud(faceDragTool === 'extrude' ? 'Extrude: +0.05' : 'Inset: 0.15')
+                }
                 return
               }
               if (toolMode === 'paint' && e.button === 0) {
+                e.currentTarget.setPointerCapture(e.pointerId)
                 orbitRef.current.dragging = true
-                paintUvAtPointer(e.clientX, e.clientY)
-                flushPaintTexture()
+                paintUvAtPointer(e.clientX, e.clientY, true)
               }
             }}
             onPointerMove={(e) => {
+              // Live mouse-drag Extrude / Inset
+              const fd = faceDragRef.current
+              if (fd?.active) {
+                const dy = fd.startY - e.clientY
+                const dx = e.clientX - fd.startX
+                const delta = Math.abs(dy) >= Math.abs(dx) ? dy : dx
+                const amt =
+                  fd.kind === 'extrude'
+                    ? Math.max(-2, Math.min(4, Math.round(delta * 0.012 * 100) / 100))
+                    : Math.max(0.05, Math.min(0.85, Math.round((0.15 + delta * 0.004) * 100) / 100))
+                fd.amount = amt
+                setDragHud(fd.kind === 'extrude' ? `Extrude: ${amt >= 0 ? '+' : ''}${amt.toFixed(2)}` : `Inset: ${amt.toFixed(2)}`)
+                const now = performance.now()
+                if (now - fd.lastPreviewMs > 45) {
+                  fd.lastPreviewMs = now
+                  const preview = structuredClone(recipe)
+                  preview.editOps = [
+                    ...(preview.editOps || []),
+                    { id: 'live-drag', kind: fd.kind, faceIndex: fd.faceIndex, amount: amt, slot: brushSlot },
+                  ]
+                  loadPreviewRecipe(preview)
+                }
+                return
+              }
+
               const o = orbitRef.current
               if (!o.dragging) return
               if (toolMode === 'paint' && e.buttons === 1) {
-                paintUvAtPointer(e.clientX, e.clientY)
+                paintUvAtPointer(e.clientX, e.clientY, false)
                 return
               }
               o.yaw -= (e.clientX - o.lx) * 0.01
@@ -828,6 +1099,21 @@ export function MeshBuilder({
               o.ly = e.clientY
             }}
             onPointerUp={(e) => {
+              const fd = faceDragRef.current
+              if (fd?.active) {
+                faceDragRef.current = null
+                setDragHud('')
+                if (fd.kind === 'extrude') setExtrudeDist(fd.amount)
+                else setInsetAmt(fd.amount)
+                if (Math.abs(fd.amount) > 0.02) {
+                  commitRecipe((r) => {
+                    r.editOps = [
+                      ...(r.editOps || []),
+                      { id: uid('op'), kind: fd.kind, faceIndex: fd.faceIndex, amount: fd.amount, slot: brushSlot },
+                    ]
+                  })
+                }
+              }
               orbitRef.current.dragging = false
               if (toolMode === 'paint') flushPaintTexture()
               try {
@@ -840,24 +1126,47 @@ export function MeshBuilder({
           />
           <div style={{ padding: '7px 10px', borderTop: '1px solid #2b323b', fontSize: 11, color: '#9aa7b8' }}>
             {toolMode === 'paint'
-              ? 'Left-drag directly on model to paint 3D texture · Right-drag to orbit · Scroll to zoom'
+              ? `Instant 3D Brush (${paintMode === 'material' ? `Material: ${activeSlot?.name}` : paintMode === 'faceSlot' ? `Face Slot #${brushSlot}` : 'Color'}) · Left-drag to paint · Right-drag to orbit`
               : toolMode === 'face'
-                ? `Click any face on mesh to select (${selectedFace !== null ? `Face #${selectedFace}` : 'none'}) · Right-drag to orbit`
+                ? faceDragTool === 'select'
+                  ? `Click face to select (${selectedFace !== null ? `Face #${selectedFace}` : 'none'}) · Right-drag to orbit`
+                  : `Click & drag any face on mesh to ${faceDragTool === 'extrude' ? 'Extrude' : 'Inset'} interactively · Right-drag to orbit`
                 : 'Drag to orbit · Scroll to zoom'}
           </div>
         </div>
 
-        {/* Right: Modeling Tools, Brushes, UV, Paint & Unlimited Materials */}
+        {/* Right: Modeling Tools, Brushes, UV, Material Paint & Unlimited Materials */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, overflowY: 'auto' }}>
-          {/* Face Modeling Tools (Extrude, Inset, Subdivide, Mirror, Ground) */}
+          {/* Face Modeling Tools (Interactive Drag + Numeric) */}
           <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 9, background: '#192028', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <Sparkles size={12} color="#f3a05d" /> Mesh Modeling Tools
+                <Sparkles size={12} color="#f3a05d" /> Face Modeling Tools
               </strong>
               <span style={{ fontSize: 11, color: selectedFace !== null ? '#7ee787' : '#8b9bb0' }}>
-                {selectedFace !== null ? `Selected Face #${selectedFace}` : 'Pick a face in Face Edit mode'}
+                {selectedFace !== null ? `Face #${selectedFace}` : 'Click/Drag face in 3D'}
               </span>
+            </div>
+            {/* Direct Mouse Drag Tool Selector */}
+            <div style={{ display: 'flex', gap: 5 }}>
+              {([
+                ['extrude', 'Drag Extrude', ArrowUpFromLine],
+                ['inset', 'Drag Inset', Minimize2],
+                ['select', 'Select Only', Move],
+              ] as const).map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={toolMode === 'face' && faceDragTool === id ? 'mf-primary' : 'mf-btn'}
+                  style={{ flex: 1, fontSize: 11, padding: '4px 6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                  onClick={() => {
+                    setToolMode('face')
+                    setFaceDragTool(id)
+                  }}
+                >
+                  <Icon size={11} /> {label}
+                </button>
+              ))}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 78px 1fr 78px', gap: 6, alignItems: 'center' }}>
               <button
@@ -927,11 +1236,11 @@ export function MeshBuilder({
             </div>
           </div>
 
-          {/* 3D Texture Paint Brush Settings */}
-          <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 9, background: '#192028', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* 3D Material & Texture Paint Brush Settings */}
+          <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 9, background: '#192028', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <Paintbrush size={12} color="#58b8ff" /> 3D Surface Texture Brush (512×512)
+                <Paintbrush size={12} color="#58b8ff" /> 3D Material &amp; Texture Brush
               </strong>
               <button
                 type="button"
@@ -940,21 +1249,60 @@ export function MeshBuilder({
                 onClick={() => {
                   if (texCanvasRef.current) {
                     const ctx = texCanvasRef.current.getContext('2d')!
-                    ctx.fillStyle = '#ffffff'
+                    ctx.fillStyle = recipe.slots[0]?.color || '#ffffff'
                     ctx.fillRect(0, 0, 512, 512)
+                    worldRef.current?.setEntityLiveCanvasTexture('mb-preview', texCanvasRef.current)
                   }
                   commitRecipe((r) => {
                     delete r.paintTexture
                   })
                 }}
               >
-                <RotateCcw size={11} /> Clear Texture
+                <RotateCcw size={11} /> Clear Paint
               </button>
             </div>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {([
+                ['material', 'Material Brush'],
+                ['color', 'Color Brush'],
+                ['faceSlot', 'Face Material'],
+              ] as const).map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={toolMode === 'paint' && paintMode === m ? 'mf-primary' : 'mf-btn'}
+                  style={{ flex: 1, fontSize: 11, padding: '4px 6px' }}
+                  onClick={() => {
+                    setToolMode('paint')
+                    setPaintMode(m)
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-              <Field label="Brush Color">
-                <Color label="Brush Color" value={brushColor} change={(v) => { setBrushColor(v); setToolMode('paint') }} />
-              </Field>
+              {paintMode === 'color' ? (
+                <Field label="Brush Color">
+                  <Color label="Brush Color" value={brushColor} change={(v) => { setBrushColor(v); setToolMode('paint') }} />
+                </Field>
+              ) : (
+                <Field label="Active Material">
+                  <select
+                    value={brushSlot}
+                    onChange={(e) => {
+                      setBrushSlot(Number(e.target.value))
+                      setToolMode('paint')
+                    }}
+                  >
+                    {recipe.slots.map((s, idx) => (
+                      <option key={idx} value={idx}>
+                        #{idx} {s.name} ({s.pattern || 'concrete'})
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               <Field label="Size (px)">
                 <Numeric label="Size" value={brushPx} min={3} max={96} step={2} change={setBrushPx} />
               </Field>
@@ -964,7 +1312,7 @@ export function MeshBuilder({
             </div>
           </div>
 
-          {/* CSG Brushes List (Spacious!) */}
+          {/* CSG Brushes List */}
           <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 9, background: '#161b22', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
               <strong style={{ fontSize: 12 }}>CSG Brushes ({recipe.nodes.length})</strong>
@@ -1125,7 +1473,7 @@ export function MeshBuilder({
             </Field>
           </div>
 
-          {/* Unlimited Material Slots */}
+          {/* Unlimited Material Slots with Procedural Pattern + Project Material Link */}
           <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 8, background: '#192028', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -1142,6 +1490,7 @@ export function MeshBuilder({
                       color: '#7c8a99',
                       roughness: 0.8,
                       metalness: 0,
+                      pattern: 'concrete',
                     })
                   })
                 }
@@ -1155,8 +1504,8 @@ export function MeshBuilder({
                   key={idx}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '22px 1fr 115px 44px 20px',
-                    gap: 5,
+                    gridTemplateColumns: '20px 1fr 82px 104px 40px 20px',
+                    gap: 4,
                     alignItems: 'center',
                     padding: '4px 6px',
                     borderRadius: 4,
@@ -1166,9 +1515,9 @@ export function MeshBuilder({
                 >
                   <button
                     type="button"
-                    onClick={() => setBrushSlot(idx)}
+                    onClick={() => { setBrushSlot(idx); setToolMode('paint'); setPaintMode('material') }}
                     style={{ width: 18, height: 18, borderRadius: 4, background: sl.color, border: '1px solid #fff', cursor: 'pointer' }}
-                    title={`Select Material Slot #${idx}`}
+                    title={`Paint with Material Slot #${idx}`}
                   />
                   <input
                     style={{ fontSize: 11.5 }}
@@ -1176,11 +1525,24 @@ export function MeshBuilder({
                     onChange={(e) => commitRecipe((r) => (r.slots[idx].name = e.target.value))}
                   />
                   <select
-                    style={{ fontSize: 11 }}
+                    style={{ fontSize: 10.5 }}
+                    title="Procedural brush surface pattern"
+                    value={sl.pattern || 'concrete'}
+                    onChange={(e) => commitRecipe((r) => (r.slots[idx].pattern = e.target.value as MaterialPattern))}
+                  >
+                    <option value="concrete">Concrete</option>
+                    <option value="wood">Wood</option>
+                    <option value="rust">Rust</option>
+                    <option value="brick">Brick</option>
+                    <option value="moss">Moss</option>
+                    <option value="solid">Solid</option>
+                  </select>
+                  <select
+                    style={{ fontSize: 10.5 }}
                     value={sl.materialId || ''}
                     onChange={(e) => commitRecipe((r) => (r.slots[idx].materialId = e.target.value || undefined))}
                   >
-                    <option value="">Base Color</option>
+                    <option value="">Procedural</option>
                     {matAssets.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}

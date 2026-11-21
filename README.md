@@ -1,60 +1,78 @@
 # Miniforge Engine
 
-Игровой редактор на React, TypeScript и LittleJS Render3D для компактных WebGL2-игр. При первом запуске открывается редактируемая **Coin Rush 3D**. Иерархия, материалы, коллайдеры, префабы и параметры поведения доступны прямо в проекте примера.
+**Read in Russian:** [README.ru.md](./README.ru.md)
 
-## Запуск
+A lightweight, browser-based 3D game engine and all-in-one prototyping studio built on **LittleJS 1.30.1** (WebGL2 3D), **Rapier3D** (WASM physics), **React 19 + TypeScript 5.9**, and **Tauri v2** (optional desktop builds).
 
-Понадобятся Node.js 24, pnpm 11.25.0 и браузер с WebGL2. Выполните из корня репозитория.
+Designed for solo indie developers and game jams: model low-poly props, paint 2D/3D textures, synthesize SFX/music, wire gameplay with visual Blueprints, write dialogues/cutscenes, and export standalone HTML5 or desktop games without leaving the editor.
 
-```sh
-pnpm install --frozen-lockfile
+- **Live Web Editor:** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/editor/`
+- **Interactive Documentation (v2.2):** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/docs/`
+
+## Built-in Tools
+
+- **Scene Editor & Live Prefabs:** 3D viewport, transform gizmos, terrain sculpting, NavGrid pathfinding, lighting/post-processing, and 3D scene entity pipette.
+- **Event Graph (Blueprints):** node-based visual scripting with typed Exec/Data pins, exposed instance variables, and custom functions alongside TypeScript scripting.
+- **Low-Poly CSG Mesh Builder:** CSG primitives (`Union`/`Subtract`), face operations (`Extrude`, `Inset`, `Subdivide`, `Mirror X`), quick UV unwrap, unlimited material slots, and a 512×512 3D surface texture brush with `.glb` export.
+- **Model Editor:** `assimpjs` WASM import, per-part material overrides, and non-destructive animation timeline slicing.
+- **2D Paint Editor:** layers, symmetry, seamless tiling preview, and PNG export.
+- **Sound / SFX / Music Synth:** presets, 16-step sequencer, `.wav` export, and runtime audio modulation (`setSemitones`, `setSpeed`, `setLowpass`).
+- **Dialogue & Quest Graph + Keyframe Sequencer:** branching dialogues, quest states, and multi-track timelines.
+- **Plugin System (v2.2):** create, edit, enable/disable, and import/export `.mfplugin.json` plugins extending both Editor menus and Runtime behaviors/services (includes 4 built-in examples).
+- **Exporters:** standalone HTML5 bundle, Yandex Games / Poki SDK adapters, and Tauri v2 desktop builds (Windows/macOS/Linux).
+
+## Quick Start
+
+Requirements: **Node.js 20+** and **pnpm 10+**.
+
+```bash
+pnpm install
 pnpm dev
 ```
 
-Откройте адрес, который напечатает Vite (по умолчанию порт 5173). Для готовой статической версии выполните `pnpm build` и раздайте `dist/editor` по HTTP. Сервис базы данных и ключи площадок для локальной работы не нужны.
+Open the local URL printed by Vite (default `http://localhost:5173`).
 
-## От проекта до игры
+### Common Commands
 
-1. Нажмите **Play** в верхней панели и **Play** в меню Coin Rush. WASD, стрелки или сенсорный джойстик перемещают игрока. Соберите десять монет до конца раунда. Escape ставит игру на паузу. На экране результатов после истечения времени доступна тестовая реклама за дополнительное время. **Stop** возвращает к редактированию.
-2. В **File → New project** выберите Empty 3D для нового уровня. Через **+** в Hierarchy добавьте Box, Plane, камеру или свет. В Inspector меняются цвет, материал и компоненты. Для вращения добавьте Behavior и выберите Rotate Object.
-3. Для своего кода добавьте Script, откройте **Edit script** и сохраните изменения. Параметры экземпляра задаются в Inspector. В **Project → UI editor** нажмите **New screen**, задайте имя окна и включите **Add HUD button**, чтобы открывать его из игры. Выберите экран слева и разместите на нём собственные элементы в горизонтальном или вертикальном предпросмотре. Переводы находятся в **Project → Localization**.
-4. Перетаскивайте файлы в редактор или используйте **Import** в Assets. Двойной щелчок по префабу или модели добавляет экземпляр. Материалы назначаются из Inspector. Контекстное меню иерархии содержит операции с поддеревом.
-5. Редактор сохраняет текущее состояние в IndexedDB этого браузера. **Save project** скачивает переносимый архив со сценами и ресурсами. **File → Open project** принимает архив или проект JSON. Перед созданием другого проекта сохраните предыдущий в файл.
-6. Для публикационного пакета откройте **Export**, выберите профиль и нажмите **Build & download**. Вкладка Build содержит размеры и состав архива. Профили Windows и Linux в браузере создают отдельные проекты Tauri с запечённой игрой и инструкцией компиляции. Готовый установщик собирается на целевой ОС.
-
-Сочетания клавиш: Q/W/E/R — выделение, перемещение, вращение и масштаб. F кадрирует выбранный объект. Ctrl/Cmd+D дублирует поддерево, Delete удаляет выделение, Ctrl/Cmd+Z отменяет правку. Разделители панелей перетаскиваются мышью.
-
-## Артефакты и проверки
-
-```sh
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm build
-pnpm export:demo
-pnpm exec playwright install chromium
-pnpm test:e2e
+```bash
+pnpm typecheck     # TypeScript check (tsc --noEmit)
+pnpm build         # Build web editor into dist/editor/
+pnpm build:site    # Build landing + docs + web editor into dist/pages/
+pnpm test          # Unit tests (Vitest)
+pnpm desktop:editor # Tauri desktop build of the editor
 ```
 
-При наличии системного Chromium тесты могут использовать его через `CHROMIUM_PATH`. В Linux автоматически распознаётся `/usr/bin/chromium`. Playwright самостоятельно поднимает тестовый HTTP-сервер для готовых файлов.
+## Plugin Example (`.mfplugin.json`)
 
-- Шаблон **Key Vault** показывает переходы между инвентарём и магазином, создание ключей из префаба и открытие анимированных ворот по правилам. [Разбор примера](docs/key-vault.md)
-- `examples/Coin Rush 3D.json` — исходный редактируемый проект.
-- `dist/games/coin-rush.miniforge` — архив того же проекта.
-- `dist/games/web` — автономная игра. Для запуска из корня выполните `python3 -m http.server 8080 --directory dist/games/web` и откройте порт 8080 в браузере.
-- `dist/games/{web,yandex,poki}.zip` — архивы игры. Рядом находятся отчёты каждого профиля.
-- `dist/linux` — подготовленные в этой среде установочные пакеты Debian amd64.
-- `apps/editor-desktop` и `.github/workflows/desktop.yml` — оболочка и сборка установщиков на Windows или Linux.
+```js
+exports.registerRuntime = function (ctx) {
+  ctx.registerBehavior('spinner', function (api, params) {
+    var speed = (params && params.speed) || 1.5
+    return {
+      onUpdate: function (dt) {
+        api.transform.rotation[1] += speed * dt
+      },
+    }
+  })
+}
+```
 
-## Архитектура
+## Known Limitations
 
-Модель v1 хранит сцены и ресурсы с устойчивыми ID. React управляет состоянием инструмента, историей и панелями. Runtime, редактор и экспортер используют общую модель и построитель сцены. Игра рендерится напрямую через LittleJS Render3D. Представление редактора и экспортированные скрипты работают в отдельных контекстах. Сборщик компилирует TypeScript в ES-модули, добавляет адаптер выбранной площадки и подключает Rapier для сцен с физическими телами. Monaco и компилятор TypeScript загружаются редактором по требованию.
+- Focused on **low-poly / stylized 3D** and rapid prototyping rather than AAA PBR pipelines.
+- WebGL2 is required; very large scenes on low-end mobile browsers may need manual static batching and cull distances.
+- Editor UI and some documentation sections are currently Russian-first, with English localization expanding incrementally.
+- Plugin sandboxing is lightweight (`new Function`) and intended for trusted user/community plugins.
 
-[Скриптовый API](docs/scripting.md) · [Проверка SDK](docs/platforms.md) · [Настольные сборки](apps/editor-desktop/README.md) · [Результаты проверок и ограничения](docs/validation.md)
+## Support & Donations
 
-## Рельеф, движение и компоновка HUD
+Miniforge Engine is free and open-source under the MIT License. If it saved you time on a prototype or game jam, you can support ongoing development:
 
-- Выберите **Hierarchy → Add entity → Terrain**. В Inspector рисуйте по карте сверху. Инструменты **Raise**, **Lower**, **Flatten** и **Smooth** меняют высоту. **Paint** и **Erase paint** выбирают материал ячеек. Для текстурированного грунта назначьте материал с картой цвета в **Base material** или **Paint material**. **Texture repeat** задаёт число повторов по ширине поля. Когда вы отпускаете кисть, рельеф обновляется в сцене, а штрих попадает в историю отмены.
-- У **Top Down Controller** и **First Person Controller** параметры **stepHeight** и **maxSlope** задают высоту ступени в единицах сцены и предельный угол в градусах. Рельеф сразу получает поверхность для ходьбы. Для пандуса или сложной статической модели добавьте **Collider** и выберите **mesh**. Разместите игрока на поверхности или над ней. Экспорт сцен с террейном или твёрдыми коллайдерами включает модуль Rapier. В проверенной сборке Web ZIP игры Coin Rush занимает около 1 МБ.
-- В **Project → UI editor** добавьте **Container** в игровое окно. Выберите Grid или List и задайте размеры контейнера, минимальную ширину ячейки, высоту строки и интервалы. У дочерних кнопок, подписей или изображений выберите **Parent container**. При включённом **Scroll** содержимое прокручивается внутри окна. **Items variable** выводит массив строк из игровой переменной, например `api.vars.inventory = ['key', 'lantern']`. Ширина экрана определяет количество столбцов.
-- Устройство графического бэкенда и его проверки описаны в отдельном документе. [Архитектура LittleJS](docs/littlejs.md)
+- **Boosty (RU / cards):** `https://boosty.to/YOUR_USERNAME`
+- **CloudTips (RU one-time tips):** `https://pay.cloudtips.ru/p/YOUR_CODE`
+- **Tribute (Telegram / crypto):** `https://t.me/tribute/app?startapp=YOUR_LINK`
+- **Lava.top (International):** `https://app.lava.top/YOUR_USERNAME`
+
+## License
+
+Licensed under the [MIT License](./LICENSE). Built with open-source libraries including [LittleJS](https://github.com/KilledByAPixel/LittleJS) (MIT) and [Rapier](https://rapier.rs/) (Apache 2.0).

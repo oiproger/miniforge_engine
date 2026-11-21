@@ -1,9 +1,8 @@
 {
   "name": "miniforge-engine",
-  "version": "0.2.0",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.25.0",
   "scripts": {
     "prepare:runtime": "node packages/exporter/prepare.mjs",
     "dev": "pnpm prepare:runtime && vite --host 0.0.0.0",
@@ -14,7 +13,8 @@
     "test:e2e": "playwright test",
     "export:demo": "pnpm prepare:runtime && tsx packages/exporter/cli.ts",
     "desktop:editor": "node apps/editor-desktop/build.mjs editor",
-    "desktop:game": "node apps/editor-desktop/build.mjs game"
+    "desktop:game": "node apps/editor-desktop/build.mjs game",
+    "build:site": "node scripts/build-site.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",

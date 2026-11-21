@@ -280,6 +280,7 @@ export function createWorld(
     editorTime = performance.now()
   const players = new Map<string, L.GLTFObject>(),
     models = new Map<string, Promise<L.GLTFModel>>()
+  const liveCanvasTextures = new Map<string, L.TextureInfo>()
   const textures = new Map<string, Promise<L.TextureInfo>>(),
     shaders = new Map<string, L.Shader>()
   const camera = new SceneCamera(),
@@ -1495,6 +1496,8 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
           () => {},
         ),
     )
+    liveCanvasTextures.forEach((t) => { try { t.destroyWebGLTexture() } catch {} })
+    liveCanvasTextures.clear()
     textures.clear()
     shaders.forEach((shader) => shader.dispose())
     shaders.clear()
@@ -2543,6 +2546,26 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
         obj.update()
         if (!obj.animationPlaying && obj.animation) options.onAnimationFinished?.(id, obj.animation.name)
       }
+    },
+    setEntityLiveCanvasTexture(id: string, canvas: HTMLCanvasElement): boolean {
+      const player = players.get(id) as any
+      if (!player) return false
+      const parts: L.EngineObject3D[] = player.parts || []
+      if (!parts.length) return false
+      let tex = liveCanvasTextures.get(id)
+      if (!tex || !tex.hasWebGL()) {
+        if (tex) {
+          try { tex.destroyWebGLTexture() } catch {}
+        }
+        tex = new d.TextureInfo(canvas, true, true, false)
+        liveCanvasTextures.set(id, tex)
+      } else {
+        tex.updateData(canvas)
+      }
+      for (const po of parts) {
+        if (!po.destroyed) d.setTexture(po, tex)
+      }
+      return true
     },
     dispose() {
       if (disposed) return

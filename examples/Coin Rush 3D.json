@@ -7595,5 +7595,6 @@
       2.86
     ],
     "sound": true
-  }
+  },
+  "description": "3D collectathon demo with third-person movement, animated coins, lighting, HUD counters, and timer logic."
 }

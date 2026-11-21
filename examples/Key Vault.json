@@ -3301,5 +3301,6 @@
       "safeArea": true,
       "background": "#243843fa"
     }
-  ]
+  ],
+  "description": "Multi-room puzzle adventure with locked seals, collectible keys, lanterns, triggers, and UI screens."
 }
