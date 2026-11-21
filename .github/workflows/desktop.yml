@@ -15,12 +15,11 @@ permissions:
 
 jobs:
   native:
-    if: github.event_name == 'workflow_dispatch' || matrix.app == 'editor'
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-24.04]
-        app: [editor, game]
+        app: ${{ fromJSON(github.event_name == 'release' && '["editor"]' || '["editor","game"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
