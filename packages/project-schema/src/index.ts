@@ -122,7 +122,7 @@ export function defaultExportSettings(project: Project): ExportSettingsConfig {
     resizable: true,
     decorated: true,
     desktopMode: 'template',
-    templateBaseUrl: './export-templates/',
+    templateBaseUrl: 'https://github.com/oiproger/miniforge-engine/releases/latest/download/',
     webBackground: '#0d1117',
     nativizeEventGraphs: false,
   }

@@ -105,7 +105,7 @@
             "position": [
               0,
               7.5,
-              7.5
+              10.5
             ],
             "rotation": [
               0,
@@ -121,8 +121,19 @@
           "components": [
             {
               "type": "camera",
-              "fov": 50,
-              "active": true
+              "fov": 48,
+              "active": true,
+              "projection": "perspective",
+              "target": [
+                0,
+                0.5,
+                0
+              ]
+            },
+            {
+              "type": "script",
+              "asset": "script-cam-follow",
+              "params": {}
             }
           ],
           "properties": {
@@ -441,72 +452,6 @@
   ],
   "assets": [
     {
-      "id": "prefab-coin",
-      "type": "prefab",
-      "name": "Gold Coin",
-      "data": "[{\"id\":\"coin-0\",\"name\":\"Gold Coin\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0.52,0],\"rotation\":[0,0.4,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"behavior\",\"kind\":\"collectible\",\"params\":{\"value\":1,\"radius\":0.6}},{\"type\":\"behavior\",\"kind\":\"rotate\",\"params\":{\"speed\":1.2,\"axis\":\"y\"}}],\"properties\":{}},{\"id\":\"coin-0-Rim\",\"name\":\"Rim\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[1.5707963267948966,0,0],\"scale\":[0.66,0.13,0.66]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-rim\",\"segments\":12}],\"properties\":{}},{\"id\":\"coin-0-Minted-face\",\"name\":\"Minted face\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[1.5707963267948966,0,0],\"scale\":[0.54,0.147,0.54]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-gold\",\"segments\":12}],\"properties\":{}},{\"id\":\"coin-0-Stamp\",\"name\":\"Stamp\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[0.095,0.27,0.18]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-rim\"}],\"properties\":{}}]",
-      "properties": {
-        "color": "#ffbd39",
-        "icon": "coin",
-        "folder": "Prefabs"
-      }
-    },
-    {
-      "id": "prefab-pine",
-      "type": "prefab",
-      "name": "Pine Tree",
-      "data": "[{\"id\":\"pine-0\",\"name\":\"Pine Tree\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1.33,1.33,1.33]},\"components\":[{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.6384,1.995,0.6384],\"trigger\":false}],\"properties\":{}},{\"id\":\"pine-0-Trunk\",\"name\":\"Trunk\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,0.4,0],\"rotation\":[0,0,0],\"scale\":[0.42,0.8,0.42]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-bark\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Lower-boughs\",\"name\":\"Lower boughs\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,1.02,0],\"rotation\":[0,0,0],\"scale\":[1.58,1.42,1.58]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-pine\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Middle-boughs\",\"name\":\"Middle boughs\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,1.55,0],\"rotation\":[0,0.54,0],\"scale\":[1.26,1.28,1.26]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-needles\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Crown\",\"name\":\"Crown\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,2.06,0],\"rotation\":[0,0.25,0],\"scale\":[0.89,1.16,0.89]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-tips\",\"segments\":7}],\"properties\":{}}]",
-      "properties": {
-        "color": "#53945f",
-        "icon": "pine",
-        "folder": "Prefabs"
-      }
-    },
-    {
-      "id": "prefab-crate",
-      "type": "prefab",
-      "name": "Wooden Crate",
-      "data": "[{\"id\":\"crate-0\",\"name\":\"Wooden Crate\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0.14,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.91,1,0.91],\"trigger\":false}],\"properties\":{}},{\"id\":\"crate-0-Box\",\"name\":\"Box\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.45,0],\"rotation\":[0,0,0],\"scale\":[0.91,0.9,0.91]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-grain\"}],\"properties\":{}},{\"id\":\"crate-0-Back-slats\",\"name\":\"Back slats\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,-0.461],\"rotation\":[0,0,0],\"scale\":[0.74,0.73,0.03]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"crate-0-Back-brace\",\"name\":\"Back brace\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,-0.481745],\"rotation\":[0,0,-0.75],\"scale\":[0.12,0.94,0.052]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-straw\"}],\"properties\":{}},{\"id\":\"crate-0-Front-slats\",\"name\":\"Front slats\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,0.461],\"rotation\":[0,0,0],\"scale\":[0.74,0.73,0.03]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"crate-0-Front-brace\",\"name\":\"Front brace\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,0.481745],\"rotation\":[0,0,-0.75],\"scale\":[0.12,0.94,0.052]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-straw\"}],\"properties\":{}},{\"id\":\"crate-0-Band-lower\",\"name\":\"Band lower\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.08,0],\"rotation\":[0,0,0],\"scale\":[0.98,0.12,0.98]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-planks\"}],\"properties\":{}},{\"id\":\"crate-0-Band-upper\",\"name\":\"Band upper\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.81,0],\"rotation\":[0,0,0],\"scale\":[0.98,0.12,0.98]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-planks\"}],\"properties\":{}}]",
-      "properties": {
-        "color": "#bd884e",
-        "icon": "crate",
-        "folder": "Prefabs"
-      }
-    },
-    {
-      "id": "prefab-rock",
-      "type": "prefab",
-      "name": "Boulder",
-      "data": "[{\"id\":\"rock-0\",\"name\":\"Boulder\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0.2,0,0.08],\"scale\":[1.1889999999999998,0.82,1.0495999999999999]},\"components\":[{\"type\":\"mesh\",\"shape\":\"icosahedron\",\"material\":\"mat-limestone\"},{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.7789999999999999,0.82,0.7871999999999999],\"trigger\":false}],\"properties\":{}}]",
-      "properties": {
-        "color": "#989a96",
-        "icon": "rock",
-        "folder": "Prefabs"
-      }
-    },
-    {
-      "id": "prefab-player",
-      "type": "prefab",
-      "name": "Player",
-      "data": "[{\"id\":\"player\",\"name\":\"Player\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"behavior\",\"kind\":\"player\",\"params\":{\"speed\":3.4}},{\"type\":\"collider\",\"shape\":\"capsule\",\"size\":[0.46,0.96,0.46],\"trigger\":false}],\"properties\":{}},{\"id\":\"player-Left-boot\",\"name\":\"Left boot\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.13,0.1,0.055],\"rotation\":[0,0,0],\"scale\":[0.17,0.21,0.25]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-leather\"}],\"properties\":{}},{\"id\":\"player-Right-boot\",\"name\":\"Right boot\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.13,0.1,0.055],\"rotation\":[0,0,0],\"scale\":[0.17,0.21,0.25]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-leather\"}],\"properties\":{}},{\"id\":\"player-Tunic\",\"name\":\"Tunic\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.39,0],\"rotation\":[0,0,0],\"scale\":[0.45,0.43,0.3]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Satchel\",\"name\":\"Satchel\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.45,-0.2],\"rotation\":[0,0,0],\"scale\":[0.29,0.31,0.14]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"player-Scarf\",\"name\":\"Scarf\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.63,0],\"rotation\":[0,0,0],\"scale\":[0.43,0.13,0.33]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-scarf\"}],\"properties\":{}},{\"id\":\"player-Face\",\"name\":\"Face\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.84,0.035],\"rotation\":[0,0,0],\"scale\":[0.38,0.36,0.34]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}},{\"id\":\"player-Left-eye\",\"name\":\"Left eye\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.088,0.864,0.208],\"rotation\":[0,0,0],\"scale\":[0.043,0.055,0.022]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Right-eye\",\"name\":\"Right eye\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.088,0.864,0.208],\"rotation\":[0,0,0],\"scale\":[0.043,0.055,0.022]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Scarf-end\",\"name\":\"Scarf end\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.137,0.53,0.17],\"rotation\":[0,0,-0.23],\"scale\":[0.11,0.21,0.045]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-scarf\"}],\"properties\":{}},{\"id\":\"player-Hair\",\"name\":\"Hair\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,1.01,0],\"rotation\":[0,0,0],\"scale\":[0.41,0.12,0.38]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Cap\",\"name\":\"Cap\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.025,1.1,-0.025],\"rotation\":[0,0,0],\"scale\":[0.49,0.15,0.44]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Brim\",\"name\":\"Brim\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,1.045,0.15],\"rotation\":[0,0,0],\"scale\":[0.49,0.055,0.24]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Left-hand\",\"name\":\"Left hand\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.275,0.4,0.02],\"rotation\":[0,0,0],\"scale\":[0.12,0.3,0.15]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}},{\"id\":\"player-Right-hand\",\"name\":\"Right hand\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.275,0.4,0.02],\"rotation\":[0,0,0],\"scale\":[0.12,0.3,0.15]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}}]",
-      "properties": {
-        "color": "#4096a2",
-        "icon": "player",
-        "folder": "Prefabs"
-      }
-    },
-    {
-      "id": "prefab-tile",
-      "type": "prefab",
-      "name": "Grass Tile",
-      "data": "[{\"id\":\"grass-tile\",\"name\":\"Grass Tile\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1,0.2,1]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-turf\"}],\"properties\":{}}]",
-      "properties": {
-        "color": "#93c85c",
-        "icon": "tile",
-        "folder": "Prefabs"
-      }
-    },
-    {
       "id": "default-material",
       "name": "Porcelain",
       "type": "material",
@@ -529,6 +474,340 @@
         "metalness": 0,
         "flatShading": true
       }
+    },
+    {
+      "id": "mat-grass",
+      "name": "Grass",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#74ab51",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-moss",
+      "name": "Moss",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c0d76d",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-soil",
+      "name": "Soil",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#99714e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-shale",
+      "name": "Cliff stone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#716f72",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-granite",
+      "name": "Granite",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#989a96",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-slate",
+      "name": "Slate",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#626973",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-limestone",
+      "name": "Limestone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c7c5af",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pine",
+      "name": "Pine",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#38755a",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-needles",
+      "name": "Needles",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#53945f",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-tips",
+      "name": "Tips",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#75ac67",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-bark",
+      "name": "Bark",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#896544",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-timber",
+      "name": "Pine wood",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#bd884e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-planks",
+      "name": "Planks",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d4a360",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grain",
+      "name": "Grain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a27146",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-straw",
+      "name": "Straw",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e5b978",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-gold",
+      "name": "Coin gold",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffbd39",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-rim",
+      "name": "Rim",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffe779",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-amber",
+      "name": "Amber",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e28a23",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-sea",
+      "name": "Tunic",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#4096a2",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pond",
+      "name": "Pond",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#66bac1",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-ripple",
+      "name": "Ripple",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a6e3d5",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-blossom",
+      "name": "Blossom",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#fff1ca",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-petal",
+      "name": "Petal",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#efb873",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-scarf",
+      "name": "Scarf",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ef8041",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-leather",
+      "name": "Leather",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#6a473b",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-skin",
+      "name": "Skin",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e6b088",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-hair",
+      "name": "Hair",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#593d32",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "script-cam-follow",
+      "name": "FollowCamera.ts",
+      "type": "script",
+      "data": "export default function (api: any) {\n  const offset = [0, 7.2, 8.2]\n  return {\n    onUpdate(dt: number) {\n      const p = api.player.position\n      if (!p) return\n      const tx = p[0] + offset[0]\n      const ty = p[1] + offset[1]\n      const tz = p[2] + offset[2]\n      const cur = api.camera.position || [tx, ty, tz]\n      const k = Math.min(1, dt * 7)\n      api.camera.setPosition([\n        cur[0] + (tx - cur[0]) * k,\n        cur[1] + (ty - cur[1]) * k,\n        cur[2] + (tz - cur[2]) * k,\n      ])\n      api.camera.lookAt([p[0], p[1] + 0.6, p[2]])\n    },\n  }\n}\n",
+      "properties": {}
     }
   ],
   "ui": [

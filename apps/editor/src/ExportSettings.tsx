@@ -192,8 +192,8 @@ export function ExportSettingsPanel({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 4 }}>
             <Field label="Export Templates Base URL (folder with miniforge-player-windows.exe / -macos / -linux)">
               <input
-                value={cfg.templateBaseUrl || './export-templates/'}
-                placeholder="./export-templates/ or https://github.com/.../releases/latest/download/"
+                value={cfg.templateBaseUrl || 'https://github.com/oiproger/miniforge-engine/releases/latest/download/'}
+                placeholder="https://github.com/oiproger/miniforge-engine/releases/latest/download/"
                 onChange={(e) => patchCfg({ templateBaseUrl: e.target.value })}
               />
             </Field>

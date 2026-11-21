@@ -28,7 +28,7 @@ import { Field, Numeric, Color } from './Fields'
 
 export type CsgShapeKind = 'box' | 'sphere' | 'cylinder' | 'cone' | 'wedge' | 'stairs'
 export type CsgOp = 'union' | 'subtract'
-export type UvMode = 'box' | 'planar' | 'cylindrical'
+export type UvMode = 'atlas' | 'box' | 'planar' | 'cylindrical'
 export type MaterialPattern = 'concrete' | 'wood' | 'rust' | 'brick' | 'moss' | 'solid'
 
 export interface MeshBuilderNode {
@@ -81,7 +81,7 @@ export function defaultMeshBuilderRecipe(): MeshBuilderRecipe {
       { name: 'Accent Wood', color: '#8c6642', roughness: 0.82, metalness: 0, pattern: 'wood' },
       { name: 'Brick / Trim', color: '#8f5b4a', roughness: 0.85, metalness: 0.05, pattern: 'brick' },
     ],
-    uvMode: 'box',
+    uvMode: 'atlas',
     uvScale: 1,
     faceSlots: {},
     editOps: [],
@@ -356,6 +356,31 @@ function computeUv(
   return [p[0] * s * 0.25 + 0.5, p[1] * s * 0.25 + 0.5]
 }
 
+/** Unique non-overlapping per-triangle UV atlas cell (prevents 3D brush strokes from mirroring onto other faces). */
+function computeTriVertexUv(
+  triGlobalIdx: number,
+  totalTris: number,
+  vertIdx: number,
+  p: [number, number, number],
+  n: [number, number, number],
+  mode: UvMode,
+  scale: number,
+): [number, number] {
+  if (mode !== 'atlas') return computeUv(p, n, mode, scale)
+  const cols = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, totalTris))))
+  const col = triGlobalIdx % cols
+  const row = Math.floor(triGlobalIdx / cols)
+  const cell = 1 / cols
+  const pad = cell * 0.06
+  const u0 = col * cell + pad
+  const v0 = row * cell + pad
+  const u1 = (col + 1) * cell - pad
+  const v1 = (row + 1) * cell - pad
+  if (vertIdx === 0) return [u0, v0]
+  if (vertIdx === 1) return [u1, v0]
+  return [u0, v1]
+}
+
 function hexToRgbLinear(hex: string): [number, number, number, number] {
   const clean = (hex || '#ffffff').replace('#', '')
   const r = parseInt(clean.slice(0, 2) || 'ff', 16) / 255
@@ -462,13 +487,13 @@ function buildProceduralMaterialTile(colorHex: string, pattern: MaterialPattern)
 /** Encode built multi-material triangles + optional painted 512x512 PNG texture directly into binary .glb */
 export function buildRecipeToGlbDataUrl(recipe: MeshBuilderRecipe): string {
   const tris = buildRecipeTriangles(recipe)
-  const bySlot = new Map<number, Tri[]>()
-  for (const t of tris) {
+  const bySlot = new Map<number, { tr: Tri; globalIdx: number }[]>()
+  tris.forEach((t, globalIdx) => {
     const k = Math.max(0, Math.min(recipe.slots.length - 1, t.slot))
     const list = bySlot.get(k) || []
-    list.push(t)
+    list.push({ tr: t, globalIdx })
     bySlot.set(k, list)
-  }
+  })
 
   const binChunks: Uint8Array[] = []
   let byteOffset = 0
@@ -518,13 +543,13 @@ export function buildRecipeToGlbDataUrl(recipe: MeshBuilderRecipe): string {
     const pos = new Float32Array(list.length * 9)
     const norm = new Float32Array(list.length * 9)
     const uv = new Float32Array(list.length * 6)
-    list.forEach((tr, ti) => {
+    list.forEach(({ tr, globalIdx }, ti) => {
       const verts = [tr.v0, tr.v1, tr.v2]
       verts.forEach((v, vi) => {
         const o3 = (ti * 3 + vi) * 3
         pos[o3] = v[0]; pos[o3 + 1] = v[1]; pos[o3 + 2] = v[2]
         norm[o3] = tr.n[0]; norm[o3 + 1] = tr.n[1]; norm[o3 + 2] = tr.n[2]
-        const u = computeUv(v, tr.n, recipe.uvMode, recipe.uvScale)
+        const u = computeTriVertexUv(globalIdx, tris.length, vi, v, tr.n, recipe.uvMode, recipe.uvScale)
         const o2 = (ti * 3 + vi) * 2
         uv[o2] = u[0]; uv[o2 + 1] = u[1]
       })
@@ -721,10 +746,18 @@ export function MeshBuilder({
     })
   }
 
-  // Fast non-React preview load for live mouse-drag Extrude/Inset
+  const previewBusyRef = useRef(false)
+  const pendingPreviewRef = useRef<MeshBuilderRecipe | null>(null)
+
+  // Serialized live preview loader so dragging Extrude/Inset never cancels mid-GLB-parse (zero flickering/vanishing)
   const loadPreviewRecipe = (previewRecipe: MeshBuilderRecipe) => {
     const w = worldRef.current
     if (!w) return
+    if (previewBusyRef.current) {
+      pendingPreviewRef.current = previewRecipe
+      return
+    }
+    previewBusyRef.current = true
     const glb = buildRecipeToGlbDataUrl(previewRecipe)
     const tempAsset: Asset = { ...a, data: glb }
     const sample = makeProject('Mesh Builder Preview')
@@ -736,8 +769,19 @@ export function MeshBuilder({
     ent.id = 'mb-preview'
     ent.components = [{ type: 'mesh', shape: 'model', asset: a.id }]
     sample.scenes[0].entities = [ent]
-    w.load(sample)
-    w.setGrid(true, -0.01)
+    Promise.resolve(w.load(sample))
+      .catch(() => {})
+      .finally(() => {
+        w.setGrid(true, -0.01)
+        window.setTimeout(() => {
+          previewBusyRef.current = false
+          const queued = pendingPreviewRef.current
+          if (queued) {
+            pendingPreviewRef.current = null
+            loadPreviewRecipe(queued)
+          }
+        }, 90)
+      })
   }
 
   const tris = useMemo(() => buildRecipeTriangles(recipe), [recipe])
@@ -913,9 +957,9 @@ export function MeshBuilder({
     const c = texCanvasRef.current
     if (!c) return
     const tr = tris[hit.faceIndex]
-    const uv0 = computeUv(tr.v0, tr.n, recipe.uvMode, recipe.uvScale)
-    const uv1 = computeUv(tr.v1, tr.n, recipe.uvMode, recipe.uvScale)
-    const uv2 = computeUv(tr.v2, tr.n, recipe.uvMode, recipe.uvScale)
+    const uv0 = computeTriVertexUv(hit.faceIndex, tris.length, 0, tr.v0, tr.n, recipe.uvMode, recipe.uvScale)
+    const uv1 = computeTriVertexUv(hit.faceIndex, tris.length, 1, tr.v1, tr.n, recipe.uvMode, recipe.uvScale)
+    const uv2 = computeTriVertexUv(hit.faceIndex, tris.length, 2, tr.v2, tr.n, recipe.uvMode, recipe.uvScale)
     const w0 = 1 - hit.u - hit.v
     const rawU = w0 * uv0[0] + hit.u * uv1[0] + hit.v * uv2[0]
     const rawV = w0 * uv0[1] + hit.u * uv1[1] + hit.v * uv2[1]
@@ -1075,7 +1119,7 @@ export function MeshBuilder({
                 fd.amount = amt
                 setDragHud(fd.kind === 'extrude' ? `Extrude: ${amt >= 0 ? '+' : ''}${amt.toFixed(2)}` : `Inset: ${amt.toFixed(2)}`)
                 const now = performance.now()
-                if (now - fd.lastPreviewMs > 45) {
+                if (now - fd.lastPreviewMs > 110) {
                   fd.lastPreviewMs = now
                   const preview = structuredClone(recipe)
                   preview.editOps = [
@@ -1463,7 +1507,8 @@ export function MeshBuilder({
           <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 8, background: '#192028', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             <Field label="UV Unwrap">
               <select value={recipe.uvMode} onChange={(e) => commitRecipe((r) => (r.uvMode = e.target.value as UvMode))}>
-                <option value="box">Box / Triplanar</option>
+                <option value="atlas">Unique Per-Face Atlas (3D Brush)</option>
+                <option value="box">Box / Triplanar (Tiled)</option>
                 <option value="planar">Planar (Top-Down)</option>
                 <option value="cylindrical">Cylindrical</option>
               </select>

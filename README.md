@@ -6,8 +6,8 @@ A lightweight (~15 MB desktop build), browser-based 3D game engine and all-in-on
 
 Designed for solo indie developers, web portals, and game jams: model low-poly assets, paint 2D/3D materials, synthesize SFX/music, wire gameplay with visual Blueprints, write dialogues/cutscenes, and export playable Web or Desktop builds without leaving the editor.
 
-- **Live Web Editor:** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/editor/`
-- **Interactive Documentation (v2.4):** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/docs/`
+- **Live Web Editor:** `https://oiproger.github.io/miniforge-engine/editor/`
+- **Interactive Documentation (v2.6.7):** `https://oiproger.github.io/miniforge-engine/docs/`
 
 ## Built-in Tools
 
@@ -20,7 +20,7 @@ Designed for solo indie developers, web portals, and game jams: model low-poly a
 - **Sound / SFX / Music Synth:** presets, 16-step sequencer, `.wav` export, and runtime audio modulation (`setSemitones`, `setSpeed`, `setLowpass`).
 - **Dialogue & Quest Graph + Keyframe Sequencer:** branching dialogues, quest states, and multi-track cutscenes.
 - **Plugin System (v2.2):** create, edit, enable/disable, and import/export `.mfplugin.json` plugins extending both Editor menus and Runtime behaviors/services (includes 4 built-in examples).
-- **Export Settings & 1-Click Export Templates (v2.4):** configure app name, version, bundle ID, icon, and window settings; export standalone HTML5, Yandex Games / Poki builds, or instant Windows/macOS/Linux executables via prebuilt Tauri Export Templates (with automatic Tauri source fallback).
+- **Export Settings & 1-Click Export Templates (v2.6.7):** configure app name, version, bundle ID, icon, and window settings; export standalone HTML5, Yandex Games / Poki builds, or instant Windows/macOS/Linux executables via prebuilt Tauri Export Templates (with automatic Tauri source fallback).
 
 ## Quick Start
 
@@ -60,10 +60,10 @@ See [ROADMAP.md](./ROADMAP.md) for the full plan:
 
 Miniforge Engine is free and open-source under the MIT License. If it helped with your prototype or game jam, you can support ongoing development:
 
-- **Boosty (RU / cards):** `https://boosty.to/YOUR_USERNAME`
-- **CloudTips (RU one-time tips):** `https://pay.cloudtips.ru/p/YOUR_CODE`
-- **Tribute (Telegram / crypto):** `https://t.me/tribute/app?startapp=YOUR_LINK`
-- **Lava.top (International):** `https://app.lava.top/YOUR_USERNAME`
+- **Boosty (RU / cards):** `https://boosty.to/oipdever`
+- **CloudTips (RU one-time tips):** `https://pay.cloudtips.ru/p/93fbe76b`
+- **Tribute (Telegram / crypto):** `https://t.me/tribute/app?startapp=dUBS`
+- **Lava.top (International):** `https://app.lava.top/oipdever`
 
 ## License
 

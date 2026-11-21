@@ -1363,7 +1363,7 @@ function App() {
             if (e.target === e.currentTarget && !busy) modal('')
           }}
         >
-          <section className="dialog">
+          <section className="dialog" style={dialog === 'exportSettings' ? { width: 'min(820px, 94vw)', maxWidth: '820px' } : undefined}>
             <div className="dialog-head">
               <span className="dialog-icon">
                 {dialog === 'export' ? <Rocket /> : dialog === 'exportSettings' ? <Settings2 /> : dialog === 'new' ? <FilePlus2 /> : <Box />}

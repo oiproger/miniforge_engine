@@ -6,8 +6,8 @@
 
 Создан для инди-разработчиков, веб-порталов и геймджемов: моделируйте low-poly ассеты, красьте 2D/3D-материалы, синтезируйте звуки и музыку, собирайте логику нодами (Blueprints), делайте диалоги и катсцены и экспортируйте игры под Web или Desktop, не покидая редактор.
 
-- **Запустить редактор в браузере:** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/editor/`
-- **Полная документация (v2.4):** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/docs/`
+- **Запустить редактор в браузере:** `https://oiproger.github.io/miniforge-engine/editor/`
+- **Полная документация (v2.6.7):** `https://oiproger.github.io/miniforge-engine/docs/`
 
 ## Что внутри
 
@@ -20,7 +20,7 @@
 - **Sound / SFX / Music Synth:** пресеты, 16-шаговый секвенсор, экспорт `.wav` и модификация звука в рантайме (`setSemitones`, `setSpeed`, `setLowpass`).
 - **Dialogue & Quest Graph + Keyframe Sequencer:** ветвящиеся диалоги, квесты и многодорожечные катсцены.
 - **Система плагинов (v2.2):** создание, редактирование и импорт/экспорт `.mfplugin.json` с расширением редактора и рантайма (4 встроенных примера от HUD до RPG-инвентаря).
-- **Export Settings и Export Templates (v2.4):** отдельное окно настроек экспорта (название, версия, Bundle ID, иконка, окно/fullscreen) и мгновенная сборка исполняемых файлов под Windows, macOS и Linux через готовые шаблоны плеера (или Tauri Source ZIP).
+- **Export Settings и Export Templates (v2.6.7):** отдельное окно настроек экспорта (название, версия, Bundle ID, иконка, окно/fullscreen) и мгновенная сборка исполняемых файлов под Windows, macOS и Linux через готовые шаблоны плеера (или Tauri Source ZIP).
 
 ## Быстрый старт
 
@@ -60,10 +60,10 @@ pnpm desktop:editor # Десктопная сборка редактора (Taur
 
 Проект полностью бесплатный и открыт под лицензией MIT. Поддержать развитие движка можно здесь:
 
-- **Boosty (РФ):** `https://boosty.to/YOUR_USERNAME`
-- **CloudTips (разовый донат с карты РФ):** `https://pay.cloudtips.ru/p/YOUR_CODE`
-- **Tribute (Telegram / крипто):** `https://t.me/tribute/app?startapp=YOUR_LINK`
-- **Lava.top (зарубежные карты):** `https://app.lava.top/YOUR_USERNAME`
+- **Boosty (РФ):** `https://boosty.to/oipdever`
+- **CloudTips (разовый донат с карты РФ):** `https://pay.cloudtips.ru/p/93fbe76b`
+- **Tribute (Telegram / крипто):** `https://t.me/tribute/app?startapp=dUBS`
+- **Lava.top (зарубежные карты):** `https://app.lava.top/oipdever`
 
 ## Лицензия
 

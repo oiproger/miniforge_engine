@@ -577,12 +577,20 @@ export function EventGraphEditor({
                       ) : v.type === 'enum' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <input
-                            value={(v.enumValues || ['Idle', 'Patrol', 'Chase']).join(', ')}
-                            placeholder="Enum values (comma-separated)"
-                            title="Enum options separated by commas"
-                            onChange={(e) => {
+                            key={v.id + ':enum:' + (v.enumValues || []).join('|')}
+                            defaultValue={(v.enumValues || ['Idle', 'Patrol', 'Chase']).join(', ')}
+                            placeholder="Idle, Patrol, Chase (Enter)"
+                            title="Type comma-separated values, then press Enter or click outside"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur()
+                            }}
+                            onBlur={(e) => {
                               const vals = e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
-                              updateVariable(v.id, { enumValues: vals, defaultValue: vals.includes(String(v.defaultValue)) ? v.defaultValue : (vals[0] || '') })
+                              const clean = vals.length ? [...new Set(vals)] : ['Idle']
+                              updateVariable(v.id, {
+                                enumValues: clean,
+                                defaultValue: clean.includes(String(v.defaultValue)) ? v.defaultValue : clean[0],
+                              })
                             }}
                           />
                           <select
@@ -804,6 +812,55 @@ export function EventGraphEditor({
                           </option>
                         ))}
                       </select>
+                    </div>
+                  )}
+
+                  {node.type === 'enum.switch' && (
+                    <div className="mf-bp-node-op" style={{ display: 'flex', gap: 4, justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 10.5, color: '#a78bfa' }}>
+                        Cases: {Math.max(1, Math.min(16, Number(node.config?.caseCount ?? 4)))}
+                      </span>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          type="button"
+                          className="mf-btn"
+                          style={{ fontSize: 10.5, padding: '1px 6px' }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const cur = Math.max(1, Math.min(16, Number(node.config?.caseCount ?? 4)))
+                            if (cur < 16) updateNodeConfig(node.id, { caseCount: cur + 1 })
+                          }}
+                        >
+                          + Case
+                        </button>
+                        <button
+                          type="button"
+                          className="mf-btn"
+                          style={{ fontSize: 10.5, padding: '1px 6px' }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const cur = Math.max(1, Math.min(16, Number(node.config?.caseCount ?? 4)))
+                            if (cur > 1) {
+                              const nextCount = cur - 1
+                              commit((g) => {
+                                const fnObj = activeFn ? g.functions.find((f) => f.id === activeFn.id) : null
+                                const targetNodes = fnObj ? fnObj.nodes : g.nodes
+                                const targetEdges = fnObj ? fnObj.edges : g.edges
+                                const nd = targetNodes.find((x) => x.id === node.id)
+                                if (nd) nd.config = { ...(nd.config || {}), caseCount: nextCount }
+                                for (let i = targetEdges.length - 1; i >= 0; i--) {
+                                  const edg = targetEdges[i]
+                                  if ((edg.toNode === node.id && edg.toPin === 'case' + nextCount) || (edg.fromNode === node.id && edg.fromPin === 'out' + nextCount)) {
+                                    targetEdges.splice(i, 1)
+                                  }
+                                }
+                              })
+                            }
+                          }}
+                        >
+                          − Case
+                        </button>
+                      </div>
                     </div>
                   )}
 

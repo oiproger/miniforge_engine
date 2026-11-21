@@ -298,7 +298,7 @@ export function createEventGraphLifecycle(
       }
       case 'entity.findByTag': {
         const list = api.findByTag(String(get('tag', '')))
-        return { id: list[0] ?? '', count: list.length }
+        return { id: list[0] ?? '', entities: list, count: list.length }
       }
       case 'entity.getPos': {
         const n = api.find(resolveEntityId(get('id', '')))
@@ -573,7 +573,8 @@ export function createEventGraphLifecycle(
       case 'enum.switch': {
         const val = String(get('value', ''))
         let matched = false
-        for (let i = 0; i < 4; i++) {
+        const count = Math.max(1, Math.min(16, Number(node.config?.caseCount ?? 4)))
+        for (let i = 0; i < count; i++) {
           if (val === String(get('case' + i, ''))) {
             next('out' + i)
             matched = true

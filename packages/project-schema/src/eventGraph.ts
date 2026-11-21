@@ -577,12 +577,13 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
   },
   {
     type: 'entity.findByTag',
-    title: 'Find Entity By Tag',
+    title: 'Find Entities By Tag',
     category: 'Entity',
     pure: true,
     inputs: [{ id: 'tag', label: 'Tag', type: 'string', defaultValue: 'player' }],
     outputs: [
-      { id: 'id', label: 'First ID', type: 'entity' },
+      { id: 'id', label: 'First Entity', type: 'entity' },
+      { id: 'entities', label: 'All Entities', type: 'array' },
       { id: 'count', label: 'Count', type: 'number' },
     ],
   },
@@ -1483,6 +1484,22 @@ export function getNodePins(
   graph: EventGraphData,
   currentFn?: GraphFunction,
 ): { title: string; category: GraphNodeSpec['category']; inputs: GraphPinDef[]; outputs: GraphPinDef[] } {
+  if (node.type === 'enum.switch') {
+    const count = Math.max(1, Math.min(16, Number(node.config?.caseCount ?? 4)))
+    const defaults = ['Idle', 'Patrol', 'Chase', 'Attack']
+    const inputs: GraphPinDef[] = [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'value', label: 'Enum', type: 'enum', defaultValue: '' },
+    ]
+    const outputs: GraphPinDef[] = []
+    for (let i = 0; i < count; i++) {
+      inputs.push({ id: 'case' + i, label: 'Case ' + i, type: 'string', defaultValue: defaults[i] ?? 'State_' + i })
+      outputs.push({ id: 'out' + i, label: 'Case ' + i, type: 'exec' })
+    }
+    outputs.push({ id: 'default', label: 'Default', type: 'exec' })
+    return { title: 'Switch on Enum / String', category: 'Collections' as const, inputs, outputs }
+  }
+
   const spec = GRAPH_NODE_MAP[node.type]
   if (node.type === 'var.get') {
     const v = graph.variables.find((x) => x.id === node.config?.varId)

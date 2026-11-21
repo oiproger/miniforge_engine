@@ -280,12 +280,14 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       return `${indent}console.log('[EventGraph]', ${g('message', '')});\n` + next()
     case 'enum.switch': {
       const sv = `_sw${++ctx.counter.n}`
-      return `${indent}{ const ${sv} = String(${g('value', '')});\n` +
-        `${indent}  if (${sv} === String(${g('case0', 'Idle')})) {\n${next('out0', indent + '    ')}${indent}  }\n` +
-        `${indent}  else if (${sv} === String(${g('case1', 'Patrol')})) {\n${next('out1', indent + '    ')}${indent}  }\n` +
-        `${indent}  else if (${sv} === String(${g('case2', 'Chase')})) {\n${next('out2', indent + '    ')}${indent}  }\n` +
-        `${indent}  else if (${sv} === String(${g('case3', 'Attack')})) {\n${next('out3', indent + '    ')}${indent}  }\n` +
-        `${indent}  else {\n${next('default', indent + '    ')}${indent}  }\n${indent}}\n`
+      const count = Math.max(1, Math.min(16, Number(node.config?.caseCount ?? 4)))
+      let code = `${indent}{ const ${sv} = String(${g('value', '')});\n`
+      for (let i = 0; i < count; i++) {
+        const kw = i === 0 ? 'if' : 'else if'
+        code += `${indent}  ${kw} (${sv} === String(${g('case' + i, 'State_' + i)})) {\n${next('out' + i, indent + '    ')}${indent}  }\n`
+      }
+      code += `${indent}  else {\n${next('default', indent + '    ')}${indent}  }\n${indent}}\n`
+      return code
     }
     case 'var.set': {
       const varId = String(node.config?.varId || node.inputs?.varId || '')
