@@ -65,6 +65,10 @@ Miniforge Engine is free and open-source under the MIT License. If it helped wit
 - **Tribute (Telegram / crypto):** `https://t.me/tribute/app?startapp=dUBS`
 - **Lava.top (International):** `https://app.lava.top/oipdever`
 
+## Credits & Development Note
+
+Architecture, product direction, testing, and maintenance by [@oiproger](https://github.com/oiproger) using AI-assisted development workflows.
+
 ## License
 
 Licensed under the [MIT License](./LICENSE). Built with open-source libraries including [LittleJS](https://github.com/KilledByAPixel/LittleJS) (MIT) and [Rapier](https://rapier.rs/) (Apache 2.0).

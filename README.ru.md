@@ -65,6 +65,10 @@ pnpm desktop:editor # Десктопная сборка редактора (Taur
 - **Tribute (Telegram / крипто):** `https://t.me/tribute/app?startapp=dUBS`
 - **Lava.top (зарубежные карты):** `https://app.lava.top/oipdever`
 
+## Благодарности и разработка
+
+Архитектура, проектирование, тестирование и поддержка — [@oiproger](https://github.com/oiproger) с использованием AI-assisted разработки.
+
 ## Лицензия
 
 [MIT License](./LICENSE). В проекте используются открытые библиотеки, включая [LittleJS](https://github.com/KilledByAPixel/LittleJS) (MIT) и [Rapier](https://rapier.rs/) (Apache 2.0).
