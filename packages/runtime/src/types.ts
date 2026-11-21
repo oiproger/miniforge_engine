@@ -442,6 +442,55 @@ export interface GameAPI {
     mount(id: string, content: string | HTMLElement, css?: string): HTMLElement
     /** Remove a previously mounted custom widget. */
     unmount(id: string): void
+    /** Dynamically create or update a UI screen (window/HUD) at runtime. */
+    createScreen(
+      id: string,
+      opts?: {
+        name?: string
+        phase?: 'menu' | 'playing' | 'paused' | 'results' | 'window'
+        background?: string
+        modal?: boolean
+        backdropBlur?: number
+        open?: boolean
+      },
+    ): string
+    /** Remove a dynamically created or authored UI screen and its widgets. */
+    removeScreen(id: string): boolean
+    /** List all available UI screens. */
+    listScreens(): Array<{ id: string; name: string; phase: string; modal?: boolean }>
+    /** Dynamically create a basic HUD widget (label, button, bar, panel, image, html) on a screen. */
+    createWidget(spec: {
+      id?: string
+      type: string
+      text?: string
+      x?: number
+      y?: number
+      screen?: string
+      anchor?: string
+      action?: string
+      target?: string
+      color?: string
+      background?: string
+      width?: number
+      height?: number
+      value?: number
+      max?: number
+      html?: string
+      visible?: boolean
+      [key: string]: any
+    }): string
+    /** Patch properties of an existing UI widget by ID and redraw. */
+    updateWidget(id: string, patch: Record<string, any>): boolean
+    /** Remove a UI widget by ID and redraw. */
+    removeWidget(id: string): boolean
+    /** List UI widgets (optionally filtered by screen ID). */
+    getWidgets(screenId?: string): Array<Record<string, any>>
+    /** Update text of a UI widget or mounted DOM element. */
+    setText(id: string, text: string): boolean
+    /** Update innerHTML of a mounted widget or html UI element. */
+    setHtml(id: string, html: string): boolean
+    /** Show or hide a UI widget or mounted DOM element. */
+    setVisible(id: string, visible: boolean): boolean
   }
   /** Branching NPC Dialogue & Quest state manager. */
   dialogue: DialogueAPI

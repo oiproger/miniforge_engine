@@ -293,6 +293,15 @@ export function createEventGraphLifecycle(
       case 'object.fromJson': {
         try { return { value: JSON.parse(String(get('json', '{}'))), ok: true } } catch { return { value: null, ok: false } }
       }
+      case 'quest.getStatus': {
+        const qid = String(get('questId', ''))
+        return { status: qid ? api.dialogue.getQuestStatus(qid) : 'inactive' }
+      }
+      case 'camera.worldToScreen': {
+        const pos = toVec3(get('position', [0, 0, 0]))
+        const sp = api.camera.worldToScreen(pos)
+        return { x: sp.x, y: sp.y, visible: sp.visible }
+      }
       case 'enum.equals': {
         return { result: String(get('a', '')) === String(get('b', '')) }
       }
@@ -783,6 +792,195 @@ export function createEventGraphLifecycle(
       }
       case 'ui.close': {
         api.ui.close()
+        next()
+        break
+      }
+      case 'ui.back': {
+        api.ui.back()
+        next()
+        break
+      }
+      case 'ui.mount': {
+        const id = String(get('id', 'hud_custom')) || 'hud_custom'
+        const html = String(get('html', ''))
+        const css = String(get('css', '')) || undefined
+        api.ui.mount(id, html, css)
+        next()
+        break
+      }
+      case 'ui.unmount': {
+        const id = String(get('id', ''))
+        if (id) api.ui.unmount(id)
+        next()
+        break
+      }
+      case 'ui.setHtml': {
+        const id = String(get('id', ''))
+        if (id) api.ui.setHtml(id, String(get('html', '')))
+        next()
+        break
+      }
+      case 'ui.setBlur': {
+        const id = String(get('id', ''))
+        if (id) api.ui.setBlur(id, Number(get('blurPx', 0)) || 0)
+        next()
+        break
+      }
+      case 'ui.createScreen': {
+        const id = String(get('id', ''))
+        const screenId = api.ui.createScreen(id, {
+          name: String(get('name', id || 'Custom Screen')),
+          background: String(get('background', '')) || undefined,
+          modal: Boolean(get('modal', false)),
+          open: Boolean(get('openNow', true)),
+        })
+        setOut({ screenId })
+        next()
+        break
+      }
+      case 'ui.removeScreen': {
+        const sid = String(get('screenId', ''))
+        if (sid) api.ui.removeScreen(sid)
+        next()
+        break
+      }
+      case 'ui.createWidget': {
+        const widgetId = api.ui.createWidget({
+          id: String(get('id', '')) || undefined,
+          screen: String(get('screenId', '')) || undefined,
+          type: String(get('widgetType', 'label')) || 'label',
+          text: String(get('text', '')),
+          x: Number(get('x', 24)) || 0,
+          y: Number(get('y', 24)) || 0,
+          anchor: String(get('anchor', 'top-left')) || 'top-left',
+          action: String(get('action', 'event')) || 'event',
+          target: String(get('target', '')) || undefined,
+          color: String(get('color', '#ffffff')) || undefined,
+        })
+        setOut({ widgetId })
+        next()
+        break
+      }
+      case 'ui.updateWidget': {
+        const id = String(get('id', ''))
+        if (id) {
+          const patch: Record<string, any> = { visible: Boolean(get('visible', true)) }
+          const txt = String(get('text', ''))
+          if (txt !== '') patch.text = txt
+          const col = String(get('color', ''))
+          if (col !== '') patch.color = col
+          const val = get('value', undefined)
+          if (val !== undefined && val !== '') patch.value = Number(val)
+          api.ui.updateWidget(id, patch)
+        }
+        next()
+        break
+      }
+      case 'ui.removeWidget': {
+        const id = String(get('id', ''))
+        if (id) api.ui.removeWidget(id)
+        next()
+        break
+      }
+      case 'ui.setText': {
+        const id = String(get('id', ''))
+        if (id) api.ui.setText(id, String(get('text', '')))
+        next()
+        break
+      }
+      case 'ui.setVisible': {
+        const id = String(get('id', ''))
+        if (id) api.ui.setVisible(id, Boolean(get('visible', true)))
+        next()
+        break
+      }
+      case 'audio.stop': {
+        const h = String(get('handle', ''))
+        if (h) api.audio.stop(h)
+        next()
+        break
+      }
+      case 'audio.stopAll': {
+        api.audio.stopAll()
+        next()
+        break
+      }
+      case 'audio.setVolume': {
+        const h = String(get('handle', ''))
+        if (h) api.audio.setVolume(h, Number(get('volume', 1)) || 0, Number(get('fade', 0)) || 0)
+        next()
+        break
+      }
+      case 'audio.setBusVolume': {
+        const bus = (String(get('bus', 'master')) || 'master') as any
+        api.audio.setBusVolume(bus, Number(get('volume', 1)) || 0)
+        next()
+        break
+      }
+      case 'dialogue.start': {
+        const aid = String(get('assetId', ''))
+        if (aid) api.dialogue.start(aid)
+        next()
+        break
+      }
+      case 'dialogue.stop': {
+        api.dialogue.stop()
+        next()
+        break
+      }
+      case 'quest.setStatus': {
+        const qid = String(get('questId', ''))
+        const st = (String(get('status', 'active')) || 'active') as any
+        if (qid) api.dialogue.setQuestStatus(qid, st)
+        next()
+        break
+      }
+      case 'sequencer.play': {
+        const aid = String(get('assetId', ''))
+        if (aid) api.sequencer.play(aid)
+        next()
+        break
+      }
+      case 'sequencer.stop': {
+        const aid = String(get('assetId', ''))
+        if (aid) api.sequencer.stop(aid)
+        next()
+        break
+      }
+      case 'fx.particlePlay': {
+        const id = resolveEntityId(get('id', 'self'))
+        if (id) api.particles.play(id)
+        next()
+        break
+      }
+      case 'fx.particleStop': {
+        const id = resolveEntityId(get('id', 'self'))
+        if (id) api.particles.stop(id)
+        next()
+        break
+      }
+      case 'light.setGlow': {
+        const id = resolveEntityId(get('id', 'self'))
+        if (id) api.lights.setGlow(id, Number(get('glow', 1.5)) || 0, Number(get('falloff', 1.2)) || 1)
+        next()
+        break
+      }
+      case 'nav.setObstacle': {
+        api.nav.setObstacle(toVec3(get('center', [0, 0, 0])), Number(get('radius', 1.5)) || 1, Boolean(get('blocked', true)))
+        next()
+        break
+      }
+      case 'touch.setVisible': {
+        api.touch.setVisible(Boolean(get('visible', true)))
+        next()
+        break
+      }
+      case 'tween.scaleTo': {
+        const id = resolveEntityId(get('id', 'self'))
+        const target = toVec3(get('target', [1, 1, 1]))
+        const dur = Math.max(0.01, Number(get('duration', 0.4)) || 0.4)
+        const obj = id ? api.find(id) : undefined
+        if (obj) { const tw = api.createTween(); tw.tweenProperty(obj.scale, 'x', target[0], dur).setTrans('sine').setEase('inOut'); tw.parallel().tweenProperty(obj.scale, 'y', target[1], dur).setTrans('sine').setEase('inOut'); tw.parallel().tweenProperty(obj.scale, 'z', target[2], dur).setTrans('sine').setEase('inOut') }
         next()
         break
       }

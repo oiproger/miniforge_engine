@@ -2,6 +2,8 @@
 
 **Read in Russian:** [README.ru.md](./README.ru.md) · **Roadmap:** [ROADMAP.md](./ROADMAP.md)
 
+![alt text](/media/github_banner.png)
+
 A lightweight (~15 MB desktop build), browser-based 3D game engine and all-in-one prototyping studio built on **LittleJS 1.30.1** (WebGL2 3D), **Rapier3D** (WASM physics), **React 19 + TypeScript 5.9**, and **Tauri v2**.
 
 Designed for solo indie developers, web portals, and game jams: model low-poly assets, paint 2D/3D materials, synthesize SFX/music, wire gameplay with visual Blueprints, write dialogues/cutscenes, and export playable Web or Desktop builds without leaving the editor.

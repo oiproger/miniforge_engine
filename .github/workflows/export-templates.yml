@@ -47,6 +47,8 @@ jobs:
           cargo build --release --features player --target x86_64-apple-darwin
           mkdir -p target/release
           lipo -create             target/aarch64-apple-darwin/release/miniforge             target/x86_64-apple-darwin/release/miniforge             -output target/release/miniforge
+          chmod +x target/release/miniforge
+          codesign --force --sign - target/release/miniforge
 
       - name: Build universal Miniforge Player template (Windows / Linux)
         if: runner.os != 'macOS'

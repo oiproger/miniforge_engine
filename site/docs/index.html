@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Miniforge Engine v2.6 — Полная документация</title>
+<title>Miniforge Engine — Complete Documentation</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -426,49 +426,221 @@
 <body>
   <header class="topbar">
     <div style="display:flex;align-items:center;gap:10px;">
-      <button type="button" id="menuToggle" class="btn menu-toggle">Меню</button>
+      <button type="button" id="menuToggle" class="btn menu-toggle">Menu</button>
       <div class="brand">
         <span class="brand-dot"></span>
         <span>Miniforge Engine</span>
-        <span class="ver-pill">v2.6 Docs</span>
+        <span class="ver-pill" id="docsBadge">Docs</span>
       </div>
     </div>
     <div class="search-wrap">
-      <input id="searchInput" type="search" placeholder="Поиск по API, компонентам, студиям (напр. crossfade, getSurfaceAt, scatter)...">
-      <button type="button" id="searchClear" class="search-clear" aria-label="Очистить поиск">×</button>
+      <input id="searchInput" type="search" placeholder="Search API, components, Event Graph (e.g. createWidget, mount, crossfade)...">
+      <button type="button" id="searchClear" class="search-clear" aria-label="Clear search">×</button>
     </div>
-    <div class="top-actions">
-      <button type="button" id="themeToggle" class="btn">Светлая тема</button>
+    <div class="top-actions" style="display:flex;align-items:center;gap:8px;">
+      <button type="button" id="langToggle" class="btn" style="font-family:ui-monospace,monospace;font-weight:700;">EN / RU</button>
+      <button type="button" id="themeToggle" class="btn">Light Theme</button>
     </div>
   </header>
 
   <div class="layout">
     <aside id="sidebar" class="sidebar">
-      <div class="sidebar-title">Фильтр разделов</div>
-      <div class="cat-bar" id="catBar"><button type="button" class="cat-pill active" data-cat="Все">Все</button><button type="button" class="cat-pill" data-cat="Основы">Основы</button><button type="button" class="cat-pill" data-cat="Редактор">Редактор</button><button type="button" class="cat-pill" data-cat="Ассеты">Ассеты</button><button type="button" class="cat-pill" data-cat="Blueprints">Blueprints</button><button type="button" class="cat-pill" data-cat="All-in-One">All-in-One</button><button type="button" class="cat-pill" data-cat="Сцена">Сцена</button><button type="button" class="cat-pill" data-cat="Скриптинг">Скриптинг</button><button type="button" class="cat-pill" data-cat="API Reference">API Reference</button><button type="button" class="cat-pill" data-cat="Графика">Графика</button><button type="button" class="cat-pill" data-cat="Рецепты">Рецепты</button><button type="button" class="cat-pill" data-cat="Релиз">Релиз</button><button type="button" class="cat-pill" data-cat="Расширения">Расширения</button><button type="button" class="cat-pill" data-cat="Релиз и UX">Релиз и UX</button></div>
-      <div class="sidebar-title">Содержание</div>
-      <nav id="tocNav"><a class="nav-item" href="#sec-start" data-nav="sec-start" data-cat="Основы"><span class="nav-num">1</span><span class="nav-text">Архитектура и быстрый старт</span></a><a class="nav-item" href="#sec-studios" data-nav="sec-studios" data-cat="Редактор"><span class="nav-num">2</span><span class="nav-text">Интерфейс редактора и встроенные студии</span></a><a class="nav-item" href="#sec-models" data-nav="sec-models" data-cat="Ассеты"><span class="nav-num">3</span><span class="nav-text">Импорт 3D-моделей и Model Editor (v1.2–v2.1)</span></a><a class="nav-item" href="#sec-blueprints" data-nav="sec-blueprints" data-cat="Blueprints"><span class="nav-num">4</span><span class="nav-text">Визуальное программирование: Event Graph (Blueprints)</span></a><a class="nav-item" href="#sec-all-in-one" data-nav="sec-all-in-one" data-cat="All-in-One"><span class="nav-num">5</span><span class="nav-text">All-in-One Creator Suite v2.0–v2.1: 5 встроенных студий и 3D-пипетка</span></a><a class="nav-item" href="#sec-components" data-nav="sec-components" data-cat="Сцена"><span class="nav-num">6</span><span class="nav-text">Полный справочник компонентов</span></a><a class="nav-item" href="#sec-lifecycle" data-nav="sec-lifecycle" data-cat="Скриптинг"><span class="nav-num">7</span><span class="nav-text">Жизненный цикл скриптов, Input и Multi-Touch</span></a><a class="nav-item" href="#sec-api-core" data-nav="sec-api-core" data-cat="API Reference"><span class="nav-num">8</span><span class="nav-text">Scripting API: Сущности, Камера, Игрок, Физика и Навигация</span></a><a class="nav-item" href="#sec-api-world" data-nav="sec-api-world" data-cat="API Reference"><span class="nav-num">9</span><span class="nav-text">Scripting API: Материалы, Террейн, Эффекты, Аудио, Tween, UI и Сохранения</span></a><a class="nav-item" href="#sec-graphics" data-nav="sec-graphics" data-cat="Графика"><span class="nav-num">10</span><span class="nav-text">Освещение, постпроцессинг, шейдеры и оптимизация</span></a><a class="nav-item" href="#sec-cookbook" data-nav="sec-cookbook" data-cat="Рецепты"><span class="nav-num">11</span><span class="nav-text">Практические рецепты (Cookbook)</span></a><a class="nav-item" href="#sec-export" data-nav="sec-export" data-cat="Релиз"><span class="nav-num">12</span><span class="nav-text">Сборка, экспорт и публикация (Web, Yandex, Poki, Desktop)</span></a><a class="nav-item" href="#sec-plugins" data-nav="sec-plugins" data-cat="Расширения"><span class="nav-num">13</span><span class="nav-text">Система плагинов (Plugin API v2.2): создание, импорт и разработка</span></a><a class="nav-item" href="#sec-v24-hub-export" data-nav="sec-v24-hub-export" data-cat="Релиз и UX"><span class="nav-num">14</span><span class="nav-text">Project Hub, 10 стартовых шаблонов, Export Templates и Nativization (v2.3–v2.6)</span></a></nav>
+      <div class="sidebar-title" id="filterTitle">Filter by category</div>
+      <div class="cat-bar" id="catBar"></div>
+      <div class="sidebar-title" id="tocTitle">Contents</div>
+      <nav id="tocNav"></nav>
     </aside>
 
     <main class="content">
       <div class="hero">
-        <h1>Полная документация Miniforge Engine v2.6</h1>
-        <p>Исчерпывающий справочник по архитектуре, 13 встроенным студиям (включая новый Model Editor с нарезкой анимаций), всем 16 компонентам, полному Scripting API и сборке под Web, Яндекс Игры, Poki, Windows, macOS и Linux.</p>
-        <div class="stat-row">
-          <div class="stat-chip"><strong>12</strong> глав</div>
-          <div class="stat-chip"><strong>13</strong> студий редактора</div>
-          <div class="stat-chip"><strong>17</strong> компонентов</div>
-          <div class="stat-chip"><strong>20+</strong> модулей GameAPI</div>
-          <div class="stat-chip"><strong>4</strong> платформы экспорта</div>
+        <h1 id="heroTitle">Miniforge Engine Documentation</h1>
+        <p id="heroLead">Complete reference for the architecture, 13 editor studios, 17 components, 95+ Event Graph nodes, Dynamic UI &amp; GameAPI, plugins, and cross-platform export for Web, Yandex Games, Poki, Windows, macOS, and Linux.</p>
+        <div class="stat-row" id="heroStats">
+          <div class="stat-chip"><strong>13</strong> studios</div>
+          <div class="stat-chip"><strong>17</strong> components</div>
+          <div class="stat-chip"><strong>95+</strong> Event Graph nodes</div>
+          <div class="stat-chip"><strong>20+</strong> GameAPI modules</div>
+          <div class="stat-chip"><strong>4</strong> export targets</div>
         </div>
       </div>
 
       <div id="searchStatus" class="search-status">
         <span id="searchStatusText"></span>
-        <button type="button" id="resetFilterBtn" class="btn">Сбросить фильтр</button>
+        <button type="button" id="resetFilterBtn" class="btn">Reset filter</button>
       </div>
 
-      <section class="doc-section" id="sec-start" data-cat="Основы"><div class="sec-meta"><span class="sec-badge">Глава 1</span><span class="sec-cat">Основы</span></div><h2>Архитектура и быстрый старт</h2><p class="sec-lead">Стек Miniforge Engine v2.6, структура репозитория, требования к окружению и все основные команды сборки.</p><p>Miniforge Engine v2.6 — модульный 3D-движок и визуальный редактор на базе <strong>LittleJS 1.30.1</strong> (WebGL2 3D), <strong>Rapier3D</strong> (WASM-физика), <strong>React 19 + TypeScript 5.9</strong> и <strong>Tauri v2</strong> для десктопных сборок. Все проекты хранятся в открытом JSON-формате (<code>Project v1</code>) или архивах <code>.miniforge</code>.</p>
+      <div id="docsEn">
+<section class="doc-section" id="en-sec-start" data-cat="Basics">
+  <div class="sec-meta"><span class="sec-badge">Chapter 1</span><span class="sec-cat">Basics</span></div>
+  <h2>Architecture &amp; Quick Start</h2>
+  <p class="sec-lead">Miniforge Engine tech stack, monorepo layout, environment requirements, and build commands.</p>
+  <p>Miniforge Engine is a modular 3D game engine and visual studio built on <strong>LittleJS 1.30.1</strong> (WebGL2 3D), <strong>Rapier3D</strong> (WASM physics), <strong>React 19 + TypeScript 5.9</strong>, and <strong>Tauri v2</strong> for ultra-lightweight (~15 MB) desktop builds. Projects are stored in open JSON (<code>Project v1</code>) or <code>.miniforge</code> archives.</p>
+  <div class="table-wrap"><table><thead><tr><th>Package</th><th>Purpose</th><th>Core Tech</th></tr></thead><tbody>
+    <tr><td><code>packages/graphics</code></td><td>WebGL2 renderer, lights, shadows, post-FX, glTF skinning, static batching, terrain</td><td>LittleJS 1.30.1, GLSL ES 3.00</td></tr>
+    <tr><td><code>packages/runtime</code></td><td>Game loop, Rapier3D physics, scripting, Event Graph, NavGrid A*, Audio, Tween, Touch, UI, SaveSystem</td><td>Rapier3D WASM, Web Audio API</td></tr>
+    <tr><td><code>packages/project-schema</code></td><td>Project JSON schema, live prefabs, terrain, NavGrid, HUD screens, Event Graph specs</td><td>TypeScript 5.9 (zero runtime deps)</td></tr>
+    <tr><td><code>packages/platform-sdk</code></td><td>Unified adapter for Web/HTML5, Yandex Games, and Poki (ads, cloud saves, locale)</td><td>Yandex SDK, Poki SDK, localStorage</td></tr>
+    <tr><td><code>packages/exporter</code></td><td>Standalone game bundler, Event Graph AOT nativizer, <code>assimpjs.wasm</code> setup</td><td>esbuild, fflate</td></tr>
+    <tr><td><code>apps/editor</code> &amp; <code>editor-desktop</code></td><td>Visual editor with 13 studios and native Tauri v2 desktop wrapper</td><td>React 19, Vite 7, Monaco, Tauri v2</td></tr>
+  </tbody></table></div>
+  <div class="code-block"><div class="code-bar"><span>bash</span><button type="button" class="copy-btn" data-copy>Copy</button></div><pre><code>pnpm install
+pnpm dev              # Launch visual editor in browser
+pnpm build:site       # Build landing page + bilingual docs + live web editor
+pnpm desktop:editor   # Build native Tauri v2 desktop editor (uses package.json version)</code></pre></div>
+</section>
+
+<section class="doc-section" id="en-sec-studios" data-cat="Editor">
+  <div class="sec-meta"><span class="sec-badge">Chapter 2</span><span class="sec-cat">Editor</span></div>
+  <h2>Editor Workspace &amp; 13 Built-in Studios</h2>
+  <p class="sec-lead">Overview of the 5-panel workspace, Project Hub, viewport gizmos, and built-in authoring studios.</p>
+  <p>The editor combines a top bar (<code>Projects / File / Edit / Project / Play / Export</code>), scene <strong>Hierarchy</strong>, interactive 3D <strong>Viewport</strong> (transform gizmos, terrain sculpting, multi-model prop scatter), searchable <strong>Inspector</strong>, and bottom <strong>Assets / Console / Build</strong> dock.</p>
+  <ul>
+    <li><strong>Project Hub:</strong> start screen that auto-discovers scenes in <code>examples/</code>, renders 3D thumbnails, and provides 10 ready-to-play starter templates (FPS, TPS, RPG, Platformer, Arena Shooter, Mobile Touch, Racing, etc.).</li>
+    <li><strong>Terrain Brush &amp; Multi-Model Scatter:</strong> sculpt elevation directly in 3D, paint unlimited splat layers with <code>Hard ↔ Soft</code> blending, resize grids (<code>16m–128m</code>), and scatter multiple prefabs aligned to surface normals.</li>
+    <li><strong>Script Workspace:</strong> Monaco TypeScript editor with <code>Ctrl+H</code>, inline GameAPI docs, and instant Play hot-reload.</li>
+  </ul>
+</section>
+
+<section class="doc-section" id="en-sec-models" data-cat="Assets">
+  <div class="sec-meta"><span class="sec-badge">Chapter 3</span><span class="sec-cat">Assets</span></div>
+  <h2>3D Model Import &amp; Model Editor</h2>
+  <p class="sec-lead">In-browser Assimp WASM conversion (.fbx, .obj, .x, .smd, .dae → .glb), material slots, and animation clip slicing.</p>
+  <p>Miniforge stores 3D models in compact binary <strong>glTF 2.0 (.glb)</strong>. Importing legacy formats converts them automatically via <code>assimpjs.wasm</code>. Inside the <strong>Model Editor</strong>, you can slice a single timeline into named clips (<code>Idle</code>, <code>Walk</code>, <code>Run</code>, <code>Attack</code>), inspect skeleton bones, and attach sockets.</p>
+</section>
+
+<section class="doc-section" id="en-sec-blueprints" data-cat="Blueprints">
+  <div class="sec-meta"><span class="sec-badge">Chapter 4</span><span class="sec-cat">Blueprints</span></div>
+  <h2>Visual Programming: Event Graph (Blueprints) &amp; AOT Nativizer</h2>
+  <p class="sec-lead">95+ nodes covering the entire engine API, arrays/maps/enums, dynamic Switch (+Case / −Case), tags, and zero-eval JS nativization.</p>
+  <p>Attach an <strong>Event Graph</strong> component (<code>type: "eventGraph"</code>) referencing a reusable <code>graph</code> asset. Supports local variables, HUD <code>vars</code>, persistent <code>worldState</code>, Exposed Variables per entity, custom functions, and collections (<code>array</code>, <code>map</code>, <code>object</code>, <code>enum</code>).</p>
+  <h3>Newly Added UI &amp; Engine Nodes (v2.7)</h3>
+  <div class="table-wrap"><table><thead><tr><th>Category</th><th>Nodes</th></tr></thead><tbody>
+    <tr><td><strong>Dynamic UI &amp; HUD</strong></td><td><code>ui.open</code>, <code>ui.close</code>, <code>ui.back</code>, <code>ui.mount</code>, <code>ui.unmount</code>, <code>ui.setHtml</code>, <code>ui.setBlur</code>, <code>ui.createScreen</code>, <code>ui.removeScreen</code>, <code>ui.createWidget</code>, <code>ui.updateWidget</code>, <code>ui.removeWidget</code>, <code>ui.setText</code>, <code>ui.setVisible</code></td></tr>
+    <tr><td><strong>Audio</strong></td><td><code>audio.play</code>, <code>audio.stop</code>, <code>audio.stopAll</code>, <code>audio.setVolume</code>, <code>audio.setBusVolume</code></td></tr>
+    <tr><td><strong>Dialogue, Quests &amp; Sequencer</strong></td><td><code>dialogue.start</code>, <code>dialogue.stop</code>, <code>quest.getStatus</code>, <code>quest.setStatus</code>, <code>sequencer.play</code>, <code>sequencer.stop</code></td></tr>
+    <tr><td><strong>FX, Nav, Camera, Touch &amp; Tween</strong></td><td><code>fx.particlePlay</code>, <code>fx.particleStop</code>, <code>fx.particleBurst</code>, <code>fx.decalSpawn</code>, <code>light.setGlow</code>, <code>nav.moveAgent</code>, <code>nav.stopAgent</code>, <code>nav.setObstacle</code>, <code>touch.setVisible</code>, <code>camera.worldToScreen</code>, <code>tween.moveTo</code>, <code>tween.scaleTo</code></td></tr>
+    <tr><td><strong>Entities, Hierarchy &amp; Tags</strong></td><td><code>entity.findByTag</code> (returns <code>id</code> + <code>entities[]</code> + <code>count</code>), <code>entity.findByName</code>, <code>entity.findByComponent</code>, <code>entity.getParent/Children</code>, <code>entity.has/get/add/removeTag</code>, <code>entity.get/setComponentProp</code></td></tr>
+  </tbody></table></div>
+  <p>Enable <strong>Compile Event Graphs to native JavaScript on export</strong> in Export Settings to compile all graphs ahead-of-time into CSP-safe ES modules with zero <code>eval()</code>.</p>
+</section>
+
+<section class="doc-section" id="en-sec-all-in-one" data-cat="All-in-One">
+  <div class="sec-meta"><span class="sec-badge">Chapter 5</span><span class="sec-cat">All-in-One</span></div>
+  <h2>All-in-One Creator Suite</h2>
+  <p class="sec-lead">Build low-poly 3D meshes, seamless textures, procedural SFX/music, branching dialogues, and cutscenes without external software.</p>
+  <div class="table-wrap"><table><thead><tr><th>Studio</th><th>Asset Type</th><th>Highlights</th></tr></thead><tbody>
+    <tr><td><strong>Low-Poly CSG Mesh Builder</strong></td><td><code>model</code> (<code>.glb</code>)</td><td>CSG Union/Subtract, interactive <strong>Drag Extrude / Drag Inset</strong>, non-overlapping per-face UV atlas, and 60 FPS GPU 3D Material Brush.</td></tr>
+    <tr><td><strong>2D Paint Editor</strong></td><td><code>texture</code> (<code>.png</code>)</td><td>32–512px layers, 7 tools, X/Y symmetry, seamless wrap mode, and 3×3 tiling preview.</td></tr>
+    <tr><td><strong>SFX &amp; 16-Step Music Synth</strong></td><td><code>audio</code> (<code>.wav</code>)</td><td>Procedural Web Audio SFX presets and 16-step music sequencer exporting clean <code>.wav</code> assets.</td></tr>
+    <tr><td><strong>Dialogue &amp; Quest Graph</strong></td><td><code>dialogue</code> (<code>.json</code>)</td><td>Branching choices, quest/worldState conditions, and built-in runtime dialogue overlay.</td></tr>
+    <tr><td><strong>Keyframe Sequencer</strong></td><td><code>sequence</code> (<code>.json</code>)</td><td>Multi-track entity, camera, light, animation, and audio cutscene timeline with 3D entity picker.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="doc-section" id="en-sec-components" data-cat="Scene">
+  <div class="sec-meta"><span class="sec-badge">Chapter 6</span><span class="sec-cat">Scene</span></div>
+  <h2>Entity &amp; Component Reference</h2>
+  <p class="sec-lead">All 17 built-in Entity components and their key properties.</p>
+  <div class="table-wrap"><table><thead><tr><th>Component</th><th>Key Properties</th><th>Role</th></tr></thead><tbody>
+    <tr><td><code>mesh</code></td><td><code>shape</code>, <code>asset</code>, <code>material</code>, <code>staticBatch</code>, <code>cullDistance</code></td><td>3D primitive or <code>.glb</code> model geometry.</td></tr>
+    <tr><td><code>light</code></td><td><code>kind</code>, <code>color</code>, <code>intensity</code>, <code>range</code>, <code>glow</code>, <code>gel</code>, <code>castShadow</code></td><td>Directional, point, spot, and ambient lighting with volumetric fog glow.</td></tr>
+    <tr><td><code>camera</code></td><td><code>projection</code>, <code>fov</code>, <code>active</code></td><td>Perspective or orthographic scene camera.</td></tr>
+    <tr><td><code>body</code> / <code>collider</code></td><td><code>kind</code>, <code>mass</code>, <code>shape</code>, <code>trigger</code></td><td>Rapier3D rigid bodies, triggers, and terrain/mesh colliders.</td></tr>
+    <tr><td><code>animation</code></td><td><code>clip</code>, <code>autoplay</code>, <code>loop</code>, <code>speed</code></td><td>glTF skeletal and node animation playback.</td></tr>
+    <tr><td><code>particle</code> / <code>billboard</code> / <code>decal</code> / <code>volumetric</code></td><td><code>preset</code>, <code>rate</code>, <code>texture</code>, <code>opacity</code>, <code>intensity</code></td><td>3D particles, camera-facing sprites, surface decals, and light beams.</td></tr>
+    <tr><td><code>terrain</code> / <code>navZone</code> / <code>navAgent</code></td><td><code>heights</code>, <code>materials</code>, <code>cellSize</code>, <code>links</code>, <code>walkClip</code></td><td>Sculptable multi-layer terrain and baked A* navigation with Off-Mesh Links.</td></tr>
+    <tr><td><code>audio</code> / <code>script</code> / <code>eventGraph</code> / <code>behavior</code></td><td><code>asset</code>, <code>bus</code>, <code>params</code>, <code>overrides</code></td><td>Spatial Web Audio, TypeScript scripts, Event Graphs, and built-in behaviors.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="doc-section" id="en-sec-lifecycle" data-cat="Scripting">
+  <div class="sec-meta"><span class="sec-badge">Chapter 7</span><span class="sec-cat">Scripting</span></div>
+  <h2>Script Lifecycle, Input &amp; Multi-Touch</h2>
+  <p class="sec-lead">12 lifecycle hooks, scoped event bus, keyboard/mouse actions, and Godot-style virtual touch controls.</p>
+  <p>Every script exports a default factory <code>(api: GameAPI) =&gt; ScriptLifecycle</code> with optional hooks: <code>onStart</code>, <code>onUpdate(dt)</code>, <code>onFixedUpdate(dt)</code>, <code>onTriggerEnter/Stay/Exit</code>, <code>onCollision</code>, <code>onClick</code>, <code>onEnable</code>, <code>onDisable</code>, and <code>onDestroy</code>.</p>
+  <p><code>api.touch</code> provides <code>setVisible</code>, <code>getJoystick</code>, <code>isButtonPressed</code>, <code>addJoystick</code>, <code>addButton</code>, and bidirectional mouse ↔ touch emulation via <code>setEmulation</code>.</p>
+</section>
+
+<section class="doc-section" id="en-sec-api-core" data-cat="API Reference">
+  <div class="sec-meta"><span class="sec-badge">Chapter 8</span><span class="sec-cat">API Reference</span></div>
+  <h2>Scripting API: Entities, Camera, Player, Physics &amp; Navigation</h2>
+  <p class="sec-lead">Core runtime methods for entity queries, tags, Rapier3D physics, glTF skinning, and NavGrid A*.</p>
+  <div class="table-wrap"><table><thead><tr><th>Module</th><th>Key Methods</th></tr></thead><tbody>
+    <tr><td><strong>Entities &amp; Tags</strong></td><td><code>api.find(id)</code>, <code>api.findByName(name)</code>, <code>api.findByTag(tag)</code>, <code>api.findAllByTag(tag)</code>, <code>api.hasTag/addTag/removeTag/getTags</code>, <code>api.spawnPrefab(assetId, pos)</code>, <code>api.destroy(id)</code></td></tr>
+    <tr><td><strong>Camera</strong></td><td><code>api.camera.worldToScreen(pos)</code>, <code>api.camera.screenToRay(x, y)</code>, <code>api.camera.shake(intensity, dur)</code>, <code>api.camera.lookAt(target)</code></td></tr>
+    <tr><td><strong>Physics</strong></td><td><code>api.physics.raycastHit(origin, dir, len)</code>, <code>applyImpulse</code>, <code>applyForce</code>, <code>setVelocity</code>, <code>setGravityScale</code></td></tr>
+    <tr><td><strong>Animation</strong></td><td><code>api.animation.play</code>, <code>crossfade(id, clip, dur)</code>, <code>pause/resume/setTime</code>, <code>bones(id)</code>, <code>getBonePosition(id, bone)</code></td></tr>
+    <tr><td><strong>NavGrid A*</strong></td><td><code>api.nav.findPath(start, goal)</code>, <code>moveAgent(id, goal, opts)</code>, <code>stopAgent(id)</code>, <code>setObstacle(center, r, blocked)</code>, <code>setLinkEnabled</code></td></tr>
+  </tbody></table></div>
+</section>
+
+<section class="doc-section" id="en-sec-api-world" data-cat="API Reference">
+  <div class="sec-meta"><span class="sec-badge">Chapter 9</span><span class="sec-cat">API Reference</span></div>
+  <h2>Scripting API: Dynamic UI, Materials, FX, Audio, Dialogue &amp; Saves</h2>
+  <p class="sec-lead">Full dynamic HUD &amp; screen creation API, custom HTML mounting, audio, dialogues, sequencer, and cloud saves.</p>
+  <h3>Dynamic UI Screens, Basic Widgets &amp; HTML Mounting (<code>api.ui</code>)</h3>
+  <div class="table-wrap"><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody>
+    <tr><td><code>api.ui.createScreen(id, opts?)</code></td><td>Dynamically creates or updates a UI screen (<code>name</code>, <code>phase</code>, <code>background</code>, <code>modal</code>, <code>backdropBlur</code>, <code>open</code>).</td></tr>
+    <tr><td><code>api.ui.removeScreen(id)</code> / <code>listScreens()</code></td><td>Removes a screen and its widgets, or lists all screens.</td></tr>
+    <tr><td><code>api.ui.createWidget(spec)</code></td><td>Creates a basic HUD widget (<code>label</code>, <code>counter</code>, <code>button</code>, <code>progress</code>, <code>panel</code>, <code>blur</code>, <code>container</code>, <code>image</code>, <code>html</code>) — в Event Graph выбираются из выпадающего списка attached to any <code>screen</code> and <code>anchor</code>.</td></tr>
+    <tr><td><code>api.ui.updateWidget(id, patch)</code> / <code>removeWidget(id)</code></td><td>Updates text, progress <code>value</code>, color, visibility, or removes a widget and redraws immediately.</td></tr>
+    <tr><td><code>api.ui.setText(id, text)</code> / <code>setHtml(id, html)</code> / <code>setVisible(id, bool)</code></td><td>Quickly updates text, HTML, or visibility on both authored/dynamic widgets and mounted DOM nodes.</td></tr>
+    <tr><td><code>api.ui.mount(id, html, css?)</code> / <code>unmount(id)</code> / <code>setBlur(id, px)</code></td><td>Mounts arbitrary HTML/CSS overlays inside the isolated Shadow DOM layer.</td></tr>
+    <tr><td><code>api.ui.open(id)</code> / <code>back()</code> / <code>close()</code> / <code>current()</code></td><td>Navigates the window screen stack.</td></tr>
+  </tbody></table></div>
+  <div class="code-block"><div class="code-bar"><span>typescript</span><button type="button" class="copy-btn" data-copy>Copy</button></div><pre><code>// Dynamically build a shop screen &amp; widgets from code or Event Graph
+const win = api.ui.createScreen('shop_win', { name: 'Shop', modal: true, open: true });
+api.ui.createWidget({ id: 'shop_title', screen: win, type: 'label', text: 'Blacksmith', anchor: 'top-center', x: 0, y: 28 });
+api.ui.createWidget({ id: 'shop_buy', screen: win, type: 'button', text: 'Buy Sword (50g)', anchor: 'center', x: 0, y: 10, action: 'event', target: 'shop.buy_sword' });
+api.ui.mount('mini_toast', '&lt;div class="toast"&gt;Welcome!&lt;/div&gt;', '.toast{position:fixed;bottom:20px;right:20px;color:#fff;}');</code></pre></div>
+  <h3>Audio, Dialogue, Sequencer &amp; SaveSystem</h3>
+  <p>Use <code>api.audio</code> (<code>play/stop/stopAll/setVolume/setBusVolume/setLowpass</code>), <code>api.dialogue</code> (<code>start/stop/getQuestStatus/setQuestStatus</code>), <code>api.sequencer</code> (<code>play/stop/isPlaying</code>), <code>api.worldState</code>, and <code>api.saveSystem</code> (<code>save/load/exportJSON/downloadJSON</code>).</p>
+</section>
+
+<section class="doc-section" id="en-sec-graphics" data-cat="Graphics">
+  <div class="sec-meta"><span class="sec-badge">Chapter 10</span><span class="sec-cat">Graphics</span></div>
+  <h2>Lighting, Post-Processing &amp; Optimization</h2>
+  <p class="sec-lead">Emissive light baking, volumetric fog glow, WebGL2 post-processing, static batching, and culling.</p>
+  <ul>
+    <li><strong>Volumetric Fog Glow &amp; Post-FX:</strong> <code>api.lights.setGlow(id, glow, falloff)</code>, AO, Bloom, DoF, ACES Filmic, Vignette, and Chromatic Aberration.</li>
+    <li><strong>Optimization:</strong> automatic Static Mesh Batching, <code>setResolutionScale(0.4..1.0)</code>, distance culling, light/particle culling, and glTF animation throttling for distant NPCs.</li>
+  </ul>
+</section>
+
+<section class="doc-section" id="en-sec-cookbook" data-cat="Recipes">
+  <div class="sec-meta"><span class="sec-badge">Chapter 11</span><span class="sec-cat">Recipes</span></div>
+  <h2>Practical Cookbook</h2>
+  <p class="sec-lead">Copy-paste script snippets for footsteps by surface material, NPC patrol, and dynamic HUD bars.</p>
+  <div class="code-block"><div class="code-bar"><span>typescript</span><button type="button" class="copy-btn" data-copy>Copy</button></div><pre><code>export default (api) =&gt; ({
+  onStart() {
+    api.ui.createWidget({ id: 'hp_bar', type: 'bar', text: 'HP', value: 100, max: 100, anchor: 'top-left', x: 20, y: 20 });
+  },
+  onUpdate(dt) {
+    const surface = api.materials.getSurfaceAt(api.player.position(), 2.0);
+    if (surface) api.ui.setText('hp_bar', 'Surface: ' + surface.materialName);
+  }
+});</code></pre></div>
+</section>
+
+<section class="doc-section" id="en-sec-export" data-cat="Release">
+  <div class="sec-meta"><span class="sec-badge">Chapter 12</span><span class="sec-cat">Release</span></div>
+  <h2>Export, Default Icon, Versioning &amp; Cross-Platform Publishing</h2>
+  <p class="sec-lead">One-click Web, Yandex Games, Poki, and Desktop exports with automatic Miniforge default icon, dynamic SemVer, and macOS Universal +x builds.</p>
+  <ul>
+    <li><strong>Default Miniforge Icon:</strong> if no custom icon is uploaded in <strong>Export Settings</strong>, the editor displays and bundles the built-in Miniforge Engine icon automatically (including <code>Contents/Resources/icon.png</code> on macOS).</li>
+    <li><strong>Dynamic Desktop Versioning:</strong> <code>apps/editor-desktop/build.mjs</code> automatically reads <code>APP_VERSION</code> (from the GitHub Release tag or manual workflow input) and falls back to root <code>package.json</code> — no hardcoded <code>0.2.0</code>.</li>
+    <li><strong>macOS Universal Binary + <code>+x</code> + Ad-Hoc <code>codesign</code>:</strong> exported macOS <code>.app</code> and Linux archives set Unix executable permissions (<code>0755</code>) directly inside the ZIP, and CI builds Universal macOS binaries (Intel + Apple Silicon) signed with <code>codesign --force --sign -</code>.</li>
+  </ul>
+</section>
+
+<section class="doc-section" id="en-sec-plugins" data-cat="Extensions">
+  <div class="sec-meta"><span class="sec-badge">Chapter 13</span><span class="sec-cat">Extensions</span></div>
+  <h2>Plugin System (<code>.mfplugin.json</code>)</h2>
+  <p class="sec-lead">Extend both Editor menus/tools and Runtime behaviors/services with single-file JSON plugins.</p>
+  <p>Manage plugins in <strong>Plugins → Plugin Manager</strong> with built-in syntax validation, live reload, 4 progressive examples (from simple HUD to RPG Inventory), and <code>.mfplugin.json</code> import/export.</p>
+</section>
+</div>
+      <div id="docsRu" class="hidden"><section class="doc-section" id="sec-start" data-cat="Основы"><div class="sec-meta"><span class="sec-badge">Глава 1</span><span class="sec-cat">Основы</span></div><h2>Архитектура и быстрый старт</h2><p class="sec-lead">Стек Miniforge Engine v2.6, структура репозитория, требования к окружению и все основные команды сборки.</p><p>Miniforge Engine v2.6 — модульный 3D-движок и визуальный редактор на базе <strong>LittleJS 1.30.1</strong> (WebGL2 3D), <strong>Rapier3D</strong> (WASM-физика), <strong>React 19 + TypeScript 5.9</strong> и <strong>Tauri v2</strong> для десктопных сборок. Все проекты хранятся в открытом JSON-формате (<code>Project v1</code>) или архивах <code>.miniforge</code>.</p>
 <div class="table-wrap"><table><thead><tr><th>Слой / пакет</th><th>Назначение</th><th>Ключевые технологии</th></tr></thead><tbody><tr><td><code>packages/graphics</code></td><td>WebGL2-рендерер, тени, свет, постпроцессинг, glTF-анимации, батчинг, террейн</td><td>LittleJS 1.30.1, GLSL ES 3.00</td></tr><tr><td><code>packages/runtime</code></td><td>Игровой цикл, физика, скрипты, NavGrid, Audio, Tween, Touch, SaveSystem</td><td>Rapier3D WASM, Web Audio API</td></tr><tr><td><code>packages/project-schema</code></td><td>Схема JSON-проекта, живые префабы, террейн, NavGrid, экраны HUD</td><td>TypeScript 5.9 (zero-runtime deps)</td></tr><tr><td><code>packages/platform-sdk</code></td><td>Единый адаптер для Web/HTML5, Яндекс Игр и Poki (реклама, облако, язык)</td><td>Yandex SDK, Poki SDK, localStorage</td></tr><tr><td><code>packages/exporter</code></td><td>Сборка автономных игр и копирование <code>assimpjs.wasm</code> для редактора</td><td>esbuild, fflate</td></tr><tr><td><code>apps/editor</code> &amp; <code>editor-desktop</code></td><td>Визуальный редактор с 13 встроенными студиями и десктопная оболочка</td><td>React 19, Vite 7, Monaco, Tauri v2</td></tr></tbody></table></div>
 <h3>Установка и основные команды</h3>
 <div class="code-block"><div class="code-bar"><span>bash</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre><code># 1. Установка зависимостей (Node.js 20+, pnpm 11.x)
@@ -767,143 +939,240 @@ exports.registerRuntime = function(ctx) {
 <p>В окне <strong>Project Hub → New Project</strong> доступен выбор из 10 готовых шаблонов (<code>templates/index.ts</code>), а 8 полноценных проектов продублированы в папку <code>/examples/</code> с автоматической генерацией 3D-превью:</p>
 <div class="table-wrap"><table><thead><tr><th>Шаблон / Пример</th><th>Жанр</th><th>Что настроено из коробки</th></tr></thead><tbody><tr><td><code>Blank 3D Project</code></td><td>Blank</td><td>Чистая 3D-сцена с полом, направленным светом и камерой.</td></tr><tr><td><code>Mobile Touch Starter</code></td><td>Mobile</td><td>Мобильная арена с виртуальным джойстиком (<code>settings.touch</code>), кнопкой Jump и кристаллами.</td></tr><tr><td><code>Coin Rush 3D</code></td><td>Arcade</td><td>Top-down сбор монет с таймером, HUD-счётчиком и физикой.</td></tr><tr><td><code>Endless Runner 3D</code></td><td>Runner</td><td>3-полосная трасса с препятствиями (тег <code>hazard</code>), барьерами и финишем.</td></tr><tr><td><code>FPS Explorer</code></td><td>FPS</td><td>Контроллер от первого лица (<code>first-person</code>), колонны, ящики и маяк.</td></tr><tr><td><code>TPS Adventure</code></td><td>TPS</td><td>Вид от третьего лица, каменные платформы и чекпоинт-реликвия.</td></tr><tr><td><code>RPG Quest &amp; Loot</code></td><td>RPG</td><td>Деревенская площадь, NPC с тегом <code>npc</code>, сундуки с тегом <code>loot</code> и HUD HP/Gold.</td></tr><tr><td><code>Arena Shooter 3D</code></td><td>Shooter</td><td>FPS-арена с укрытиями и кликабельными дронами-мишенями (тег <code>enemy</code>).</td></tr><tr><td><code>Key Vault</code> · <code>3D Clicker</code></td><td>Puzzle / Casual</td><td>Головоломка с ключами и печатями; 3D-кликер с апгрейдами.</td></tr></tbody></table></div></section>
 
+<section class="doc-section" id="ru-sec-v27" data-cat="Обновления">
+  <div class="sec-meta"><span class="sec-badge">Глава 15</span><span class="sec-cat">Обновления</span></div>
+  <h2>Динамический UI API, расширенный Event Graph, версионирование и macOS Export (v2.7)</h2>
+  <p class="sec-lead">Создание UI-экранов и виджетов из кода и Event Graph, 29 новых нод под все подсистемы движка, иконка Miniforge по умолчанию, динамическая версия сборок и запуск macOS <code>.app</code> без терминала.</p>
+
+  <h3>1. Динамическое создание UI-экранов и виджетов (<code>api.ui</code>)</h3>
+  <div class="table-wrap"><table><thead><tr><th>Метод</th><th>Назначение</th></tr></thead><tbody>
+    <tr><td><code>api.ui.createScreen(id, opts?)</code></td><td>Создаёт или обновляет UI-экран (<code>name</code>, <code>phase</code>, <code>background</code>, <code>modal</code>, <code>backdropBlur</code>, <code>open</code>).</td></tr>
+    <tr><td><code>api.ui.removeScreen(id)</code> / <code>listScreens()</code></td><td>Удаляет экран вместе с его виджетами или возвращает список всех экранов.</td></tr>
+    <tr><td><code>api.ui.createWidget(spec)</code></td><td>Создаёт базовый виджет (<code>label</code>, <code>counter</code>, <code>button</code>, <code>progress</code>, <code>panel</code>, <code>blur</code>, <code>container</code>, <code>image</code>, <code>html</code>) — в Event Graph выбираются из выпадающего списка с привязкой к <code>screen</code>, <code>anchor</code>, <code>x/y</code>, <code>action/target</code>.</td></tr>
+    <tr><td><code>api.ui.updateWidget(id, patch)</code> / <code>removeWidget(id)</code></td><td>Меняет текст, прогресс <code>value</code>, цвет, позицию или удаляет виджет с мгновенной перерисовкой.</td></tr>
+    <tr><td><code>api.ui.setText(id, text)</code> / <code>setHtml(id, html)</code> / <code>setVisible(id, bool)</code></td><td>Быстрое обновление текста, HTML и видимости как базовых виджетов, так и смонтированных через <code>api.ui.mount()</code>.</td></tr>
+  </tbody></table></div>
+
+  <h3>2. 29 новых нод Event Graph (интерпретатор + AOT Nativizer)</h3>
+  <ul>
+    <li><strong>UI (12 нод):</strong> <code>ui.back</code>, <code>ui.mount</code>, <code>ui.unmount</code>, <code>ui.setHtml</code>, <code>ui.setBlur</code>, <code>ui.createScreen</code>, <code>ui.removeScreen</code>, <code>ui.createWidget</code>, <code>ui.updateWidget</code>, <code>ui.removeWidget</code>, <code>ui.setText</code>, <code>ui.setVisible</code>.</li>
+    <li><strong>Audio (4 ноды):</strong> <code>audio.stop</code>, <code>audio.stopAll</code>, <code>audio.setVolume</code>, <code>audio.setBusVolume</code>.</li>
+    <li><strong>Dialogue, Quests &amp; Sequencer (6 нод):</strong> <code>dialogue.start</code>, <code>dialogue.stop</code>, <code>quest.getStatus</code>, <code>quest.setStatus</code>, <code>sequencer.play</code>, <code>sequencer.stop</code>.</li>
+    <li><strong>FX, Nav, Camera, Touch &amp; Tween (7 нод):</strong> <code>fx.particlePlay</code>, <code>fx.particleStop</code>, <code>light.setGlow</code>, <code>nav.setObstacle</code>, <code>touch.setVisible</code>, <code>camera.worldToScreen</code>, <code>tween.scaleTo</code>.</li>
+  </ul>
+
+  <h3>3. Иконка по умолчанию, динамическое версионирование и macOS <code>.app</code></h3>
+  <ul>
+    <li><strong>Иконка по умолчанию:</strong> если в <strong>Export Settings</strong> не загружена своя иконка, редактор автоматически показывает и вкладывает фирменную иконку Miniforge в Web/Desktop сборки и <code>Contents/Resources/icon.png</code>.</li>
+    <li><strong>Динамическая версия сборок:</strong> <code>apps/editor-desktop/build.mjs</code> подхватывает версию из переменной <code>APP_VERSION</code> (тег GitHub Release или поле <code>version</code> при ручном запуске workflow) либо из <code>package.json</code> — больше никакого зашитого <code>0.2.0</code>.</li>
+    <li><strong>macOS Universal + <code>+x</code> + <code>codesign</code>:</strong> архивы macOS и Linux сразу проставляют Unix-права <code>0755</code> внутри ZIP, а <code>miniforge-player-macos</code> собирается как Universal Binary (Intel + Apple Silicon) с ad-hoc подписью.</li>
+  </ul>
+</section>
+</div>
+
       <div id="emptyState" class="empty-state">
-        <p>По вашему запросу ничего не найдено. Попробуйте другой термин (например, <code>animation</code>, <code>terrain</code>, <code>nav</code>, <code>saveSystem</code>).</p>
+        <p id="emptyText">No matching sections found.</p>
+        <button type="button" id="emptyResetBtn" class="btn">Show all chapters</button>
       </div>
     </main>
   </div>
 
 <script>
-  (function () {
-    const root = document.documentElement;
-    const themeToggle = document.getElementById('themeToggle');
-    const menuToggle = document.getElementById('menuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const searchInput = document.getElementById('searchInput');
-    const searchClear = document.getElementById('searchClear');
-    const searchStatus = document.getElementById('searchStatus');
-    const searchStatusText = document.getElementById('searchStatusText');
-    const resetFilterBtn = document.getElementById('resetFilterBtn');
-    const emptyState = document.getElementById('emptyState');
-    const catBar = document.getElementById('catBar');
-    const sections = Array.from(document.querySelectorAll('.doc-section'));
-    const navItems = Array.from(document.querySelectorAll('.nav-item'));
+(function () {
+  'use strict';
+  const root = document.documentElement;
+  const themeToggle = document.getElementById('themeToggle');
+  const langToggle = document.getElementById('langToggle');
+  const menuToggle = document.getElementById('menuToggle');
+  const sidebar = document.getElementById('sidebar');
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+  const searchStatus = document.getElementById('searchStatus');
+  const searchStatusText = document.getElementById('searchStatusText');
+  const resetFilterBtn = document.getElementById('resetFilterBtn');
+  const emptyState = document.getElementById('emptyState');
+  const emptyResetBtn = document.getElementById('emptyResetBtn');
+  const catBar = document.getElementById('catBar');
+  const tocNav = document.getElementById('tocNav');
+  const docsEn = document.getElementById('docsEn');
+  const docsRu = document.getElementById('docsRu');
 
-    let currentCat = 'Все';
-
-    function applyTheme(theme) {
-      root.setAttribute('data-theme', theme);
-      themeToggle.textContent = theme === 'dark' ? 'Светлая тема' : 'Тёмная тема';
-      try { localStorage.setItem('mf_docs_theme', theme); } catch (e) {}
-    }
-    try {
-      const saved = localStorage.getItem('mf_docs_theme');
-      if (saved === 'light' || saved === 'dark') applyTheme(saved);
-    } catch (e) {}
-
-    themeToggle.addEventListener('click', () => {
-      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-    });
-
-    menuToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-    });
-
-    function updateFilter() {
-      const q = searchInput.value.trim().toLowerCase();
-      searchClear.classList.toggle('visible', q.length > 0);
-      let shown = 0;
-      sections.forEach((sec) => {
-        const catOk = currentCat === 'Все' || sec.dataset.cat === currentCat;
-        const textOk = !q || sec.textContent.toLowerCase().includes(q);
-        const visible = catOk && textOk;
-        sec.classList.toggle('hidden', !visible);
-        if (visible) shown++;
-      });
-      navItems.forEach((nav) => {
-        const sec = document.getElementById(nav.dataset.nav);
-        nav.style.display = sec && !sec.classList.contains('hidden') ? 'flex' : 'none';
-      });
-      const filtering = currentCat !== 'Все' || q.length > 0;
-      searchStatus.classList.toggle('visible', filtering);
-      if (filtering) {
-        searchStatusText.textContent = 'Показано глав: ' + shown + ' из ' + sections.length + (q ? ' по запросу «' + searchInput.value.trim() + '»' : '');
-      }
-      emptyState.classList.toggle('visible', shown === 0);
-    }
-
-    catBar.addEventListener('click', (e) => {
-      const btn = e.target.closest('.cat-pill');
-      if (!btn) return;
-      currentCat = btn.dataset.cat;
-      catBar.querySelectorAll('.cat-pill').forEach((b) => b.classList.toggle('active', b === btn));
-      updateFilter();
-    });
-
-    searchInput.addEventListener('input', updateFilter);
-    searchClear.addEventListener('click', () => {
-      searchInput.value = '';
-      updateFilter();
-      searchInput.focus();
-    });
-    resetFilterBtn.addEventListener('click', () => {
-      searchInput.value = '';
-      currentCat = 'Все';
-      catBar.querySelectorAll('.cat-pill').forEach((b) => b.classList.toggle('active', b.dataset.cat === 'Все'));
-      updateFilter();
-    });
-
-    navItems.forEach((item) => {
-      item.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        navItems.forEach((n) => n.classList.toggle('active', n === item));
-      });
-    });
-
-    document.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-copy]');
-      if (!btn) return;
-      const codeEl = btn.closest('.code-block').querySelector('code');
-      const text = codeEl ? codeEl.textContent : '';
-      const markCopied = () => {
-        btn.textContent = 'Скопировано';
-        setTimeout(() => { btn.textContent = 'Копировать'; }, 1600);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(markCopied).catch(() => {
-          fallbackCopy(text);
-          markCopied();
-        });
-      } else {
-        fallbackCopy(text);
-        markCopied();
-      }
-    });
-
-    function fallbackCopy(text) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch (e) {}
-      document.body.removeChild(ta);
-    }
-
-    if ('IntersectionObserver' in window) {
-      const obs = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const id = entry.target.id;
-            navItems.forEach((n) => n.classList.toggle('active', n.dataset.nav === id));
-          }
-        });
-      }, { rootMargin: '-20% 0px -65% 0px' });
-      sections.forEach((s) => obs.observe(s));
-    }
+  let currentLang = (function () {
+    try { return localStorage.getItem('mf_docs_lang') === 'ru' ? 'ru' : 'en'; } catch (e) { return 'en'; }
   })();
+  let currentCat = '__all__';
+
+  const UI = {
+    en: {
+      title: 'Miniforge Engine — Complete Documentation',
+      menu: 'Menu',
+      searchPh: 'Search API, components, Event Graph (e.g. createWidget, mount, crossfade)...',
+      light: 'Light Theme',
+      dark: 'Dark Theme',
+      filterTitle: 'Filter by category',
+      tocTitle: 'Contents',
+      all: 'All',
+      heroTitle: 'Miniforge Engine Documentation',
+      heroLead: 'Complete reference for the architecture, 13 editor studios, 17 components, 95+ Event Graph nodes, Dynamic UI & GameAPI, plugins, and cross-platform export for Web, Yandex Games, Poki, Windows, macOS, and Linux.',
+      stats: '<div class="stat-chip"><strong>13</strong> studios</div><div class="stat-chip"><strong>17</strong> components</div><div class="stat-chip"><strong>95+</strong> Event Graph nodes</div><div class="stat-chip"><strong>20+</strong> GameAPI modules</div><div class="stat-chip"><strong>4</strong> export targets</div>',
+      reset: 'Reset filter',
+      empty: 'No matching sections found.',
+      showAll: 'Show all chapters',
+      shown: (n, total, q) => 'Showing ' + n + ' of ' + total + ' chapters' + (q ? ' for “' + q + '”' : ''),
+      copy: 'Copy',
+      copied: 'Copied!'
+    },
+    ru: {
+      title: 'Miniforge Engine — Полная документация',
+      menu: 'Меню',
+      searchPh: 'Поиск по API, компонентам, Event Graph (напр. createWidget, mount, crossfade)...',
+      light: 'Светлая тема',
+      dark: 'Тёмная тема',
+      filterTitle: 'Фильтр разделов',
+      tocTitle: 'Содержание',
+      all: 'Все',
+      heroTitle: 'Полная документация Miniforge Engine',
+      heroLead: 'Исчерпывающий справочник по архитектуре, 13 студиям редактора, 17 компонентам, 95+ нодам Event Graph, динамическому UI и GameAPI, плагинам и экспорту под Web, Яндекс Игры, Poki, Windows, macOS и Linux.',
+      stats: '<div class="stat-chip"><strong>13</strong> студий</div><div class="stat-chip"><strong>17</strong> компонентов</div><div class="stat-chip"><strong>95+</strong> нод Event Graph</div><div class="stat-chip"><strong>20+</strong> модулей GameAPI</div><div class="stat-chip"><strong>4</strong> платформы экспорта</div>',
+      reset: 'Сбросить фильтр',
+      empty: 'Ничего не найдено.',
+      showAll: 'Показать все главы',
+      shown: (n, total, q) => 'Показано глав: ' + n + ' из ' + total + (q ? ' по запросу «' + q + '»' : ''),
+      copy: 'Копировать',
+      copied: 'Скопировано!'
+    }
+  };
+
+  function activeContainer() {
+    return currentLang === 'ru' ? docsRu : docsEn;
+  }
+
+  function activeSections() {
+    return Array.from(activeContainer().querySelectorAll('.doc-section'));
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    const L = UI[currentLang];
+    themeToggle.textContent = theme === 'dark' ? L.light : L.dark;
+    try { localStorage.setItem('mf_docs_theme', theme); } catch (e) {}
+  }
+
+  function rebuildNavAndCats() {
+    const L = UI[currentLang];
+    const secs = activeSections();
+    const cats = [];
+    secs.forEach((s) => {
+      const c = s.dataset.cat;
+      if (c && !cats.includes(c)) cats.push(c);
+    });
+    catBar.innerHTML =
+      '<button type="button" class="cat-pill active" data-cat="__all__">' + L.all + '</button>' +
+      cats.map((c) => '<button type="button" class="cat-pill" data-cat="' + c + '">' + c + '</button>').join('');
+    tocNav.innerHTML = secs.map((s, idx) => {
+      const title = s.querySelector('h2')?.textContent || ('Section ' + (idx + 1));
+      return '<a class="nav-item" href="#' + s.id + '" data-nav="' + s.id + '"><span class="nav-num">' + (idx + 1) + '</span><span class="nav-text">' + title + '</span></a>';
+    }).join('');
+  }
+
+  function updateFilter() {
+    const L = UI[currentLang];
+    const q = (searchInput.value || '').trim().toLowerCase();
+    searchClear.classList.toggle('visible', q.length > 0);
+    const secs = activeSections();
+    let shown = 0;
+    secs.forEach((sec) => {
+      const catOk = currentCat === '__all__' || sec.dataset.cat === currentCat;
+      const textOk = !q || sec.textContent.toLowerCase().includes(q);
+      const visible = catOk && textOk;
+      sec.classList.toggle('hidden', !visible);
+      if (visible) shown++;
+    });
+    tocNav.querySelectorAll('.nav-item').forEach((nav) => {
+      const sec = document.getElementById(nav.dataset.nav);
+      nav.style.display = sec && !sec.classList.contains('hidden') ? 'flex' : 'none';
+    });
+    const filtering = currentCat !== '__all__' || q.length > 0;
+    searchStatus.classList.toggle('visible', filtering);
+    if (filtering) {
+      searchStatusText.textContent = L.shown(shown, secs.length, searchInput.value.trim());
+    }
+    emptyState.classList.toggle('visible', shown === 0);
+  }
+
+  function applyLang(lang) {
+    currentLang = lang === 'ru' ? 'ru' : 'en';
+    currentCat = '__all__';
+    try { localStorage.setItem('mf_docs_lang', currentLang); } catch (e) {}
+    root.lang = currentLang;
+    const L = UI[currentLang];
+    document.title = L.title;
+    docsEn.classList.toggle('hidden', currentLang !== 'en');
+    docsRu.classList.toggle('hidden', currentLang !== 'ru');
+    langToggle.innerHTML = currentLang === 'en'
+      ? '<span style="color:var(--accent)">EN</span> / <span style="opacity:.55">RU</span>'
+      : '<span style="opacity:.55">EN</span> / <span style="color:var(--accent)">RU</span>';
+    menuToggle.textContent = L.menu;
+    searchInput.setAttribute('placeholder', L.searchPh);
+    document.getElementById('filterTitle').textContent = L.filterTitle;
+    document.getElementById('tocTitle').textContent = L.tocTitle;
+    document.getElementById('heroTitle').textContent = L.heroTitle;
+    document.getElementById('heroLead').textContent = L.heroLead;
+    document.getElementById('heroStats').innerHTML = L.stats;
+    resetFilterBtn.textContent = L.reset;
+    document.getElementById('emptyText').textContent = L.empty;
+    emptyResetBtn.textContent = L.showAll;
+    applyTheme(root.getAttribute('data-theme') || 'dark');
+    rebuildNavAndCats();
+    updateFilter();
+  }
+
+  try {
+    const savedTheme = localStorage.getItem('mf_docs_theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') root.setAttribute('data-theme', savedTheme);
+  } catch (e) {}
+
+  themeToggle.addEventListener('click', () => {
+    applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+  langToggle.addEventListener('click', () => {
+    applyLang(currentLang === 'en' ? 'ru' : 'en');
+  });
+  menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+  catBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cat-pill');
+    if (!btn) return;
+    currentCat = btn.dataset.cat;
+    catBar.querySelectorAll('.cat-pill').forEach((b) => b.classList.toggle('active', b === btn));
+    updateFilter();
+  });
+  searchInput.addEventListener('input', updateFilter);
+  searchClear.addEventListener('click', () => { searchInput.value = ''; updateFilter(); });
+  const resetAll = () => {
+    searchInput.value = '';
+    currentCat = '__all__';
+    catBar.querySelectorAll('.cat-pill').forEach((b) => b.classList.toggle('active', b.dataset.cat === '__all__'));
+    updateFilter();
+  };
+  resetFilterBtn.addEventListener('click', resetAll);
+  emptyResetBtn.addEventListener('click', resetAll);
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const pre = btn.closest('.code-block')?.querySelector('pre');
+    if (!pre) return;
+    const txt = pre.textContent || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).catch(() => {});
+    }
+    const L = UI[currentLang];
+    btn.textContent = L.copied;
+    setTimeout(() => { btn.textContent = L.copy; }, 1400);
+  });
+
+  applyLang(currentLang);
+})();
 </script>
 </body>
 </html>

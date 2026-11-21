@@ -237,6 +237,179 @@ export class Overlay {
     entry.style?.remove()
     this.mounted.delete(id)
   }
+  createScreen(
+    id: string,
+    opts?: {
+      name?: string
+      phase?: 'menu' | 'playing' | 'paused' | 'results' | 'window'
+      background?: string
+      modal?: boolean
+      backdropBlur?: number
+      open?: boolean
+    },
+  ): string {
+    const screenId = id || `screen_${Math.random().toString(36).slice(2, 8)}`
+    if (!this.project.screens) this.project.screens = []
+    const existing = this.project.screens.find((sc) => sc.id === screenId)
+    const phase = opts?.phase ?? 'window'
+    if (existing) {
+      if (opts?.name !== undefined) existing.name = opts.name
+      if (opts?.phase !== undefined) existing.phase = opts.phase
+      if (opts?.background !== undefined) existing.background = opts.background
+      if (opts?.modal !== undefined) existing.modal = opts.modal
+      if (opts?.backdropBlur !== undefined) (existing as any).backdropBlur = opts.backdropBlur
+    } else {
+      const nextScreen: any = {
+        id: screenId,
+        name: opts?.name || screenId,
+        phase,
+        safeArea: true,
+        background: opts?.background,
+        modal: opts?.modal ?? (phase === 'window' ? false : undefined),
+      }
+      if (opts?.backdropBlur !== undefined) nextScreen.backdropBlur = opts.backdropBlur
+      this.project.screens.push(nextScreen)
+    }
+    if (opts?.open && phase === 'window') this.open(screenId)
+    else this.redraw()
+    return screenId
+  }
+  removeScreen(id: string): boolean {
+    if (!this.project.screens) return false
+    const idx = this.project.screens.findIndex((sc) => sc.id === id)
+    if (idx < 0) return false
+    this.project.screens.splice(idx, 1)
+    this.project.ui = this.project.ui.filter((u) => u.screen !== id)
+    const wi = this.windows.indexOf(id)
+    if (wi >= 0) this.windows.splice(wi, 1)
+    this.redraw()
+    return true
+  }
+  listScreens() {
+    return (this.project.screens || []).map((sc) => ({
+      id: sc.id,
+      name: sc.name,
+      phase: sc.phase,
+      modal: sc.modal,
+    }))
+  }
+  createWidget(spec: {
+    id?: string
+    type: string
+    text?: string
+    x?: number
+    y?: number
+    screen?: string
+    anchor?: any
+    action?: any
+    target?: string
+    color?: string
+    background?: string
+    width?: number
+    height?: number
+    value?: number
+    max?: number
+    html?: string
+    visible?: boolean
+    [key: string]: any
+  }): string {
+    const widgetId = spec.id || `ui_${Math.random().toString(36).slice(2, 8)}`
+    const idx = this.project.ui.findIndex((u) => u.id === widgetId)
+    const normalizedType = spec.type === 'bar' ? 'progress' : (spec.type || 'label')
+    const defaults: Record<string, any> =
+      normalizedType === 'button'
+        ? { action: 'event', event: 'button.clicked' }
+        : normalizedType === 'counter'
+          ? { variable: 'score' }
+          : normalizedType === 'progress'
+            ? { variable: 'health', max: 100, width: 26 }
+            : normalizedType === 'panel'
+              ? { width: 32, height: 25, background: '#29383c' }
+              : normalizedType === 'blur'
+                ? { width: 36, height: 28, background: 'rgba(18, 26, 32, 0.35)', backdropBlur: 12, borderRadius: 12, borderColor: 'rgba(255,255,255,0.18)' }
+                : normalizedType === 'container'
+                  ? { width: 65, height: 50, layout: 'grid', scroll: true, background: '#29383c' }
+                  : normalizedType === 'image'
+                    ? { width: 16 }
+                    : normalizedType === 'html'
+                      ? { width: 34, height: 40, interactive: true }
+                      : {}
+    const widget: UIElement = {
+      ...defaults,
+      ...spec,
+      id: widgetId,
+      type: normalizedType,
+      text: spec.text ?? '',
+      x: Number(spec.x ?? 20),
+      y: Number(spec.y ?? 20),
+      anchor: spec.anchor ?? 'top-left',
+      visible: spec.visible !== false,
+    }
+    if (idx >= 0) this.project.ui[idx] = { ...this.project.ui[idx], ...widget }
+    else this.project.ui.push(widget)
+    this.redraw()
+    return widgetId
+  }
+  updateWidget(id: string, patch: Record<string, any>): boolean {
+    const item = this.project.ui.find((u) => u.id === id)
+    if (!item) return false
+    Object.assign(item, patch)
+    this.redraw()
+    return true
+  }
+  removeWidget(id: string): boolean {
+    const idx = this.project.ui.findIndex((u) => u.id === id)
+    if (idx < 0) return false
+    this.project.ui.splice(idx, 1)
+    this.redraw()
+    return true
+  }
+  getWidgets(screenId?: string): UIElement[] {
+    if (!screenId) return [...this.project.ui]
+    return this.project.ui.filter((u) => u.screen === screenId)
+  }
+  setText(id: string, text: string): boolean {
+    const item = this.project.ui.find((u) => u.id === id)
+    if (item) {
+      item.text = text
+      this.redraw()
+      return true
+    }
+    const el = this.get(id)
+    if (el) {
+      el.textContent = text
+      return true
+    }
+    return false
+  }
+  setHtml(id: string, html: string): boolean {
+    const mounted = this.mounted.get(id)
+    if (mounted) {
+      mounted.root.innerHTML = html
+      return true
+    }
+    const item = this.project.ui.find((u) => u.id === id)
+    if (item) {
+      item.html = html
+      item.text = html
+      this.redraw()
+      return true
+    }
+    return false
+  }
+  setVisible(id: string, visible: boolean): boolean {
+    const item = this.project.ui.find((u) => u.id === id)
+    if (item) {
+      item.visible = visible
+      this.redraw()
+    }
+    const el = this.get(id)
+    if (el) {
+      el.style.display = visible ? '' : 'none'
+      return true
+    }
+    return Boolean(item)
+  }
   private redraw() {
     const state = this.snapshot
     if (state && this.phase)

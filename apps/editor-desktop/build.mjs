@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -8,14 +8,23 @@ const root = resolve(directory, '../..');
 const [mode = 'editor', gameDirectory = 'dist/games/web'] = process.argv.slice(2);
 if (!['editor', 'game'].includes(mode)) throw new Error('Use editor or game [web-build-directory].');
 if (!['linux', 'win32', 'darwin'].includes(process.platform)) throw new Error('Build on Linux, Windows, or macOS.');
+
+const rootPkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+const rawVersion = (process.env.APP_VERSION || rootPkg.version || '2.7.0').trim().replace(/^v/i, '');
+const appVersion = /^\d+\.\d+\.\d+/.test(rawVersion) ? rawVersion : (rootPkg.version || '2.7.0');
+console.log(`[miniforge-desktop] Building ${mode} v${appVersion} for ${process.platform}${process.env.TAURI_TARGET ? ' (' + process.env.TAURI_TARGET + ')' : ''}`);
+
 const cli = join(root, 'node_modules/@tauri-apps/cli/tauri.js');
 const frontendDist = resolve(root, mode === 'editor' ? 'dist/editor' : gameDirectory);
 if (!existsSync(join(frontendDist, 'index.html'))) throw new Error('Build the editor or export the Web Standalone game before packaging: ' + frontendDist);
 const bundles = process.platform === 'linux' ? 'deb' : process.platform === 'darwin' ? 'app,dmg' : 'nsis';
 const args = [cli, 'build', '--bundles', bundles];
 if (process.env.TAURI_TARGET) args.push('--target', process.env.TAURI_TARGET);
-if (mode === 'editor') args.push('--features', 'editor');
-else args.push('--config', 'src-tauri/game.conf.json', '--config', JSON.stringify({build:{frontendDist}}));
-const child = spawnSync(process.execPath, args, {cwd: directory, stdio:'inherit'});
+if (mode === 'editor') {
+  args.push('--features', 'editor', '--config', JSON.stringify({ version: appVersion }));
+} else {
+  args.push('--config', 'src-tauri/game.conf.json', '--config', JSON.stringify({ version: appVersion, build: { frontendDist } }));
+}
+const child = spawnSync(process.execPath, args, { cwd: directory, stdio: 'inherit' });
 if (child.error) throw child.error;
 process.exit(child.status ?? 1);

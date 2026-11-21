@@ -46,6 +46,8 @@ function buildMacInfoPlist(cfg: ExportSettingsConfig, exeName: string): string {
   <string>${escapeXml(exeName)}</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleIconFile</key>
+  <string>icon.png</string>
   <key>NSHighResolutionCapable</key>
   <true/>
 </dict>
@@ -107,25 +109,42 @@ export async function desktopSources(
     2,
   )
 
+  // Resolve app icon (custom uploaded PNG or default Miniforge icon)
+  let resolvedIconBytes: Uint8Array | null = cfg.iconDataUrl ? dataUrlToUint8(cfg.iconDataUrl) : null
+  if (!resolvedIconBytes) {
+    try {
+      const iconRes = await fetch(icon)
+      if (iconRes.ok) resolvedIconBytes = new Uint8Array(await iconRes.arrayBuffer())
+    } catch {
+      resolvedIconBytes = null
+    }
+  }
+
   // Mode 1: Instant Executable via prebuilt Export Template binary (no Rust/Xcode/MSVC needed!)
   if (cfg.desktopMode === 'template') {
     const playerBin = await resolveTemplateBinary(platform, cfg, localTemplates?.[platform]?.bytes)
     if (playerBin) {
-      const files: Record<string, Uint8Array> = {}
+      const files: Record<string, Uint8Array | [Uint8Array, { os?: number; attrs?: number }]> = {}
+      const execOpts = { os: 3, attrs: 0o100755 << 16 }
       if (platform === 'macos') {
         const appRoot = `${safeName}.app`
         const exeName = 'miniforge-player'
-        files[`${appRoot}/Contents/MacOS/${exeName}`] = playerBin
+        files[`${appRoot}/Contents/MacOS/${exeName}`] = [playerBin, execOpts]
         files[`${appRoot}/Contents/Info.plist`] = strToU8(buildMacInfoPlist(cfg, exeName))
+        if (resolvedIconBytes) {
+          files[`${appRoot}/Contents/Resources/icon.png`] = resolvedIconBytes
+          files[`${appRoot}/Contents/Resources/game/icon.png`] = resolvedIconBytes
+        }
         for (const [path, data] of Object.entries(web.files)) {
           files[`${appRoot}/Contents/Resources/game/${path}`] = data
         }
         files[`${appRoot}/Contents/Resources/game/game.config.json`] = strToU8(gameConfigJson)
         files['README.txt'] = strToU8(
-          `${safeName} v${cfg.version} (macOS Instant Export)\n\nUnzip and double-click ${safeName}.app.\nIf macOS Gatekeeper warns about an unsigned app, right-click -> Open or run:\n  chmod +x "${safeName}.app/Contents/MacOS/${exeName}"\n  xattr -dr com.apple.quarantine "${safeName}.app"\n`,
+          `${safeName} v${cfg.version} (macOS Instant Export)\n\nUnzip and double-click ${safeName}.app (executable permissions are pre-set inside the ZIP).\nIf macOS Gatekeeper warns on first launch after downloading from the web, Right-Click -> Open.\n`,
         )
       } else if (platform === 'windows') {
         files[`${safeName}.exe`] = playerBin
+        if (resolvedIconBytes) files['game/icon.png'] = resolvedIconBytes
         for (const [path, data] of Object.entries(web.files)) {
           files[`game/${path}`] = data
         }
@@ -135,13 +154,14 @@ export async function desktopSources(
         )
       } else {
         const binName = safeName.replace(/\s+/g, '-')
-        files[binName] = playerBin
+        files[binName] = [playerBin, execOpts]
+        if (resolvedIconBytes) files['game/icon.png'] = resolvedIconBytes
         for (const [path, data] of Object.entries(web.files)) {
           files[`game/${path}`] = data
         }
         files['game/game.config.json'] = strToU8(gameConfigJson)
         files['README.txt'] = strToU8(
-          `${safeName} v${cfg.version} (Linux Instant Export)\n\nUnzip all files keeping the game/ folder next to ${binName}, then run:\n  chmod +x "./${binName}" && "./${binName}"\n`,
+          `${safeName} v${cfg.version} (Linux Instant Export)\n\nUnzip all files keeping the game/ folder next to ${binName} and run ./${binName} (executable bit is pre-set).\n`,
         )
       }
       const zip = zipSync(files)

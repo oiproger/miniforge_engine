@@ -9,6 +9,10 @@ on:
         description: 'Path to a project JSON or .miniforge archive in this checkout. Leave empty for Coin Rush.'
         type: string
         required: false
+      version:
+        description: 'Optional SemVer override (e.g. 2.7.0). Defaults to GitHub Release tag or package.json version.'
+        type: string
+        required: false
 
 permissions:
   contents: write
@@ -70,6 +74,7 @@ jobs:
       - name: Build native Tauri bundle
         env:
           TAURI_TARGET: ${{ runner.os == 'macOS' && 'universal-apple-darwin' || '' }}
+          APP_VERSION: ${{ inputs.version || (github.event_name == 'release' && github.ref_name || '') }}
         run: node apps/editor-desktop/build.mjs ${{ matrix.app }}
 
       - name: Upload workflow artifact

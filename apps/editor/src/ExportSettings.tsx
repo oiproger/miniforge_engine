@@ -6,6 +6,7 @@ import {
   type Project,
 } from '../../../packages/project-schema/src'
 import { Field, Numeric } from './Fields'
+import defaultIconUrl from '../../editor-desktop/src-tauri/icons/icon.png?url'
 
 export function ExportSettingsPanel({
   p,
@@ -76,29 +77,18 @@ export function ExportSettingsPanel({
         {/* Custom App Icon */}
         <Field label="Application Icon (PNG recommended, 256×256 or 512×512)">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {cfg.iconDataUrl ? (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
               <img
-                src={cfg.iconDataUrl}
-                alt="App Icon"
-                style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', border: '1px solid #384452', background: '#0d1117' }}
+                src={cfg.iconDataUrl || defaultIconUrl}
+                alt={cfg.iconDataUrl ? 'Custom App Icon' : 'Default Miniforge Icon'}
+                style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', border: '1px solid #384452', background: '#0d1117', display: 'block' }}
               />
-            ) : (
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 10,
-                  border: '1px dashed #384452',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontSize: 10,
-                  color: '#8b9bb0',
-                  textAlign: 'center',
-                }}
-              >
-                Default
-              </div>
-            )}
+              {!cfg.iconDataUrl && (
+                <span style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)', background: '#1c2430', border: '1px solid #384452', borderRadius: 4, padding: '0 4px', fontSize: 9, color: '#f59e0b', whiteSpace: 'nowrap' }}>
+                  Miniforge
+                </span>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <div style={{ display: 'flex', gap: 6 }}>
                 <label className="mf-btn" style={{ fontSize: 11.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>

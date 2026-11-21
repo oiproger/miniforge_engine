@@ -209,6 +209,14 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
       if (pinId === 'ok') return `((s) => { try { JSON.parse(s); return true } catch { return false } })(${j})`
       return `((s) => { try { return JSON.parse(s) } catch { return null } })(${j})`
     }
+    case 'quest.getStatus':
+      return `api.dialogue.getQuestStatus(String(${g('questId', '')}))`
+    case 'camera.worldToScreen': {
+      const sp = `api.camera.worldToScreen(_v3(${g('position', [0, 0, 0])}))`
+      if (pinId === 'x') return `(${sp}).x`
+      if (pinId === 'y') return `(${sp}).y`
+      return `(${sp}).visible`
+    }
     case 'enum.equals':
       return `(String(${g('a', '')}) === String(${g('b', '')}))`
     default:
@@ -386,6 +394,64 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       return `${indent}api.ui.open(String(${g('screenId', '')}));\n` + next()
     case 'ui.close':
       return `${indent}api.ui.close();\n` + next()
+    case 'ui.back':
+      return `${indent}api.ui.back();\n` + next()
+    case 'ui.mount':
+      return `${indent}api.ui.mount(String(${g('id', 'hud_custom')}), String(${g('html', '')}), String(${g('css', '')}) || undefined);\n` + next()
+    case 'ui.unmount':
+      return `${indent}api.ui.unmount(String(${g('id', '')}));\n` + next()
+    case 'ui.setHtml':
+      return `${indent}api.ui.setHtml(String(${g('id', '')}), String(${g('html', '')}));\n` + next()
+    case 'ui.setBlur':
+      return `${indent}api.ui.setBlur(String(${g('id', '')}), Number(${g('blurPx', 0)}) || 0);\n` + next()
+    case 'ui.createScreen': {
+      const out = v('screenId')
+      return `${indent}const ${out} = api.ui.createScreen(String(${g('id', '')}), { name: String(${g('name', 'Custom Screen')}), background: String(${g('background', '')}) || undefined, modal: Boolean(${g('modal', false)}), open: Boolean(${g('openNow', true)}) });\n` + next()
+    }
+    case 'ui.removeScreen':
+      return `${indent}api.ui.removeScreen(String(${g('screenId', '')}));\n` + next()
+    case 'ui.createWidget': {
+      const out = v('widgetId')
+      return `${indent}const ${out} = api.ui.createWidget({ id: String(${g('id', '')}) || undefined, screen: String(${g('screenId', '')}) || undefined, type: String(${g('widgetType', 'label')}), text: String(${g('text', '')}), x: Number(${g('x', 24)}) || 0, y: Number(${g('y', 24)}) || 0, anchor: String(${g('anchor', 'top-left')}), action: String(${g('action', 'event')}), target: String(${g('target', '')}) || undefined, color: String(${g('color', '#ffffff')}) || undefined });\n` + next()
+    }
+    case 'ui.updateWidget':
+      return `${indent}api.ui.updateWidget(String(${g('id', '')}), { text: String(${g('text', '')}) || undefined, value: Number(${g('value', 100)}), color: String(${g('color', '')}) || undefined, visible: Boolean(${g('visible', true)}) });\n` + next()
+    case 'ui.removeWidget':
+      return `${indent}api.ui.removeWidget(String(${g('id', '')}));\n` + next()
+    case 'ui.setText':
+      return `${indent}api.ui.setText(String(${g('id', '')}), String(${g('text', '')}));\n` + next()
+    case 'ui.setVisible':
+      return `${indent}api.ui.setVisible(String(${g('id', '')}), Boolean(${g('visible', true)}));\n` + next()
+    case 'audio.stop':
+      return `${indent}api.audio.stop(String(${g('handle', '')}));\n` + next()
+    case 'audio.stopAll':
+      return `${indent}api.audio.stopAll();\n` + next()
+    case 'audio.setVolume':
+      return `${indent}api.audio.setVolume(String(${g('handle', '')}), Number(${g('volume', 1)}) || 0, Number(${g('fade', 0)}) || 0);\n` + next()
+    case 'audio.setBusVolume':
+      return `${indent}api.audio.setBusVolume(String(${g('bus', 'master')}), Number(${g('volume', 1)}) || 0);\n` + next()
+    case 'dialogue.start':
+      return `${indent}api.dialogue.start(String(${g('assetId', '')}));\n` + next()
+    case 'dialogue.stop':
+      return `${indent}api.dialogue.stop();\n` + next()
+    case 'quest.setStatus':
+      return `${indent}api.dialogue.setQuestStatus(String(${g('questId', '')}), String(${g('status', 'active')}));\n` + next()
+    case 'sequencer.play':
+      return `${indent}api.sequencer.play(String(${g('assetId', '')}));\n` + next()
+    case 'sequencer.stop':
+      return `${indent}api.sequencer.stop(String(${g('assetId', '')}));\n` + next()
+    case 'fx.particlePlay':
+      return `${indent}api.particles.play(${eid()});\n` + next()
+    case 'fx.particleStop':
+      return `${indent}api.particles.stop(${eid()});\n` + next()
+    case 'light.setGlow':
+      return `${indent}api.lights.setGlow(${eid()}, Number(${g('glow', 1.5)}) || 0, Number(${g('falloff', 1.2)}) || 1);\n` + next()
+    case 'nav.setObstacle':
+      return `${indent}api.nav.setObstacle(_v3(${g('center', [0, 0, 0])}), Number(${g('radius', 1.5)}) || 1, Boolean(${g('blocked', true)}));\n` + next()
+    case 'touch.setVisible':
+      return `${indent}api.touch.setVisible(Boolean(${g('visible', true)}));\n` + next()
+    case 'tween.scaleTo':
+      return `${indent}{ const _o = api.find(${eid()}); const _to = _v3(${g('target', [1, 1, 1])}); if (_o) { const _d = Math.max(0.01, Number(${g('duration', 0.4)}) || 0.4); const _tw = api.createTween(); _tw.tweenProperty(_o.scale, 'x', _to[0], _d).setTrans('sine').setEase('inOut'); _tw.parallel().tweenProperty(_o.scale, 'y', _to[1], _d).setTrans('sine').setEase('inOut'); _tw.parallel().tweenProperty(_o.scale, 'z', _to[2], _d).setTrans('sine').setEase('inOut'); } }\n` + next()
     case 'save.save':
       return `${indent}void api.save.save(String(${g('slot', 'slot1')}));\n` + next()
     case 'save.load':

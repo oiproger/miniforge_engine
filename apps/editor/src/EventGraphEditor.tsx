@@ -913,6 +913,18 @@ export function EventGraphEditor({
                                       checked={Boolean(inpVal)}
                                       onChange={(e) => updateNodeInput(node.id, inp.id, e.target.checked)}
                                     />
+                                  ) : inp.options && inp.options.length > 0 ? (
+                                    <select
+                                      className="mf-bp-inline-val"
+                                      value={String(inpVal ?? inp.defaultValue ?? inp.options[0])}
+                                      onChange={(e) => updateNodeInput(node.id, inp.id, e.target.value)}
+                                    >
+                                      {inp.options.map((opt) => (
+                                        <option key={opt} value={opt}>
+                                          {opt}
+                                        </option>
+                                      ))}
+                                    </select>
                                   ) : (
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                                       <input
