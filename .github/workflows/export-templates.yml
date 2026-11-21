@@ -38,7 +38,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev libssl-dev build-essential file libxdo-dev
 
-      - name: Build universal Miniforge Player template
+      - name: Build universal Miniforge Player template (macOS Apple Silicon + Intel)
+        if: runner.os == 'macOS'
+        working-directory: apps/editor-desktop/src-tauri
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          cargo build --release --features player --target aarch64-apple-darwin
+          cargo build --release --features player --target x86_64-apple-darwin
+          mkdir -p target/release
+          lipo -create             target/aarch64-apple-darwin/release/miniforge             target/x86_64-apple-darwin/release/miniforge             -output target/release/miniforge
+
+      - name: Build universal Miniforge Player template (Windows / Linux)
+        if: runner.os != 'macOS'
         working-directory: apps/editor-desktop/src-tauri
         run: cargo build --release --features player
 

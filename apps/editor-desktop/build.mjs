@@ -13,6 +13,7 @@ const frontendDist = resolve(root, mode === 'editor' ? 'dist/editor' : gameDirec
 if (!existsSync(join(frontendDist, 'index.html'))) throw new Error('Build the editor or export the Web Standalone game before packaging: ' + frontendDist);
 const bundles = process.platform === 'linux' ? 'deb' : process.platform === 'darwin' ? 'app,dmg' : 'nsis';
 const args = [cli, 'build', '--bundles', bundles];
+if (process.env.TAURI_TARGET) args.push('--target', process.env.TAURI_TARGET);
 if (mode === 'editor') args.push('--features', 'editor');
 else args.push('--config', 'src-tauri/game.conf.json', '--config', JSON.stringify({build:{frontendDist}}));
 const child = spawnSync(process.execPath, args, {cwd: directory, stdio:'inherit'});

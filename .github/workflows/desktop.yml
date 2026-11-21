@@ -37,6 +37,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Add macOS universal Rust targets
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
       - name: Install Linux WebView development packages
         if: runner.os == 'Linux'
         run: |
@@ -64,6 +68,8 @@ jobs:
           fi
 
       - name: Build native Tauri bundle
+        env:
+          TAURI_TARGET: ${{ runner.os == 'macOS' && 'universal-apple-darwin' || '' }}
         run: node apps/editor-desktop/build.mjs ${{ matrix.app }}
 
       - name: Upload workflow artifact
@@ -77,6 +83,7 @@ jobs:
             apps/editor-desktop/src-tauri/target/release/bundle/nsis/*.exe
             apps/editor-desktop/src-tauri/target/release/bundle/msi/*.msi
             apps/editor-desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/editor-desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
 
       - name: Attach editor installers to GitHub Release
         if: github.event_name == 'release' && matrix.app == 'editor'
@@ -88,3 +95,4 @@ jobs:
             apps/editor-desktop/src-tauri/target/release/bundle/nsis/*.exe
             apps/editor-desktop/src-tauri/target/release/bundle/msi/*.msi
             apps/editor-desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/editor-desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
