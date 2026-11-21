@@ -486,7 +486,7 @@ export async function startGame(
   function emit(name: string, payload?: unknown) {
     events.emit(name, payload)
     options.onEvent?.(name, payload)
-    overlay.dispatchEvent(name, payload)
+    overlay.dispatchEvent?.(name, payload)
   }
   function quiet() {
     input.clear()
@@ -891,6 +891,56 @@ export async function startGame(
         scene.entities
           .filter((e) => Array.isArray(e.properties.tags) && e.properties.tags.includes(tag))
           .map((e) => e.id),
+      hasTag: (id, tag) => {
+        const target = scene.entities.find((e) => e.id === (id || entity.id))
+        return Boolean(target && Array.isArray(target.properties.tags) && target.properties.tags.includes(tag))
+      },
+      addTag: (id, tag) => {
+        const clean = String(tag || '').trim()
+        if (!clean) return
+        const target = scene.entities.find((e) => e.id === (id || entity.id))
+        if (!target) return
+        const list = Array.isArray(target.properties.tags) ? target.properties.tags : []
+        if (!list.includes(clean)) target.properties.tags = [...list, clean]
+      },
+      removeTag: (id, tag) => {
+        const target = scene.entities.find((e) => e.id === (id || entity.id))
+        if (!target || !Array.isArray(target.properties.tags)) return
+        target.properties.tags = target.properties.tags.filter((t: string) => t !== tag)
+      },
+      getTags: (id) => {
+        const target = scene.entities.find((e) => e.id === (id || entity.id))
+        return target && Array.isArray(target.properties.tags) ? [...target.properties.tags] : []
+      },
+      findByName: (name) => scene.entities.find((e) => e.name === name)?.id,
+      findByComponent: (type) =>
+        scene.entities
+          .filter((e) => e.components.some((c) => c.type === type && c.enabled !== false))
+          .map((e) => e.id),
+      getParent: (id) => {
+        const target = scene.entities.find((e) => e.id === (id || entity.id))
+        return target?.parent ?? null
+      },
+      getChildren: (id) => {
+        const pid = id || entity.id
+        return scene.entities.filter((e) => e.parent === pid).map((e) => e.id)
+      },
+      getChildByName: (id, name) => {
+        const pid = id || entity.id
+        const queue = scene.entities.filter((e) => e.parent === pid)
+        while (queue.length) {
+          const cur = queue.shift()!
+          if (cur.name === name) return cur.id
+          for (const ch of scene.entities) {
+            if (ch.parent === cur.id) queue.push(ch)
+          }
+        }
+        return undefined
+      },
+      getComponent: (id, type) => {
+        const target = scene.entities.find((e) => e.id === (id || entity.id))
+        return target?.components.find((c) => c.type === type && c.enabled !== false)
+      },
       component: (type) => entity.components.find((v) => v.type === type && v.enabled !== false),
       t,
       audio: {
@@ -1447,7 +1497,7 @@ export async function startGame(
     events.clear()
     physics?.dispose()
     touchCtrl.dispose()
-    overlay.dispose()
+    overlay.dispose?.()
     world.dispose()
   }
   try {

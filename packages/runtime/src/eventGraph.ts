@@ -202,6 +202,100 @@ export function createEventGraphLifecycle(
           position: [api.object.position.x, api.object.position.y, api.object.position.z],
           time: api.time,
         }
+      case 'entity.findByName': {
+        const id = api.findByName(String(get('name', ''))) || ''
+        return { entity: id, found: Boolean(id) }
+      }
+      case 'entity.findByComponent': {
+        const list = api.findByComponent(String(get('componentType', '')))
+        return { entity: list[0] || '', entities: list, count: list.length }
+      }
+      case 'entity.getParent': {
+        const pid = api.getParent(resolveEntityId(get('entity', ''))) || ''
+        return { parent: pid, hasParent: Boolean(pid) }
+      }
+      case 'entity.getChildByName': {
+        const cid = api.getChildByName(resolveEntityId(get('entity', '')), String(get('name', ''))) || ''
+        return { child: cid, found: Boolean(cid) }
+      }
+      case 'entity.getChildren': {
+        const list = api.getChildren(resolveEntityId(get('entity', '')))
+        return { children: list, count: list.length }
+      }
+      case 'entity.hasComponent': {
+        const c = api.getComponent(resolveEntityId(get('entity', '')), String(get('componentType', '')))
+        return { result: Boolean(c) }
+      }
+      case 'entity.getComponentProp': {
+        const c = api.getComponent(resolveEntityId(get('entity', '')), String(get('componentType', '')))
+        const prop = String(get('property', ''))
+        if (c && prop && prop in c) return { value: c[prop], found: true }
+        return { value: get('fallback', ''), found: false }
+      }
+      case 'array.make': {
+        const raw = String(get('itemsJson', '[]')).trim()
+        try {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) return { array: parsed }
+        } catch {}
+        return { array: raw ? raw.split(',').map((s) => s.trim()) : [] }
+      }
+      case 'array.get': {
+        const arr = get('array', [])
+        const idx = Math.floor(Number(get('index', 0)) || 0)
+        return { value: Array.isArray(arr) ? arr[idx] : undefined }
+      }
+      case 'array.length': {
+        const arr = get('array', [])
+        return { length: Array.isArray(arr) ? arr.length : 0 }
+      }
+      case 'array.contains': {
+        const arr = get('array', [])
+        const val = get('value', '')
+        const idx = Array.isArray(arr) ? arr.indexOf(val) : -1
+        return { result: idx >= 0, index: idx }
+      }
+      case 'map.make': {
+        const raw = String(get('json', '{}')).trim()
+        try {
+          const parsed = JSON.parse(raw)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return { map: parsed }
+        } catch {}
+        return { map: {} }
+      }
+      case 'map.get': {
+        const m = get('map', {})
+        const k = String(get('key', ''))
+        if (m && typeof m === 'object' && k in m) return { value: m[k], hasKey: true }
+        return { value: get('fallback', ''), hasKey: false }
+      }
+      case 'map.keys': {
+        const m = get('map', {})
+        const keys = m && typeof m === 'object' ? Object.keys(m) : []
+        return { keys, size: keys.length }
+      }
+      case 'object.make': {
+        const raw = String(get('json', '{}')).trim()
+        try {
+          const parsed = JSON.parse(raw)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return { object: parsed }
+        } catch {}
+        return { object: {} }
+      }
+      case 'object.getField': {
+        const o = get('object', {})
+        const f = String(get('field', ''))
+        return { value: o && typeof o === 'object' && f in o ? o[f] : get('fallback', '') }
+      }
+      case 'object.toJson': {
+        try { return { json: JSON.stringify(get('value', null)) } } catch { return { json: 'null' } }
+      }
+      case 'object.fromJson': {
+        try { return { value: JSON.parse(String(get('json', '{}'))), ok: true } } catch { return { value: null, ok: false } }
+      }
+      case 'enum.equals': {
+        return { result: String(get('a', '')) === String(get('b', '')) }
+      }
       case 'entity.findByTag': {
         const list = api.findByTag(String(get('tag', '')))
         return { id: list[0] ?? '', count: list.length }
@@ -404,6 +498,99 @@ export function createEventGraphLifecycle(
           }
         }
         next()
+        break
+      }
+      case 'entity.setComponentProp': {
+        const eid = resolveEntityId(get('entity', ''))
+        const ctype = String(get('componentType', ''))
+        const prop = String(get('property', ''))
+        const val = get('value', '')
+        const c = api.getComponent(eid, ctype)
+        if (c && prop) {
+          c[prop] = val
+          if (ctype === 'light' && prop === 'intensity') api.lights.setIntensity(eid, Number(val) || 0)
+        }
+        next('exec')
+        break
+      }
+      case 'array.set': {
+        const arr = Array.isArray(get('array', [])) ? get('array', []) : []
+        const idx = Math.floor(Number(get('index', 0)) || 0)
+        if (idx >= 0) arr[idx] = get('value', '')
+        setOut({ array: arr })
+        next('exec')
+        break
+      }
+      case 'array.push': {
+        const arr = Array.isArray(get('array', [])) ? get('array', []) : []
+        arr.push(get('value', ''))
+        setOut({ array: arr, length: arr.length })
+        next('exec')
+        break
+      }
+      case 'array.removeAt': {
+        const arr = Array.isArray(get('array', [])) ? get('array', []) : []
+        const idx = Math.floor(Number(get('index', 0)) || 0)
+        const removed = idx >= 0 && idx < arr.length ? arr.splice(idx, 1)[0] : undefined
+        setOut({ array: arr, removed })
+        next('exec')
+        break
+      }
+      case 'array.forEach': {
+        const arr = Array.isArray(get('array', [])) ? get('array', []) : []
+        for (let i = 0; i < arr.length; i++) {
+          if (budget.steps >= MAX_STEPS || scope.returned || destroyed) break
+          setOut({ element: arr[i], index: i })
+          next('loopBody')
+        }
+        next('completed')
+        break
+      }
+      case 'map.set': {
+        const m = get('map', {})
+        const obj = m && typeof m === 'object' ? m : {}
+        obj[String(get('key', ''))] = get('value', '')
+        setOut({ map: obj })
+        next('exec')
+        break
+      }
+      case 'map.delete': {
+        const m = get('map', {})
+        const obj = m && typeof m === 'object' ? m : {}
+        delete obj[String(get('key', ''))]
+        setOut({ map: obj })
+        next('exec')
+        break
+      }
+      case 'object.setField': {
+        const o = get('object', {})
+        const obj = o && typeof o === 'object' ? o : {}
+        obj[String(get('field', ''))] = get('value', '')
+        setOut({ object: obj })
+        next('exec')
+        break
+      }
+      case 'enum.switch': {
+        const val = String(get('value', ''))
+        let matched = false
+        for (let i = 0; i < 4; i++) {
+          if (val === String(get('case' + i, ''))) {
+            next('out' + i)
+            matched = true
+            break
+          }
+        }
+        if (!matched) next('default')
+        break
+      }
+      case 'entity.addTag': {
+        api.addTag(resolveEntityId(get('entity', '')), String(get('tag', '')))
+        next('exec')
+        break
+      }
+      case 'entity.removeTag': {
+        api.removeTag(resolveEntityId(get('entity', '')), String(get('tag', '')))
+        next('exec')
         break
       }
       case 'entity.setPos': {

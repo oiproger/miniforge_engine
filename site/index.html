@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Miniforge Engine v2.2 All-in-One — Лёгкий 3D-движок на LittleJS + Rapier3D</title>
+  <title>Miniforge Engine v2.4 — Браузерный 3D-движок «Всё в одном» (~15 МБ)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -75,13 +75,6 @@
   </style>
 </head>
 <body class="forge-grid-bg min-h-screen antialiased selection:bg-amber-500/30 selection:text-amber-200">
-<div style="background:#0d1117;border-bottom:1px solid rgba(255,255,255,0.08);padding:10px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;font-size:14px;">
-  <a href="./editor/" style="background:#d97706;color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:600;">Открыть редактор в браузере →</a>
-  <a href="./docs/" style="color:#e5e7eb;padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.16);text-decoration:none;">Документация v2.2</a>
-  <a href="https://github.com/YOUR_GITHUB_USERNAME/miniforge-engine" target="_blank" rel="noopener" style="color:#9ca3af;text-decoration:none;">GitHub</a>
-  <a href="https://boosty.to/YOUR_USERNAME" target="_blank" rel="noopener" style="color:#fbbf24;text-decoration:none;">Поддержать разработку</a>
-</div>
-
 
   <!-- Sticky Navigation -->
   <header class="sticky top-0 z-40 border-b border-white/10 bg-[#0a0e14]/85 backdrop-blur-md">
@@ -96,7 +89,7 @@
         </span>
         <span class="flex flex-col leading-none">
           <span class="text-sm font-extrabold tracking-wider uppercase">Miniforge</span>
-          <span class="font-mono text-[10px] text-amber-400">ENGINE v2.2 · ALL-IN-ONE 3D</span>
+          <span class="font-mono text-[10px] text-amber-400">ENGINE v2.4 · ALL-IN-ONE 3D</span>
         </span>
       </a>
 
@@ -104,7 +97,9 @@
         <a href="#overview" class="transition hover:text-amber-300">Обзор</a>
         <a href="#features" class="transition hover:text-amber-300">Возможности</a>
         <a href="#platforms" class="transition hover:text-amber-300">Платформы</a>
+        <a href="#try-editor" class="rounded-lg bg-amber-500/20 border border-amber-400/40 px-2.5 py-1 text-amber-200 hover:bg-amber-500/30 transition">Попробовать</a>
         <a href="#examples" class="transition hover:text-cyan-300">3D Examples</a>
+        <a href="#roadmap" class="hover:text-white transition">Roadmap</a>
         <a href="#docs" class="transition hover:text-amber-300">Документация & API</a>
       </nav>
 
@@ -138,7 +133,7 @@
       <div class="lg:col-span-5">
         <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 font-mono text-xs text-amber-300">
           <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
-          v2.2 All-in-One · LittleJS 1.30.1 + Rapier3D + Tauri
+          v2.4 All-in-One · LittleJS 1.30.1 + Rapier3D + Tauri
         </div>
         <h1 class="text-3xl font-extrabold tracking-tight text-white sm:text-5xl leading-[1.08]">
           Карманная кузница <span class="bg-gradient-to-r from-amber-400 via-orange-400 to-cyan-300 bg-clip-text text-transparent">3D-игр</span> для веба и десктопа
@@ -228,10 +223,133 @@
   </section>
 
   <!-- Features Section -->
+  
+  <!-- === TRY EDITOR LIVE ON SITE === -->
+  <section id="try-editor" class="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <span class="font-mono text-xs font-semibold uppercase tracking-widest text-amber-400">Live Studio · Без установки</span>
+        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Попробуйте Miniforge прямо на сайте</h2>
+        <p class="mt-1 text-sm text-slate-400">Запустите полный веб-редактор (при деплое на GitHub Pages) или протестируйте быструю 3D-песочницу прямо в этом окне.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="tryTabSandbox" type="button" class="tab-btn active rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-200 transition">
+          3D-песочница (мгновенно)
+        </button>
+        <button id="tryTabFull" type="button" class="tab-btn rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-200 transition">
+          Полный редактор (/editor/)
+        </button>
+        <button id="openEditorExtBtn" type="button" class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-slate-950 transition hover:brightness-110">Открыть редактор ↗</button>
+        <a href="#docs" class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-3.5 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/25">Документация v2.4</a>
+      </div>
+    </div>
+
+    <!-- Mode 1: Interactive Mini-Studio Sandbox (Works everywhere, including standalone/offline) -->
+    <div id="tryPanelSandbox" class="glass-card overflow-hidden rounded-2xl border border-amber-500/25">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#0d121a] px-4 py-2.5 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-mono font-bold text-amber-300">Miniforge Mini-Studio</span>
+          <span class="text-slate-500">|</span>
+          <button id="sbAddBox" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-white/10">+ Куб</button>
+          <button id="sbAddCone" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-white/10">+ Крыша / Конус</button>
+          <button id="sbAddSphere" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:bg-white/10">+ Сфера</button>
+          <button id="sbExtrudeBtn" type="button" class="rounded-lg border border-amber-400/40 bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25">Extrude +Y</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="sbSynthBtn" type="button" class="rounded-lg border border-cyan-400/40 bg-cyan-500/15 px-2.5 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/25">♪ Тест SFX Synth</button>
+          <button id="sbPlayBtn" type="button" class="rounded-lg bg-emerald-500 px-3 py-1 text-[11px] font-bold text-slate-950 hover:brightness-110">▶ Play (WASD)</button>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-12">
+        <!-- Left: Hierarchy -->
+        <div class="border-b border-white/10 bg-[#0f151e] p-3 lg:col-span-3 lg:border-b-0 lg:border-r">
+          <div class="mb-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <span>Hierarchy</span>
+            <span id="sbObjCount" class="font-mono text-amber-300">4</span>
+          </div>
+          <div id="sbHierarchy" class="flex flex-col gap-1.5 text-xs"></div>
+          <div class="mt-4 border-t border-white/10 pt-3">
+            <div class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">3D Material Brush</div>
+            <div class="grid grid-cols-2 gap-1.5 text-[11px]" id="sbMatPalette">
+              <button type="button" data-mat="concrete" class="rounded-lg border border-amber-400/50 bg-[#9aa4ad]/20 px-2 py-1.5 text-left font-semibold text-slate-200">Бетон</button>
+              <button type="button" data-mat="wood" class="rounded-lg border border-white/10 bg-[#8c6642]/25 px-2 py-1.5 text-left font-semibold text-amber-200">Дерево</button>
+              <button type="button" data-mat="rust" class="rounded-lg border border-white/10 bg-[#8f4a36]/30 px-2 py-1.5 text-left font-semibold text-orange-200">Ржавчина</button>
+              <button type="button" data-mat="neon" class="rounded-lg border border-white/10 bg-[#38bdf8]/25 px-2 py-1.5 text-left font-semibold text-cyan-200">Неон</button>
+            </div>
+            <p class="mt-2 text-[11px] text-slate-400">Кликните по объекту на сцене — он выделится и окрасится выбранным материалом.</p>
+          </div>
+        </div>
+
+        <!-- Center: 3D Viewport -->
+        <div class="relative h-[380px] bg-[#090d12] lg:col-span-6 lg:h-[430px]">
+          <canvas id="sandboxCanvas" class="viewport-canvas"></canvas>
+          <div id="sbHudStatus" class="pointer-events-none absolute left-3 top-3 rounded-lg border border-white/10 bg-[#0d121a]/85 px-2.5 py-1 font-mono text-[11px] text-slate-200">
+            Режим редактирования · ЛКМ — выбор/материал · ПКМ/Drag — орбита
+          </div>
+        </div>
+
+        <!-- Right: Inspector -->
+        <div class="border-t border-white/10 bg-[#0f151e] p-3.5 text-xs lg:col-span-3 lg:border-l lg:border-t-0">
+          <div class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Inspector</div>
+          <div id="sbInspector" class="flex flex-col gap-3">
+            <div>
+              <div class="text-[11px] text-slate-400">Выбранный объект</div>
+              <div id="sbSelName" class="mt-0.5 font-mono text-sm font-bold text-amber-300">Base Block</div>
+            </div>
+            <label class="flex flex-col gap-1">
+              <span class="text-[11px] text-slate-400">Высота (Scale Y / Extrude): <b id="sbScaleYVal" class="text-white">1.0</b></span>
+              <input id="sbScaleY" type="range" min="0.3" max="3.5" step="0.1" value="1.0" class="w-full accent-amber-400" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-[11px] text-slate-400">Ширина (Scale X/Z): <b id="sbScaleXZVal" class="text-white">1.6</b></span>
+              <input id="sbScaleXZ" type="range" min="0.4" max="3.5" step="0.1" value="1.6" class="w-full accent-cyan-400" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-[11px] text-slate-400">Поворот Y: <b id="sbRotYVal" class="text-white">0°</b></span>
+              <input id="sbRotY" type="range" min="0" max="360" step="5" value="0" class="w-full accent-amber-400" />
+            </label>
+            <div class="mt-1 rounded-xl border border-white/10 bg-[#141c27] p-2.5 text-[11px] text-slate-300">
+              <div class="font-semibold text-white">Полный редактор включает:</div>
+              <ul class="mt-1 space-y-1 text-slate-400">
+                <li>• Project Hub + авто-примеры</li>
+                <li>• Event Graph (65+ нод Blueprints)</li>
+                <li>• 2D Paint, Synth, Dialogues, Sequencer</li>
+                <li>• Плагины .mfplugin.json + Export Templates</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode 2: Full Live Editor Embed (./editor/ on GitHub Pages) -->
+    <div id="tryPanelFull" class="glass-card hidden overflow-hidden rounded-2xl border border-cyan-500/30">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#0d121a] px-4 py-2.5 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+          <span class="font-mono font-semibold text-cyan-200">Miniforge Engine v2.4 · Полный веб-редактор (./editor/)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="fullEditorFsBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] text-slate-200 hover:bg-white/10">Во весь экран</button>
+          <button id="openEditorTabBtn" type="button" class="rounded-lg bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-slate-950">Новая вкладка ↗</button>
+        </div>
+      </div>
+      <div id="fullEditorFallback" class="hidden bg-[#101620] p-8 text-center">
+        <p class="text-sm font-semibold text-amber-300">Локальный предпросмотр HTML-страницы без собранного редактора рядом</p>
+        <p class="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-slate-400">
+          При публикации через <code class="text-cyan-300">pnpm build:site</code> или GitHub Pages здесь автоматически загружается полноценный редактор Miniforge (<code class="text-cyan-300">./editor/</code>). Сейчас вы можете переключиться на вкладку <b>«3D-песочница»</b> и покрутить интерактивный вьюпорт прямо здесь.
+        </p>
+        <button id="switchBackSandboxBtn" type="button" class="mt-4 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950">Открыть 3D-песочницу</button>
+      </div>
+      <iframe id="liveEditorIframe" title="Miniforge Live Web Editor" class="h-[680px] w-full border-0 bg-[#0d1117]" allow="fullscreen; pointer-lock; clipboard-read; clipboard-write"></iframe>
+    </div>
+  </section>
+
   <section id="features" class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
     <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
       <div>
-        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-amber-400">Арсенал v2.2 All-in-One · 13 студий</div>
+        <div class="font-mono text-xs font-semibold uppercase tracking-widest text-amber-400">Арсенал v2.4 All-in-One · 13 студий</div>
         <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Все ключевые возможности движка</h2>
       </div>
       <div id="featureFilters" class="flex flex-wrap gap-2">
@@ -335,7 +453,7 @@
         <button type="button" data-demo="nav" class="example-tab flex flex-col rounded-xl border border-white/10 bg-[#111720] p-3.5 text-left transition hover:border-amber-400/40">
           <div class="flex items-center justify-between">
             <span class="text-sm font-bold text-white">4. NavGrid A* &amp; Animated NPC</span>
-            <span class="rounded bg-cyan-500/20 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v2.2 All-in-One AI</span>
+            <span class="rounded bg-cyan-500/20 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v2.4 All-in-One AI</span>
           </div>
           <span class="mt-1 text-xs text-slate-400">Кликни по любой точке двора — NPC построит сглаженный A*-путь и обойдёт стены и закрытые ворота.</span>
         </button>
@@ -387,7 +505,7 @@
     <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
       <div>
         <div class="font-mono text-xs font-semibold uppercase tracking-widest text-cyan-400">Полный справочник</div>
-        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Документация и GameAPI v2.2 All-in-One</h2>
+        <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Документация, GameAPI и Plugin API v2.4</h2>
       </div>
       <div class="relative w-full sm:w-80">
         <input id="docSearch" type="search" placeholder="Поиск по методам (crossfade, nav, terrain...)" class="w-full rounded-xl border border-white/15 bg-[#111720] px-4 py-2 text-xs text-white placeholder-slate-400 outline-none focus:border-cyan-400/60" />
@@ -401,10 +519,71 @@
   </section>
 
   <!-- Footer -->
+  
+  <!-- === ROADMAP & SUPPORT === -->
+  <section id="roadmap" class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+    <div class="mb-6">
+      <span class="font-mono text-xs font-semibold uppercase tracking-widest text-cyan-400">План развития · Open Source (MIT)</span>
+      <h2 class="mt-1 text-2xl font-extrabold text-white sm:text-3xl">Roadmap: от шейдеров до мультиплеера и Steam</h2>
+    </div>
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div class="glass-card rounded-2xl p-5">
+        <span class="rounded-md bg-amber-500/20 px-2 py-0.5 font-mono text-xs font-bold text-amber-300">v2.5 · Далее</span>
+        <h3 class="mt-2.5 text-base font-bold text-white">Материалы и шейдеры</h3>
+        <ul class="mt-2 space-y-1.5 text-xs text-slate-300">
+          <li>• Живое 3D-превью материалов (сфера/куб)</li>
+          <li>• GLSL Shader Editor с живым превью и слайдерами uniform</li>
+          <li>• Профайлер сцены и авто-иконки .ico/.icns</li>
+        </ul>
+      </div>
+      <div class="glass-card rounded-2xl p-5">
+        <span class="rounded-md bg-cyan-500/20 px-2 py-0.5 font-mono text-xs font-bold text-cyan-300">v2.6</span>
+        <h3 class="mt-2.5 text-base font-bold text-white">Ускорители контента</h3>
+        <ul class="mt-2 space-y-1.5 text-xs text-slate-300">
+          <li>• Визуальная Animation State Machine</li>
+          <li>• Кисть расстановки пропов и листвы</li>
+          <li>• Стартовые шаблоны (FPS, Top-Down, Квест) и Gamepad Input</li>
+        </ul>
+      </div>
+      <div class="glass-card rounded-2xl p-5">
+        <span class="rounded-md bg-purple-500/20 px-2 py-0.5 font-mono text-xs font-bold text-purple-300">v3.0</span>
+        <h3 class="mt-2.5 text-base font-bold text-white">Мультиплеер и лобби</h3>
+        <ul class="mt-2 space-y-1.5 text-xs text-slate-300">
+          <li>• Локальный Split-Screen, WebSocket и WebRTC P2P</li>
+          <li>• Компонент NetworkSync и RPC в Event Graph</li>
+          <li>• Комнаты/лобби и запуск Host + Client в редакторе</li>
+        </ul>
+      </div>
+      <div class="glass-card rounded-2xl p-5">
+        <span class="rounded-md bg-emerald-500/20 px-2 py-0.5 font-mono text-xs font-bold text-emerald-300">v3.1</span>
+        <h3 class="mt-2.5 text-base font-bold text-white">Steamworks и экосистема</h3>
+        <ul class="mt-2 space-y-1.5 text-xs text-slate-300">
+          <li>• Steam Lobbies, Networking Sockets, достижения и Cloud Saves</li>
+          <li>• Окно отладки Steam (AppID 480)</li>
+          <li>• Каталог плагинов сообщества</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="support" class="glass-card mt-8 flex flex-col items-start justify-between gap-4 rounded-2xl border border-amber-500/30 p-6 sm:flex-row sm:items-center">
+      <div>
+        <h3 class="text-lg font-extrabold text-white">Поддержать разработку Miniforge Engine</h3>
+        <p class="mt-1 text-xs text-slate-300">Движок полностью бесплатный и открыт под лицензией MIT. Поддержка ускоряет выход мультиплеера, шейдерного редактора и шаблонов.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a href="https://github.com/YOUR_GITHUB_USERNAME/miniforge-engine" target="_blank" rel="noopener" class="rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white hover:bg-white/10">GitHub ★</a>
+        <a href="https://boosty.to/YOUR_USERNAME" target="_blank" rel="noopener" class="rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-slate-950 hover:brightness-110">Boosty</a>
+        <a href="https://pay.cloudtips.ru/p/YOUR_CODE" target="_blank" rel="noopener" class="rounded-xl border border-amber-400/40 bg-amber-500/15 px-3.5 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/25">CloudTips</a>
+        <a href="https://t.me/tribute/app?startapp=YOUR_LINK" target="_blank" rel="noopener" class="rounded-xl border border-cyan-400/40 bg-cyan-500/15 px-3.5 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/25">Tribute (TG)</a>
+        <a href="https://app.lava.top/YOUR_USERNAME" target="_blank" rel="noopener" class="rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10">Lava.top</a>
+      </div>
+    </div>
+  </section>
+
   <footer class="mt-10 border-t border-white/10 bg-[#080b10] py-8">
     <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-slate-400 sm:flex-row sm:px-6">
       <div class="flex items-center gap-2">
-        <span class="font-bold text-white">MINIFORGE ENGINE v2.2 All-in-One</span>
+        <span class="font-bold text-white">MINIFORGE ENGINE v2.4 All-in-One</span>
         <span>·</span>
         <span>LittleJS 1.30.1 · Rapier3D · React · TypeScript · Tauri</span>
       </div>
@@ -468,19 +647,23 @@
 
       // === Features Data ===
       const FEATURES = [
+        { cat: 'editor', tag: 'v2.3–v2.4 Hub', title: 'Project Hub и автоподгрузка /examples/', desc: 'Стартовое окно выбора, создания и открытия проектов с автогенерацией 3D-скриншотов сцен из /examples/, возвратом кнопкой Projects и настройкой описания/превью в Project Settings.' },
+        { cat: 'tools', tag: 'v2.2 Plugins', title: 'Система плагинов (.mfplugin.json)', desc: 'Встроенный Plugin Manager с валидатором синтаксиса, импортом/экспортом плагинов и расширением как редактора (меню Plugins), так и рантайма (Behavior, Services, HUD). В комплекте 4 примера.' },
+        { cat: 'ui', tag: 'v2.4 Export', title: 'Export Settings и 1-клик Export Templates', desc: 'Отдельное окно настроек сборки (название, версия, Bundle ID, иконка, окно/fullscreen) и мгновенный экспорт готовых .exe, .app и Linux-бинарников (~15 МБ на базе Tauri v2).' },
+        { cat: 'tools', tag: 'v2.3 Modeling', title: 'Mesh Builder: Drag Extrude и 60 FPS 3D-кисть', desc: 'Интерактивный Drag Extrude / Drag Inset мышью прямо по 3D-модели, мгновенная GPU-кисть материалами (бетон, дерево, ржавчина, кирпич, текстуры проекта) без задержек и экспорт .glb.' },
         { cat: 'graphics', tag: 'LittleJS 1.30.1', title: 'Запекание света + Emissive & Cubemaps', desc: 'Глобальное и зональное (Bake Zone) запекание освещения с учётом emissive-мешей как источников света, плюс запечённые и realtime cubemap-отражения.' },
         { cat: 'graphics', tag: 'WebGL2 Post-FX', title: 'Постобработка и Volumetric Glow', desc: 'AO, DoF, Bloom, ACES Filmic, Vignette, Chromatic, Film Grain, CRT Scanlines и нативное свечение света сквозь туман (glow / glowFalloff / flare / gel).' },
         { cat: 'graphics', tag: 'v0.5 VFX', title: '3D-частицы, Билборды и Декали', desc: 'Отдельный 3D Particle Editor с 7 пресетами, камера-ориентированные билборды со спрайтовыми атласами и декали с динамическим api.decals.spawn().' },
         { cat: 'editor', tag: 'v0.6 Terrain', title: 'Террейн во вьюпорте + N слоёв', desc: 'Прямая лепка и покраска в 3D-вьюпорте с конформным 3D-кольцом кисти, неограниченные слои материалов и ползунок мягкости Hard ↔ Soft на каждый слой.' },
         { cat: 'editor', tag: 'Godot-style', title: 'Script Workspace & Поиск компонентов', desc: 'Вкладка Script с Monaco, Ctrl+H, встроенной справкой API, сворачиваемыми Project Settings и списком Add Component с иконками и поиском.' },
-        { cat: 'ai', tag: 'v2.2 All-in-One Skinning', title: 'glTF Скелетные анимации и Кости', desc: 'Плавный кроссфейд между клипами (api.animation.crossfade), пауза/перемотка, чтение костей и getBonePosition для предметов в руках NPC.' },
+        { cat: 'ai', tag: 'v2.4 All-in-One Skinning', title: 'glTF Скелетные анимации и Кости', desc: 'Плавный кроссфейд между клипами (api.animation.crossfade), пауза/перемотка, чтение костей и getBonePosition для предметов в руках NPC.' },
         { cat: 'tools', tag: 'v1.4 Blueprints', title: 'Event Graph (Аналог Unreal Blueprints)', desc: 'Визуальный нодовый редактор с 65+ узлами под всё GameAPI, локальными/HUD/WorldState переменными, Exposed Variables, кастомными функциями и 3D-пипеткой.' },
-        { cat: 'tools', tag: 'v2.2 Modeling', title: 'Low-Poly CSG Mesh Builder + 3D Кисть', desc: 'CSG-браши (Union/Subtract), Face Edit (Extrude, Inset, Subdivide, Mirror X, Ground Y=0), быстрая UV-развёртка, настоящая 3D-кисть по 512×512 текстуре и экспорт в .glb.' },
+        { cat: 'tools', tag: 'v2.4 Modeling', title: 'Low-Poly CSG Mesh Builder + 3D Кисть', desc: 'CSG-браши (Union/Subtract), Face Edit (Extrude, Inset, Subdivide, Mirror X, Ground Y=0), быстрая UV-развёртка, настоящая 3D-кисть по 512×512 текстуре и экспорт в .glb.' },
         { cat: 'tools', tag: 'v2.0 Paint', title: '2D Paint Editor со слоями и тайлингом', desc: 'Холст 32–512px, 7 инструментов (кисть, ластик, заливка, пипетка, фигуры), слои, симметрия X/Y, бесшовный Wrap-режим и 3×3 превью.' },
         { cat: 'tools', tag: 'v2.0 Audio', title: 'Sound / SFX / 16-Step Music Synth', desc: 'Процедурный синтезатор звуков, эмбиента и 16-шаговых лупов с экспортом в .wav + рантайм-модификаторы тональности, скорости и фильтра.' },
-        { cat: 'tools', tag: 'v2.2 Narrative', title: 'Dialogue & Quest Graph + Sequencer', desc: 'Нодовый редактор ветвящихся диалогов и квестов с панорамированием/зумом, многодорожечный Keyframe Sequencer и 3D-пипетка выбора Target Entity.' },
+        { cat: 'tools', tag: 'v2.4 Narrative', title: 'Dialogue & Quest Graph + Sequencer', desc: 'Нодовый редактор ветвящихся диалогов и квестов с панорамированием/зумом, многодорожечный Keyframe Sequencer и 3D-пипетка выбора Target Entity.' },
         { cat: 'tools', tag: 'v1.3 Models', title: 'Model Editor + Assimp WASM + Live Prefabs', desc: 'Встроенный импорт .x, .fbx, .smd, .obj, .dae прямо в .glb, нарезка анимаций по таймлайну, слоты материалов и живые префабы с 3D-превью.' },
-        { cat: 'ai', tag: 'v2.2 All-in-One Navigation', title: 'NavGrid + A* и Off-Mesh Links', desc: 'Запекаемая навигационная сетка по террейну и коллайдерам, сглаживание пути, динамические препятствия, Nav Agent (NPC) и связи для лестниц/дверей.' },
+        { cat: 'ai', tag: 'v2.4 All-in-One Navigation', title: 'NavGrid + A* и Off-Mesh Links', desc: 'Запекаемая навигационная сетка по террейну и коллайдерам, сглаживание пути, динамические препятствия, Nav Agent (NPC) и связи для лестниц/дверей.' },
         { cat: 'ai', tag: 'Rapier3D', title: '3D-физика, RaycastHit и Твины', desc: 'Полная физика Rapier3D (импульсы, силы, триггеры, character controller, raycastHit с нормалью) и Godot-style createTween() для плавных анимаций.' },
         { cat: 'ui', tag: 'HTML / Touch', title: 'HTML/CSS HUD + Тач-контроллеры', desc: 'Монтирование любых HTML-виджетов (api.ui.mount), 3D→2D проекция worldToScreen, виртуальные джойстики/кнопки и эмуляция мышь ↔ тач как в Godot.' },
       ];
@@ -908,27 +1091,27 @@
         fog: {
           title: '1. Volumetric Fog & Dynamic Lights (LittleJS 3D)',
           hint: 'Перетаскивай для вращения. Меняй плотность тумана, силу свечения (glow) и палитру огней.',
-          code: `// Miniforge v2.2 All-in-One — Volumetric Fog Glow (LittleJS Light3D)\napi.environment.setFog(0.055, '#111924');\napi.lights.setGlow('lantern_amber', 2.0, 1.2);\napi.lights.setGlow('beacon_cyan', 1.6, 1.4);\napi.lights.setShadowLight('spot_main');`,
+          code: `// Miniforge v2.4 All-in-One — Volumetric Fog Glow (LittleJS Light3D)\napi.environment.setFog(0.055, '#111924');\napi.lights.setGlow('lantern_amber', 2.0, 1.2);\napi.lights.setGlow('beacon_cyan', 1.6, 1.4);\napi.lights.setShadowLight('spot_main');`,
         },
         particles: {
           title: '2. 3D Particle Editor Live',
           hint: 'Выбирай пресеты (Steam, Fire, Sparks, Snow, Rain, Dust), крути Rate/Gravity и жми Burst!',
-          code: `// Miniforge v2.2 All-in-One — 3D Particle System\napi.particles.play('chimney_steam');\napi.particles.setRate('chimney_steam', 45);\napi.particles.setColors('chimney_steam', '#ffd875', '#ff4411');\napi.particles.burst('chimney_steam', 40);`,
+          code: `// Miniforge v2.4 All-in-One — 3D Particle System\napi.particles.play('chimney_steam');\napi.particles.setRate('chimney_steam', 45);\napi.particles.setColors('chimney_steam', '#ffd875', '#ff4411');\napi.particles.burst('chimney_steam', 40);`,
         },
         terrain: {
           title: '3. Interactive Viewport Terrain & Multi-Material Splat',
           hint: 'ЛКМ по террейну — лепить или красить выбранным материалом! ПКМ — вращать камеру.',
-          code: `// Miniforge v2.2 All-in-One — Multi-Material Terrain\n// В редакторе: выдели Terrain -> Terrain Brush: ON\n// + Add Layer в Inspector для неограниченных материалов\n// Ползунок Hard <-> Soft управляет мягкостью границы каждого слоя`,
+          code: `// Miniforge v2.4 All-in-One — Multi-Material Terrain\n// В редакторе: выдели Terrain -> Terrain Brush: ON\n// + Add Layer в Inspector для неограниченных материалов\n// Ползунок Hard <-> Soft управляет мягкостью границы каждого слоя`,
         },
         nav: {
           title: '4. NavGrid A* Pathfinding & Animated NPC',
           hint: 'Кликни ЛКМ по полу двора — NPC построит сглаженный A*-маршрут и пойдёт к цели!',
-          code: `// Miniforge v2.2 All-in-One — NavGrid + A* + glTF Crossfade\napi.nav.setObstacle([0, 0, 0], 1.5, gateClosed);\napi.nav.moveAgent('npc_worker', targetPos, {\n  speed: 3.4, walkClip: 'Walk', idleClip: 'Idle', crossfade: 0.25\n});`,
+          code: `// Miniforge v2.4 All-in-One — NavGrid + A* + glTF Crossfade\napi.nav.setObstacle([0, 0, 0], 1.5, gateClosed);\napi.nav.moveAgent('npc_worker', targetPos, {\n  speed: 3.4, walkClip: 'Walk', idleClip: 'Idle', crossfade: 0.25\n});`,
         },
         water: {
           title: '5. Animated Water, Reflections & Emissive Bake',
           hint: 'Волны на вершинном меше воды, отражающие сферы и неоновые emissive-колонны.',
-          code: `// Miniforge v2.2 All-in-One — Water + Cubemap Reflections + Emissive Bake\napi.graphics.setReflections('realtime', 128, 4);\napi.graphics.bakeLighting(); // учитывает emissive-объекты!\napi.materials.setEmissive('neon_pillar', '#58d8ff', 1.8);`,
+          code: `// Miniforge v2.4 All-in-One — Water + Cubemap Reflections + Emissive Bake\napi.graphics.setReflections('realtime', 128, 4);\napi.graphics.bakeLighting(); // учитывает emissive-объекты!\napi.materials.setEmissive('neon_pillar', '#58d8ff', 1.8);`,
         },
       };
 
@@ -1031,7 +1214,7 @@
 
           const orbConfigs = [
             { col: 0xff9b38, r: 3.1, sp: 0.75, y: 2.2, ph: 0 },
-            { col: 0x4dd6ff, r: 2.6, sp: -0.95, y: 1.7, ph: 2.2 },
+            { col: 0x4dd6ff, r: 2.6, sp: -0.95, y: 1.7, ph: 2.1 },
             { col: 0x8dff7a, r: 3.5, sp: 0.55, y: 2.7, ph: 4.2 },
           ];
           const orbs = orbConfigs.map((cfg) => {
@@ -1501,7 +1684,7 @@
             const pos = wGeo.attributes.position;
             for (let i = 0; i < pos.count; i++) {
               const x = pos.getX(i), z = pos.getZ(i);
-              pos.setY(i, Math.sin(x * 0.75 + t * 2.2) * Math.cos(z * 0.65 + t * 1.5) * waveAmp);
+              pos.setY(i, Math.sin(x * 0.75 + t * 2.1) * Math.cos(z * 0.65 + t * 1.5) * waveAmp);
             }
             pos.needsUpdate = true;
             wGeo.computeVertexNormals();
@@ -1562,7 +1745,322 @@
         requestAnimationFrame(animateEx);
       }
 
+
+      // === Live Editor Embed + Interactive 3D Mini-Studio Sandbox ===
+      function initTryEditor() {
+        const tabSandbox = document.getElementById('tryTabSandbox');
+        const tabFull = document.getElementById('tryTabFull');
+        const panelSandbox = document.getElementById('tryPanelSandbox');
+        const panelFull = document.getElementById('tryPanelFull');
+        const iframe = document.getElementById('liveEditorIframe');
+        const fallback = document.getElementById('fullEditorFallback');
+        const fsBtn = document.getElementById('fullEditorFsBtn');
+        const switchBackBtn = document.getElementById('switchBackSandboxBtn');
+        let fullChecked = false;
+
+        function openTab(mode) {
+          const isFull = mode === 'full';
+          if (tabSandbox) tabSandbox.classList.toggle('active', !isFull);
+          if (tabFull) tabFull.classList.toggle('active', isFull);
+          if (panelSandbox) panelSandbox.classList.toggle('hidden', isFull);
+          if (panelFull) panelFull.classList.toggle('hidden', !isFull);
+          if (isFull && !fullChecked) {
+            fullChecked = true;
+            if (location.protocol === 'file:') {
+              if (iframe) iframe.classList.add('hidden');
+              if (fallback) fallback.classList.remove('hidden');
+            } else {
+              fetch('./editor/index.html', { method: 'HEAD' })
+                .then((r) => {
+                  if (r.ok && iframe) {
+                    iframe.src = './editor/';
+                    iframe.classList.remove('hidden');
+                    if (fallback) fallback.classList.add('hidden');
+                  } else {
+                    if (iframe) iframe.classList.add('hidden');
+                    if (fallback) fallback.classList.remove('hidden');
+                  }
+                })
+                .catch(() => {
+                  if (iframe) iframe.classList.add('hidden');
+                  if (fallback) fallback.classList.remove('hidden');
+                });
+            }
+          }
+        }
+        const openExternalEditor = () => {
+          if (location.protocol === 'http:' || location.protocol === 'https:') {
+            window.open(new URL('editor/', location.href).toString(), '_blank', 'noopener');
+          } else {
+            openTab('full');
+            showToast('Полный редактор открывается по ./editor/ после pnpm build:site');
+          }
+        };
+        document.getElementById('openEditorExtBtn')?.addEventListener('click', openExternalEditor);
+        document.getElementById('openEditorTabBtn')?.addEventListener('click', openExternalEditor);
+        if (tabSandbox) tabSandbox.addEventListener('click', () => openTab('sandbox'));
+        if (tabFull) tabFull.addEventListener('click', () => openTab('full'));
+        if (switchBackBtn) switchBackBtn.addEventListener('click', () => openTab('sandbox'));
+        if (fsBtn && iframe) {
+          fsBtn.addEventListener('click', () => {
+            if (iframe.requestFullscreen) iframe.requestFullscreen();
+          });
+        }
+
+        // Mini-Studio 3D Viewport
+        const canvas = document.getElementById('sandboxCanvas');
+        if (!canvas || typeof THREE === 'undefined') return;
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#0f1620');
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+
+        const resize = () => {
+          const w = canvas.parentElement.clientWidth || 600;
+          const h = canvas.parentElement.clientHeight || 400;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        };
+        resize();
+        window.addEventListener('resize', resize);
+
+        scene.add(new THREE.AmbientLight('#b8c7dc', 0.85));
+        const sun = new THREE.DirectionalLight('#fff2d6', 1.25);
+        sun.position.set(6, 10, 6);
+        scene.add(sun);
+        scene.add(new THREE.GridHelper(16, 16, '#334155', '#1e293b'));
+
+        const MATS = {
+          concrete: { color: '#9aa4ad', roughness: 0.88, metalness: 0.05, emissive: '#000000' },
+          wood: { color: '#8c6642', roughness: 0.82, metalness: 0.0, emissive: '#000000' },
+          rust: { color: '#9c4c36', roughness: 0.72, metalness: 0.25, emissive: '#000000' },
+          neon: { color: '#38bdf8', roughness: 0.25, metalness: 0.4, emissive: '#0284c7' },
+        };
+        let activeMatKey = 'concrete';
+        const entities = [];
+        let selected = null;
+        let playMode = false;
+        const keys = {};
+
+        function makeMat(key) {
+          const m = MATS[key] || MATS.concrete;
+          return new THREE.MeshStandardMaterial({
+            color: m.color,
+            roughness: m.roughness,
+            metalness: m.metalness,
+            emissive: m.emissive,
+            emissiveIntensity: key === 'neon' ? 0.55 : 0,
+          });
+        }
+
+        function addObj(name, kind, pos, scale, matKey) {
+          const geo = kind === 'cone'
+            ? new THREE.ConeGeometry(0.65, 1, 6)
+            : kind === 'sphere'
+              ? new THREE.SphereGeometry(0.5, 12, 10)
+              : new THREE.BoxGeometry(1, 1, 1);
+          const mesh = new THREE.Mesh(geo, makeMat(matKey));
+          mesh.position.set(pos[0], pos[1], pos[2]);
+          mesh.scale.set(scale[0], scale[1], scale[2]);
+          mesh.userData = { name, kind, matKey };
+          scene.add(mesh);
+          entities.push(mesh);
+          return mesh;
+        }
+
+        const baseObj = addObj('Base Block', 'box', [0, 0.5, 0], [1.6, 1.0, 1.6], 'concrete');
+        addObj('Roof Top', 'cone', [0, 1.45, 0], [1.7, 0.9, 1.7], 'rust');
+        addObj('Wood Crate', 'box', [2.1, 0.4, 0.6], [0.8, 0.8, 0.8], 'wood');
+        const playerObj = addObj('Player Orb', 'sphere', [-1.8, 0.55, 1.2], [0.9, 0.9, 0.9], 'neon');
+
+        const hierEl = document.getElementById('sbHierarchy');
+        const countEl = document.getElementById('sbObjCount');
+        const selNameEl = document.getElementById('sbSelName');
+        const scaleYIn = document.getElementById('sbScaleY');
+        const scaleXZIn = document.getElementById('sbScaleXZ');
+        const rotYIn = document.getElementById('sbRotY');
+        const scaleYVal = document.getElementById('sbScaleYVal');
+        const scaleXZVal = document.getElementById('sbScaleXZVal');
+        const rotYVal = document.getElementById('sbRotYVal');
+
+        function renderHierarchy() {
+          if (countEl) countEl.textContent = String(entities.length);
+          if (!hierEl) return;
+          hierEl.innerHTML = '';
+          entities.forEach((m) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const active = m === selected;
+            btn.className = 'flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-left transition ' +
+              (active ? 'border-amber-400/60 bg-amber-500/15 text-amber-200 font-semibold' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10');
+            btn.innerHTML = `<span>${m.userData.name}</span><span class="font-mono text-[10px] text-slate-400">${m.userData.kind}</span>`;
+            btn.addEventListener('click', () => selectObj(m));
+            hierEl.appendChild(btn);
+          });
+        }
+
+        function selectObj(m) {
+          selected = m;
+          if (selNameEl) selNameEl.textContent = m.userData.name;
+          if (scaleYIn) scaleYIn.value = m.scale.y.toFixed(1);
+          if (scaleXZIn) scaleXZIn.value = m.scale.x.toFixed(1);
+          if (rotYIn) rotYIn.value = String(Math.round((m.rotation.y * 180) / Math.PI) % 360);
+          if (scaleYVal) scaleYVal.textContent = m.scale.y.toFixed(1);
+          if (scaleXZVal) scaleXZVal.textContent = m.scale.x.toFixed(1);
+          if (rotYVal) rotYVal.textContent = Math.round((m.rotation.y * 180) / Math.PI) + '°';
+          renderHierarchy();
+        }
+        selectObj(baseObj);
+
+        if (scaleYIn) scaleYIn.addEventListener('input', () => {
+          if (!selected) return;
+          const v = Number(scaleYIn.value);
+          selected.scale.y = v;
+          if (scaleYVal) scaleYVal.textContent = v.toFixed(1);
+        });
+        if (scaleXZIn) scaleXZIn.addEventListener('input', () => {
+          if (!selected) return;
+          const v = Number(scaleXZIn.value);
+          selected.scale.x = v; selected.scale.z = v;
+          if (scaleXZVal) scaleXZVal.textContent = v.toFixed(1);
+        });
+        if (rotYIn) rotYIn.addEventListener('input', () => {
+          if (!selected) return;
+          const v = Number(rotYIn.value);
+          selected.rotation.y = (v * Math.PI) / 180;
+          if (rotYVal) rotYVal.textContent = v + '°';
+        });
+
+        document.querySelectorAll('#sbMatPalette button').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            activeMatKey = btn.dataset.mat || 'concrete';
+            document.querySelectorAll('#sbMatPalette button').forEach((b) => b.classList.remove('border-amber-400/50'));
+            btn.classList.add('border-amber-400/50');
+            if (selected) {
+              selected.material = makeMat(activeMatKey);
+              selected.userData.matKey = activeMatKey;
+              showToast('Материал применён: ' + btn.textContent);
+            }
+          });
+        });
+
+        const addRandom = (kind, label) => {
+          const x = (Math.random() - 0.5) * 4.5;
+          const z = (Math.random() - 0.5) * 4.5;
+          const m = addObj(`${label} ${entities.length + 1}`, kind, [x, 0.5, z], [1, 1, 1], activeMatKey);
+          selectObj(m);
+          showToast('Добавлен объект: ' + m.userData.name);
+        };
+        document.getElementById('sbAddBox')?.addEventListener('click', () => addRandom('box', 'Block'));
+        document.getElementById('sbAddCone')?.addEventListener('click', () => addRandom('cone', 'Roof'));
+        document.getElementById('sbAddSphere')?.addEventListener('click', () => addRandom('sphere', 'Orb'));
+        document.getElementById('sbExtrudeBtn')?.addEventListener('click', () => {
+          if (!selected) return;
+          selected.scale.y = Math.min(3.5, +(selected.scale.y + 0.35).toFixed(2));
+          selected.position.y += 0.175;
+          selectObj(selected);
+          showToast('Extrude +0.35 по Y');
+        });
+
+        // Procedural Web Audio SFX Synth test
+        document.getElementById('sbSynthBtn')?.addEventListener('click', () => {
+          try {
+            const ac = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(520, ac.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1040, ac.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.18, ac.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.22);
+            osc.connect(gain); gain.connect(ac.destination);
+            osc.start(); osc.stop(ac.currentTime + 0.23);
+            showToast('SFX Synth: Coin / Pickup');
+          } catch {}
+        });
+
+        const playBtn = document.getElementById('sbPlayBtn');
+        const hudEl = document.getElementById('sbHudStatus');
+        playBtn?.addEventListener('click', () => {
+          playMode = !playMode;
+          playBtn.textContent = playMode ? '■ Stop' : '▶ Play (WASD)';
+          playBtn.className = playMode
+            ? 'rounded-lg bg-rose-500 px-3 py-1 text-[11px] font-bold text-white hover:brightness-110'
+            : 'rounded-lg bg-emerald-500 px-3 py-1 text-[11px] font-bold text-slate-950 hover:brightness-110';
+          if (hudEl) hudEl.textContent = playMode
+            ? 'Режим Play · Управление Player Orb: WASD / Стрелки'
+            : 'Режим редактирования · ЛКМ — выбор/материал · ПКМ/Drag — орбита';
+        });
+
+        window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+        window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+        // Orbit & click raycast
+        let yaw = 0.72, pitch = 0.45, dist = 7.2, drag = false, moved = false, lx = 0, ly = 0;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        canvas.addEventListener('pointerdown', (e) => {
+          drag = true; moved = false; lx = e.clientX; ly = e.clientY;
+        });
+        window.addEventListener('pointermove', (e) => {
+          if (!drag) return;
+          const dx = e.clientX - lx, dy = e.clientY - ly;
+          if (Math.hypot(dx, dy) > 3) moved = true;
+          yaw -= dx * 0.009;
+          pitch = Math.max(0.15, Math.min(1.35, pitch + dy * 0.009));
+          lx = e.clientX; ly = e.clientY;
+        });
+        window.addEventListener('pointerup', (e) => {
+          if (!drag) return;
+          drag = false;
+          if (!moved && e.target === canvas) {
+            const r = canvas.getBoundingClientRect();
+            mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+            mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const hits = raycaster.intersectObjects(entities, false);
+            if (hits.length) {
+              const obj = hits[0].object;
+              obj.material = makeMat(activeMatKey);
+              obj.userData.matKey = activeMatKey;
+              selectObj(obj);
+            }
+          }
+        });
+        canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          dist = Math.max(3, Math.min(16, dist * (1 + e.deltaY * 0.001)));
+        }, { passive: false });
+
+        let tLast = performance.now();
+        function tickSb(now) {
+          requestAnimationFrame(tickSb);
+          const dt = Math.min(0.05, (now - tLast) / 1000);
+          tLast = now;
+          if (playMode) {
+            const sp = 3.6 * dt;
+            if (keys.KeyW || keys.ArrowUp) playerObj.position.z -= sp;
+            if (keys.KeyS || keys.ArrowDown) playerObj.position.z += sp;
+            if (keys.KeyA || keys.ArrowLeft) playerObj.position.x -= sp;
+            if (keys.KeyD || keys.ArrowRight) playerObj.position.x += sp;
+            playerObj.position.y = 0.55 + Math.abs(Math.sin(now * 0.006)) * 0.35;
+          }
+          camera.position.set(
+            Math.sin(yaw) * Math.cos(pitch) * dist,
+            Math.sin(pitch) * dist + 0.8,
+            Math.cos(yaw) * Math.cos(pitch) * dist
+          );
+          camera.lookAt(0, 0.7, 0);
+          renderer.render(scene, camera);
+        }
+        requestAnimationFrame(tickSb);
+      }
+
       window.addEventListener('load', () => {
+        initTryEditor();
         initHero3D();
         initExamplesLab();
       });

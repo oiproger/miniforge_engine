@@ -1,3 +1,4 @@
+import { ExportSettingsPanel } from './ExportSettings'
 import { ProjectHub } from './ProjectHub'
 import { collectEditorPluginActions } from './editorPlugins'
 import React, { useEffect, useRef, useState } from 'react'
@@ -108,13 +109,14 @@ import './style.css'
 type Icon = typeof Box
 type MenuItem = [string, () => void, Icon?, string?]
 type Tool = 'select' | 'translate' | 'rotate' | 'scale'
-type Profile = 'web' | 'yandex' | 'poki' | 'windows' | 'linux'
+type Profile = 'web' | 'yandex' | 'poki' | 'windows' | 'macos' | 'linux'
 const profiles: Record<Profile, string> = {
   web: 'Web Standalone',
   yandex: 'Yandex Games',
   poki: 'Poki',
-  windows: 'Windows · Tauri build project',
-  linux: 'Linux · Tauri build project',
+  windows: 'Windows · Tauri build project (.exe)',
+  macos: 'macOS · Tauri build project (.dmg / .app)',
+  linux: 'Linux · Tauri build project (.deb)',
 }
 const tools: [Tool, Icon, string][] = [
   ['select', MousePointer2, 'Select'],
@@ -200,6 +202,7 @@ function App() {
     [template, setTemplate] = useState('empty'),
     [newName, setNewName] = useState(''),
     [profile, setProfile] = useState<Profile>('web'),
+    [localTemplates, setLocalTemplates] = useState<Partial<Record<'windows' | 'macos' | 'linux', { name: string; bytes: Uint8Array }>>>({}),
     [busy, setBusy] = useState(false)
   const [logs, setLogs] = useState<string[]>([]),
     [notice, say] = useState(''),
@@ -755,8 +758,8 @@ function App() {
     setBusy(true)
     try {
       const result =
-        profile === 'windows' || profile === 'linux'
-          ? await (await import('./nativeExport')).desktopSources(p, profile)
+        profile === 'windows' || profile === 'linux' || profile === 'macos'
+          ? await (await import('./nativeExport')).desktopSources(p, profile, localTemplates)
           : await buildGame(p, profile)
       const name = p.name + '-' + profile + '.zip'
       if (!(await download(result.blob, name))) return
@@ -923,6 +926,7 @@ function App() {
                 ['Project settings', () => edit('settings'), Settings2],
                 ['UI editor', () => edit('ui'), PanelTop],
                 ['Localization', () => edit('locales'), Globe],
+                ['Export settings', () => modal('exportSettings'), Settings2],
                 ['Platform settings', () => modal('platform'), Globe],
                 ['Build profiles', () => modal('export'), Hammer],
               ],
@@ -1362,7 +1366,7 @@ function App() {
           <section className="dialog">
             <div className="dialog-head">
               <span className="dialog-icon">
-                {dialog === 'export' ? <Rocket /> : dialog === 'new' ? <FilePlus2 /> : <Box />}
+                {dialog === 'export' ? <Rocket /> : dialog === 'exportSettings' ? <Settings2 /> : dialog === 'new' ? <FilePlus2 /> : <Box />}
               </span>
               <h2>
                 {dialog === 'export'
@@ -1377,7 +1381,29 @@ function App() {
               </h2>
               {iconBtn('Close', X, () => modal(''))}
             </div>
-            {dialog === 'platform' ? (
+            {dialog === 'exportSettings' ? (
+              <>
+                <ExportSettingsPanel
+                  p={p}
+                  edit={patch}
+                  localTemplates={localTemplates}
+                  onPickLocalTemplate={(plat, file) => {
+                    void file.arrayBuffer().then((buf) => {
+                      setLocalTemplates((prev) => ({ ...prev, [plat]: { name: file.name, bytes: new Uint8Array(buf) } }))
+                      note(`Loaded ${plat} export template: ${file.name}`)
+                    })
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                  <button className="minor-btn" onClick={() => modal('export')}>
+                    <Rocket size={13} /> Open Export Dialog
+                  </button>
+                  <button className="primary" onClick={() => modal('')}>
+                    Done
+                  </button>
+                </div>
+              </>
+            ) : dialog === 'platform' ? (
               <PlatformPanel id={p.id} />
             ) : dialog === 'new' ? (
               <form
@@ -1432,16 +1458,23 @@ function App() {
                   <Globe size={16} />
                   <span>{p.name}</span>
                   <small>
-                    {profile === 'windows' || profile === 'linux'
-                      ? 'Source ZIP · compile on target OS'
+                    {profile === 'windows' || profile === 'linux' || profile === 'macos'
+                      ? (p.settings.export?.desktopMode === 'source'
+                          ? 'Tauri Source ZIP · compile on target OS'
+                          : 'Instant Executable (Export Template) · fallback to Source ZIP')
                       : 'Playable web ZIP'}
                   </small>
                 </div>
                 {buildIssues.length>0 && <div className="project-issues" role="alert"><strong>Resolve before building</strong>{buildIssues.map((issue,index)=><button key={index} onClick={()=>locateIssue(issue)}><b>{issue.owner}</b><span>{issue.message}</span></button>)}</div>}
-                <button className="primary" disabled={busy || !!buildIssues.length} onClick={build}>
-                  <Hammer size={15} />
-                  {busy ? 'Building…' : 'Build & download'}
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button className="minor-btn" type="button" onClick={() => modal('exportSettings')}>
+                    <Settings2 size={14} /> Export settings…
+                  </button>
+                  <button className="primary" style={{ flex: 1 }} disabled={busy || !!buildIssues.length} onClick={build}>
+                    <Hammer size={15} />
+                    {busy ? 'Building…' : 'Build & download'}
+                  </button>
+                </div>
               </>
             ) : (
               <div className="entity-grid">
@@ -1498,8 +1531,8 @@ function App() {
           currentProject={hasSessionProject ? p : null}
           canResume={hasSessionProject}
           onResume={() => setShowHub(false)}
-          onCreateBlank={(name, description) => {
-            const np = freshTemplate('empty')
+          onCreateBlank={(templateId, name, description) => {
+            const np = freshTemplate(templateId)
             if (name) np.name = name
             if (description) np.description = description
             clearLinkedDiskPath()

@@ -172,7 +172,7 @@ export function createWorld(
     canvas = d.canvas
   canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;outline:none'
   canvas.dataset.renderer = 'littlejs-render3d'
-  if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
+  if (typeof getComputedStyle === 'function' && getComputedStyle(container).position === 'static') container.style.position = 'relative'
   const post = new PostProcessor(container)
   const objects = new Map<string, SceneNode>(),
     roots = new Map<string, L.EngineObject3D>(),

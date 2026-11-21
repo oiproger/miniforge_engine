@@ -69,6 +69,10 @@ export class TouchController {
     private signal: AbortSignal,
     settings?: Partial<TouchSettings>,
   ) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      this.layer = { style: {}, className: '', innerHTML: '', append: () => {}, remove: () => {} } as any
+      return
+    }
     this.layer = document.createElement('div')
     this.layer.className = 'mf-touch-layer'
     Object.assign(this.layer.style, {

@@ -11,12 +11,16 @@ import type { Component, Entity, Project, Vec3 } from '../packages/project-schem
 import { createKeyVault } from './key-vault'
 
 export const templates = [
-  { id: 'key-vault', name: 'Key Vault' },
-  { id: 'coin-rush', name: 'Top Down Collectathon' },
-  { id: 'empty', name: 'Empty 3D' },
-  { id: 'first-person', name: 'First Person Prototype' },
-  { id: 'clicker', name: 'Clicker Prototype' },
-  { id: 'runner', name: 'Mobile Runner' },
+  { id: 'empty', name: 'Blank 3D Project', tag: 'Blank', description: 'Clean 3D scene with floor, lighting, and camera ready to build from scratch.' },
+  { id: 'mobile', name: 'Mobile Touch Starter', tag: 'Mobile', description: 'Portrait-ready arena with virtual touch joystick, jump/action buttons, and collectible crystals.' },
+  { id: 'coin-rush', name: 'Coin Rush 3D', tag: 'Arcade', description: 'Top-down 3D collectathon with player movement, spinning coins, timer, and HUD score.' },
+  { id: 'runner', name: 'Endless Runner 3D', tag: 'Runner', description: '3-lane obstacle track with hazards, barriers, speed flow, and finish collectible.' },
+  { id: 'first-person', name: 'FPS Explorer', tag: 'FPS', description: 'First-person controller with architectural landmarks, crates, beacons, and atmospheric lighting.' },
+  { id: 'tps', name: 'TPS Adventure', tag: 'TPS', description: 'Third-person adventure courtyard with elevated platforms, stylized foliage, and checkpoints.' },
+  { id: 'rpg', name: 'RPG Quest & Loot', tag: 'RPG', description: 'Village square with NPC quest giver, branching dialogue, glowing loot chests, and warm tavern lighting.' },
+  { id: 'shooter', name: 'Arena Shooter 3D', tag: 'Shooter', description: 'First-person arena with cover pillars, clickable enemy target drones, ammo/score HUD, and dynamic lighting.' },
+  { id: 'key-vault', name: 'Key Vault', tag: 'Puzzle', description: 'Multi-room puzzle adventure with locked seals, collectible keys, lanterns, and UI screens.' },
+  { id: 'clicker', name: '3D Clicker', tag: 'Casual', description: 'Interactive 3D treasure clicker with upgrade button, rotating mesh, and score counter.' },
 ] as const
 export type TemplateId = (typeof templates)[number]['id']
 
@@ -541,6 +545,7 @@ export function createTemplate(key: string = 'coin-rush'): Project {
     target.components.push(behavior('clickable', { value: 1 }), behavior('rotate', { speed: 0.45 }))
   } else {
     hero([0, 0, 2], key === 'first-person' ? 'first-person' : 'player')
+    if (key === 'empty') { p.name = 'Blank 3D Project'; p.description = 'Clean 3D starter scene with floor, lighting, and camera.'; }
     if (key === 'first-person') {
       p.settings.mode = 'first-person'
       mesh('pillar', 'Landmark', 'cylinder', 'granite', null, [0, 0.75, -2], [1, 1.5, 1], {
@@ -571,6 +576,79 @@ export function createTemplate(key: string = 'coin-rush'): Project {
       node('finish', 'Finish', null, [0, 0.45, -12]).components.push(
         behavior('collectible', { value: 1, radius: 1 }),
       )
+    }
+    if (key === 'mobile') {
+      p.name = 'Mobile Touch Starter'
+      p.description = 'Portrait-ready mobile 3D arena with virtual joystick, action button, and glowing crystals.'
+      p.settings.mode = 'mobile'
+      p.settings.touch = {
+        enabled: true,
+        emulateTouchFromMouse: true,
+        joystick: { enabled: true, side: 'left', radius: 56 },
+        buttons: [{ id: 'jump', label: 'JUMP', action: 'Jump', side: 'right' }],
+      }
+      p.ui.push({ id: 'score', type: 'counter', text: 'hud.score', variable: 'score', x: 5, y: 8 })
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2
+        const c = mesh('crystal-' + i, 'Crystal ' + (i + 1), 'octahedron', 'pond', null, [Math.cos(ang) * 3.1, 0.7, Math.sin(ang) * 3.1], [0.6, 0.9, 0.6])
+        c.properties.tags = ['collectible', 'crystal']
+        c.components.push(behavior('collectible', { value: 10, radius: 0.8 }), behavior('rotate', { speed: 1.4 }))
+      }
+    }
+    if (key === 'tps') {
+      p.name = 'TPS Adventure'
+      p.description = 'Third-person 3D courtyard with elevated platforms, stylized props, and adventure checkpoints.'
+      p.settings.mode = 'tps'
+      p.ui.push({ id: 'score', type: 'counter', text: 'hud.score', variable: 'score', x: 5, y: 8 })
+      const plat1 = mesh('plat-1', 'Stone Platform 1', 'box', 'granite', null, [-2.6, 0.55, -1.8], [2.4, 0.4, 2.4])
+      plat1.components.push(boxCollider([2.4, 0.4, 2.4]))
+      const plat2 = mesh('plat-2', 'Stone Platform 2', 'box', 'limestone', null, [2.4, 1.05, -2.6], [2.6, 0.4, 2.6])
+      plat2.components.push(boxCollider([2.6, 0.4, 2.6]))
+      const relic = mesh('relic', 'Ancient Relic', 'icosahedron', 'gold', null, [2.4, 1.8, -2.6], [0.65, 0.65, 0.65])
+      relic.properties.tags = ['checkpoint', 'loot']
+      relic.components.push(behavior('collectible', { value: 25, radius: 0.9 }), behavior('rotate', { speed: 1.1 }))
+    }
+    if (key === 'rpg') {
+      p.name = 'RPG Quest & Loot'
+      p.description = 'Village square with NPC quest giver, branching dialogue, glowing loot chests, and warm lighting.'
+      p.settings.mode = 'rpg'
+      p.settings.variables = { hp: 100, gold: 0, quest: 'Talk to Elder' }
+      p.ui.push(
+        { id: 'hp', type: 'counter', text: 'HP', variable: 'hp', x: 4, y: 6 },
+        { id: 'gold', type: 'counter', text: 'Gold', variable: 'gold', x: 4, y: 14 },
+      )
+      const house = mesh('tavern', 'Village Tavern', 'box', 'timber', null, [-3.2, 1.2, -2.8], [3.2, 2.4, 2.8])
+      house.components.push(boxCollider([3.2, 2.4, 2.8]))
+      mesh('tavern-roof', 'Tavern Roof', 'cone', 'scarf', null, [-3.2, 3.0, -2.8], [3.8, 1.5, 3.4], { segments: 4 })
+      const npc = mesh('npc-elder', 'Village Elder', 'capsule', 'sea', null, [-0.5, 0.9, -2.1], [0.65, 1.4, 0.65])
+      npc.properties.tags = ['npc', 'interactable']
+      npc.components.push(boxCollider([0.8, 1.6, 0.8]))
+      for (let i = 0; i < 3; i++) {
+        const chest = mesh('chest-' + i, 'Loot Chest ' + (i + 1), 'box', 'gold', null, [2.5 + i * 0.9, 0.4, -1.5 + i * 1.4], [0.7, 0.55, 0.55])
+        chest.properties.tags = ['loot', 'interactable']
+        chest.components.push(behavior('collectible', { value: 15, radius: 0.85 }))
+      }
+    }
+    if (key === 'shooter') {
+      p.name = 'Arena Shooter 3D'
+      p.description = 'First-person 3D target arena with cover pillars, clickable enemy drones, and score HUD.'
+      p.settings.mode = 'shooter'
+      const pl = scene.entities.find((e) => e.id === 'player')
+      if (pl) {
+        const b = pl.components.find((c) => c.type === 'behavior')
+        if (b) b.kind = 'first-person'
+      }
+      p.ui.push({ id: 'score', type: 'counter', text: 'Score', variable: 'score', x: 5, y: 8 })
+      for (const [cx, cz, idx] of [[-2.8, -0.5, 1], [2.8, -0.5, 2], [0, -2.2, 3]] as const) {
+        const cov = mesh('cover-' + idx, 'Cover Pillar ' + idx, 'box', 'slate', null, [cx, 0.75, cz], [1.2, 1.5, 0.7])
+        cov.properties.tags = ['cover']
+        cov.components.push(boxCollider([1.2, 1.5, 0.7]))
+      }
+      for (let i = 0; i < 4; i++) {
+        const drone = mesh('drone-' + i, 'Target Drone ' + (i + 1), 'icosahedron', 'scarf', null, [-3 + i * 2, 1.45 + (i % 2) * 0.5, -3.6], [0.7, 0.7, 0.7])
+        drone.properties.tags = ['enemy', 'target']
+        drone.components.push(behavior('clickable', { value: 100 }), behavior('rotate', { speed: 1.8 }))
+      }
     }
   }
   return p

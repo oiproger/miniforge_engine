@@ -93,6 +93,110 @@ async fn convert_model_to_glb(name: String, bytes: Vec<u8>) -> Result<Vec<u8>, S
     }
 }
 
+
+#[cfg(feature = "player")]
+mod player_host {
+    use std::path::{Path, PathBuf};
+
+    pub struct GameWindowConfig {
+        pub title: String,
+        pub width: f64,
+        pub height: f64,
+        pub fullscreen: bool,
+        pub resizable: bool,
+        pub decorated: bool,
+    }
+
+    pub fn find_game_dir() -> PathBuf {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                let sibling = dir.join("game");
+                if sibling.is_dir() {
+                    return sibling;
+                }
+                // macOS .app bundle: Contents/MacOS/exe -> Contents/Resources/game
+                let mac_res = dir.join("../Resources/game");
+                if mac_res.is_dir() {
+                    return mac_res;
+                }
+            }
+        }
+        PathBuf::from("game")
+    }
+
+    fn json_str(src: &str, key: &str) -> Option<String> {
+        let pat = format!("\"{}\"", key);
+        let idx = src.find(&pat)? + pat.len();
+        let rest = &src[idx..];
+        let colon = rest.find(':')? + 1;
+        let val = rest[colon..].trim_start();
+        if !val.starts_with('"') { return None; }
+        let inner = &val[1..];
+        let end = inner.find('"')?;
+        Some(inner[..end].to_string())
+    }
+
+    fn json_num(src: &str, key: &str) -> Option<f64> {
+        let pat = format!("\"{}\"", key);
+        let idx = src.find(&pat)? + pat.len();
+        let rest = &src[idx..];
+        let colon = rest.find(':')? + 1;
+        let val = rest[colon..].trim_start();
+        let end = val.find(|c: char| !c.is_ascii_digit() && c != '.' && c != '-').unwrap_or(val.len());
+        val[..end].parse::<f64>().ok()
+    }
+
+    fn json_bool(src: &str, key: &str) -> Option<bool> {
+        let pat = format!("\"{}\"", key);
+        let idx = src.find(&pat)? + pat.len();
+        let rest = &src[idx..];
+        let colon = rest.find(':')? + 1;
+        let val = rest[colon..].trim_start();
+        if val.starts_with("true") { Some(true) }
+        else if val.starts_with("false") { Some(false) }
+        else { None }
+    }
+
+    pub fn load_config(game_dir: &Path) -> GameWindowConfig {
+        let mut cfg = GameWindowConfig {
+            title: "Miniforge Game".into(),
+            width: 1280.0,
+            height: 720.0,
+            fullscreen: false,
+            resizable: true,
+            decorated: true,
+        };
+        if let Ok(raw) = std::fs::read_to_string(game_dir.join("game.config.json")) {
+            if let Some(t) = json_str(&raw, "title") { cfg.title = t; }
+            if let Some(w) = json_num(&raw, "width") { cfg.width = w.max(320.0); }
+            if let Some(h) = json_num(&raw, "height") { cfg.height = h.max(240.0); }
+            if let Some(f) = json_bool(&raw, "fullscreen") { cfg.fullscreen = f; }
+            if let Some(r) = json_bool(&raw, "resizable") { cfg.resizable = r; }
+            if let Some(d) = json_bool(&raw, "decorated") { cfg.decorated = d; }
+        }
+        cfg
+    }
+
+    pub fn mime_for(path: &Path) -> &'static str {
+        match path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+            "html" | "htm" => "text/html; charset=utf-8",
+            "js" | "mjs" => "application/javascript; charset=utf-8",
+            "css" => "text/css; charset=utf-8",
+            "json" => "application/json; charset=utf-8",
+            "wasm" => "application/wasm",
+            "png" => "image/png",
+            "jpg" | "jpeg" => "image/jpeg",
+            "webp" => "image/webp",
+            "svg" => "image/svg+xml",
+            "wav" => "audio/wav",
+            "mp3" => "audio/mpeg",
+            "ogg" => "audio/ogg",
+            "glb" => "model/gltf-binary",
+            _ => "application/octet-stream",
+        }
+    }
+}
+
 fn main() {
     let app = tauri::Builder::default();
     #[cfg(feature = "editor")]
@@ -103,5 +207,39 @@ fn main() {
         open_project_file,
         convert_model_to_glb
     ]);
+    #[cfg(feature = "player")]
+    let app = {
+        let game_dir = player_host::find_game_dir();
+        let game_dir_proto = game_dir.clone();
+        let cfg = player_host::load_config(&game_dir);
+        app.register_uri_scheme_protocol("mfgame", move |_ctx, req| {
+            let raw_path = req.uri().path().trim_start_matches('/');
+            let rel = if raw_path.is_empty() { "index.html" } else { raw_path };
+            let target = game_dir_proto.join(rel);
+            match std::fs::read(&target) {
+                Ok(bytes) => tauri::http::Response::builder()
+                    .status(200)
+                    .header("Content-Type", player_host::mime_for(&target))
+                    .body(bytes)
+                    .unwrap(),
+                Err(_) => tauri::http::Response::builder()
+                    .status(404)
+                    .header("Content-Type", "text/plain")
+                    .body(b"Not found".to_vec())
+                    .unwrap(),
+            }
+        })
+        .setup(move |app_handle| {
+            let url = tauri::WebviewUrl::External("mfgame://localhost/index.html".parse().unwrap());
+            tauri::WebviewWindowBuilder::new(app_handle, "game", url)
+                .title(&cfg.title)
+                .inner_size(cfg.width, cfg.height)
+                .fullscreen(cfg.fullscreen)
+                .resizable(cfg.resizable)
+                .decorations(cfg.decorated)
+                .build()?;
+            Ok(())
+        })
+    };
     app.run(tauri::generate_context!()).expect("Miniforge could not open the system webview");
 }

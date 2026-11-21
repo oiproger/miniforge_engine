@@ -1,25 +1,26 @@
 # Miniforge Engine
 
-**Read in Russian:** [README.ru.md](./README.ru.md)
+**Read in Russian:** [README.ru.md](./README.ru.md) · **Roadmap:** [ROADMAP.md](./ROADMAP.md)
 
-A lightweight, browser-based 3D game engine and all-in-one prototyping studio built on **LittleJS 1.30.1** (WebGL2 3D), **Rapier3D** (WASM physics), **React 19 + TypeScript 5.9**, and **Tauri v2** (optional desktop builds).
+A lightweight (~15 MB desktop build), browser-based 3D game engine and all-in-one prototyping studio built on **LittleJS 1.30.1** (WebGL2 3D), **Rapier3D** (WASM physics), **React 19 + TypeScript 5.9**, and **Tauri v2**.
 
-Designed for solo indie developers and game jams: model low-poly props, paint 2D/3D textures, synthesize SFX/music, wire gameplay with visual Blueprints, write dialogues/cutscenes, and export standalone HTML5 or desktop games without leaving the editor.
+Designed for solo indie developers, web portals, and game jams: model low-poly assets, paint 2D/3D materials, synthesize SFX/music, wire gameplay with visual Blueprints, write dialogues/cutscenes, and export playable Web or Desktop builds without leaving the editor.
 
 - **Live Web Editor:** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/editor/`
-- **Interactive Documentation (v2.2):** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/docs/`
+- **Interactive Documentation (v2.4):** `https://YOUR_GITHUB_USERNAME.github.io/miniforge-engine/docs/`
 
 ## Built-in Tools
 
-- **Scene Editor & Live Prefabs:** 3D viewport, transform gizmos, terrain sculpting, NavGrid pathfinding, lighting/post-processing, and 3D scene entity pipette.
+- **Project Hub & Auto-Discovered Examples:** automatically loads `.json` projects from `/examples/` with auto-generated 3D scene thumbnails, project descriptions, and 1-click return via the topbar **Projects** button.
+- **Scene Editor & Live Prefabs:** 3D viewport, gizmos, terrain sculpting, NavGrid pathfinding, lighting/post-processing, and 3D scene entity pipette.
 - **Event Graph (Blueprints):** node-based visual scripting with typed Exec/Data pins, exposed instance variables, and custom functions alongside TypeScript scripting.
-- **Low-Poly CSG Mesh Builder:** CSG primitives (`Union`/`Subtract`), face operations (`Extrude`, `Inset`, `Subdivide`, `Mirror X`), quick UV unwrap, unlimited material slots, and a 512×512 3D surface texture brush with `.glb` export.
+- **Low-Poly CSG Mesh Builder:** CSG primitives (`Union`/`Subtract`), interactive mouse-drag `Drag Extrude` / `Drag Inset`, `Subdivide`/`Mirror X`, quick UV unwrap, unlimited material slots, and instant 60 FPS GPU-direct **3D Material Brush** painting with `.glb` export.
 - **Model Editor:** `assimpjs` WASM import, per-part material overrides, and non-destructive animation timeline slicing.
-- **2D Paint Editor:** layers, symmetry, seamless tiling preview, and PNG export.
+- **2D Paint Editor:** layers, symmetry, seamless 3×3 tiling preview, and PNG export.
 - **Sound / SFX / Music Synth:** presets, 16-step sequencer, `.wav` export, and runtime audio modulation (`setSemitones`, `setSpeed`, `setLowpass`).
-- **Dialogue & Quest Graph + Keyframe Sequencer:** branching dialogues, quest states, and multi-track timelines.
+- **Dialogue & Quest Graph + Keyframe Sequencer:** branching dialogues, quest states, and multi-track cutscenes.
 - **Plugin System (v2.2):** create, edit, enable/disable, and import/export `.mfplugin.json` plugins extending both Editor menus and Runtime behaviors/services (includes 4 built-in examples).
-- **Exporters:** standalone HTML5 bundle, Yandex Games / Poki SDK adapters, and Tauri v2 desktop builds (Windows/macOS/Linux).
+- **Export Settings & 1-Click Export Templates (v2.4):** configure app name, version, bundle ID, icon, and window settings; export standalone HTML5, Yandex Games / Poki builds, or instant Windows/macOS/Linux executables via prebuilt Tauri Export Templates (with automatic Tauri source fallback).
 
 ## Quick Start
 
@@ -30,43 +31,34 @@ pnpm install
 pnpm dev
 ```
 
-Open the local URL printed by Vite (default `http://localhost:5173`).
-
 ### Common Commands
 
 ```bash
-pnpm typecheck     # TypeScript check (tsc --noEmit)
-pnpm build         # Build web editor into dist/editor/
-pnpm build:site    # Build landing + docs + web editor into dist/pages/
-pnpm test          # Unit tests (Vitest)
-pnpm desktop:editor # Tauri desktop build of the editor
+pnpm typecheck      # TypeScript check (tsc --noEmit)
+pnpm build          # Build web editor into dist/editor/
+pnpm build:site     # Build landing + docs + web editor into dist/pages/
+pnpm test           # Unit tests (Vitest)
+pnpm desktop:editor # Tauri desktop build of the editor (~15 MB)
 ```
 
-## Plugin Example (`.mfplugin.json`)
+## Roadmap Highlights
 
-```js
-exports.registerRuntime = function (ctx) {
-  ctx.registerBehavior('spinner', function (api, params) {
-    var speed = (params && params.speed) || 1.5
-    return {
-      onUpdate: function (dt) {
-        api.transform.rotation[1] += speed * dt
-      },
-    }
-  })
-}
-```
+See [ROADMAP.md](./ROADMAP.md) for the full plan:
+
+- **v2.7:** Live 3D Material Editor preview, Live GLSL Shader Editor preview with uniform sliders & presets, scene profiler.
+- **v2.8:** Selective Multithreading via Web Workers (NavGrid A*, Light Baking, optional Rapier3D Physics Worker), Animation State Machine, Prop Scatter brush, Input & Gamepad Manager.
+- **v3.0:** Multiplayer (Local Split-Screen, WebSocket & WebRTC P2P), `NetworkSync` component, Lobbies & in-editor Host+Client debugger.
+- **v3.1:** Steamworks SDK integration for Tauri desktop builds (Steam Lobbies, Steam Networking Sockets, Achievements, Cloud Saves) & Steam Debug Panel.
 
 ## Known Limitations
 
-- Focused on **low-poly / stylized 3D** and rapid prototyping rather than AAA PBR pipelines.
-- WebGL2 is required; very large scenes on low-end mobile browsers may need manual static batching and cull distances.
-- Editor UI and some documentation sections are currently Russian-first, with English localization expanding incrementally.
-- Plugin sandboxing is lightweight (`new Function`) and intended for trusted user/community plugins.
+- Focused on **low-poly / stylized 3D** and rapid prototyping rather than heavy AAA PBR pipelines.
+- WebGL2 is required; large scenes on low-end mobile browsers benefit from static batching and cull distances.
+- Plugin execution uses lightweight isolation (`new Function`) intended for trusted user/community plugins.
 
 ## Support & Donations
 
-Miniforge Engine is free and open-source under the MIT License. If it saved you time on a prototype or game jam, you can support ongoing development:
+Miniforge Engine is free and open-source under the MIT License. If it helped with your prototype or game jam, you can support ongoing development:
 
 - **Boosty (RU / cards):** `https://boosty.to/YOUR_USERNAME`
 - **CloudTips (RU one-time tips):** `https://pay.cloudtips.ru/p/YOUR_CODE`

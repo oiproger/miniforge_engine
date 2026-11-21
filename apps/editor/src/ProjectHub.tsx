@@ -13,6 +13,7 @@ import {
 import { createWorld } from '../../../packages/graphics/src'
 import { Vector3 } from '../../../packages/graphics/src/scene'
 import { getScene, validateProject, type Project } from '../../../packages/project-schema/src'
+import { templates as STARTER_TEMPLATES, type TemplateId } from '../../../templates'
 
 // Automatically discover every .json project placed in /examples/
 const exampleModules = import.meta.glob('../../../examples/*.json', { eager: true }) as Record<
@@ -142,7 +143,7 @@ export function ProjectHub({
   currentProject: Project | null
   canResume: boolean
   onResume: () => void
-  onCreateBlank: (name: string, description: string) => void
+  onCreateBlank: (templateId: TemplateId, name: string, description: string) => void
   onOpenExample: (project: Project) => void
   onOpenFromFile: () => void
 }) {
@@ -150,6 +151,7 @@ export function ProjectHub({
   const [thumbs, setThumbs] = useState<Record<string, string>>({})
   const [currentThumb, setCurrentThumb] = useState<string>('')
   const [creating, setCreating] = useState(false)
+  const [selectedTpl, setSelectedTpl] = useState<TemplateId>('empty')
   const [newName, setNewName] = useState('My 3D Game')
   const [newDesc, setNewDesc] = useState('')
   const mountedRef = useRef(true)
@@ -395,33 +397,67 @@ export function ProjectHub({
               </>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>Create Blank Project</div>
-                <input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Project name"
-                  style={{
-                    padding: '7px 10px',
-                    borderRadius: 6,
-                    border: '1px solid #334155',
-                    background: '#0e131a',
-                    color: '#e6edf3',
-                    fontSize: 13,
-                  }}
-                />
-                <input
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="Short description (optional)"
-                  style={{
-                    padding: '7px 10px',
-                    borderRadius: 6,
-                    border: '1px solid #334155',
-                    background: '#0e131a',
-                    color: '#e6edf3',
-                    fontSize: 12.5,
-                  }}
-                />
+                <div style={{ fontSize: 14, fontWeight: 700 }}>Create Project from Template</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: 6, maxHeight: 170, overflowY: 'auto', paddingRight: 2 }}>
+                  {STARTER_TEMPLATES.map((tpl) => {
+                    const active = selectedTpl === tpl.id
+                    return (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTpl(tpl.id)
+                          if (!newName.trim() || STARTER_TEMPLATES.some((t) => t.name === newName) || newName === 'My 3D Game') {
+                            setNewName(tpl.id === 'empty' ? 'My 3D Game' : tpl.name)
+                          }
+                        }}
+                        style={{
+                          textAlign: 'left',
+                          padding: '7px 8px',
+                          borderRadius: 7,
+                          border: active ? '1px solid #f59e0b' : '1px solid #2b3646',
+                          background: active ? 'rgba(245,158,11,0.14)' : '#0e131a',
+                          color: '#e6edf3',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ fontSize: 10, fontWeight: 700, color: active ? '#fbbf24' : '#60a5fa', textTransform: 'uppercase' }}>{tpl.tag}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>{tpl.name}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ fontSize: 11.5, color: '#9aa7b8' }}>
+                  {STARTER_TEMPLATES.find((t) => t.id === selectedTpl)?.description}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Project name"
+                    style={{
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      border: '1px solid #334155',
+                      background: '#0e131a',
+                      color: '#e6edf3',
+                      fontSize: 12.5,
+                    }}
+                  />
+                  <input
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    placeholder="Short description (optional)"
+                    style={{
+                      padding: '7px 10px',
+                      borderRadius: 6,
+                      border: '1px solid #334155',
+                      background: '#0e131a',
+                      color: '#e6edf3',
+                      fontSize: 12.5,
+                    }}
+                  />
+                </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 2 }}>
                   <button
                     type="button"
@@ -441,7 +477,7 @@ export function ProjectHub({
                   <button
                     type="button"
                     onClick={() => {
-                      onCreateBlank(newName.trim() || 'Untitled Project', newDesc.trim())
+                      onCreateBlank(selectedTpl, newName.trim() || 'Untitled Project', newDesc.trim())
                       setCreating(false)
                     }}
                     style={{
@@ -455,7 +491,7 @@ export function ProjectHub({
                       fontSize: 12.5,
                     }}
                   >
-                    Create
+                    Create Project
                   </button>
                 </div>
               </div>

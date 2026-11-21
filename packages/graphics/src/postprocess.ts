@@ -214,10 +214,14 @@ export class PostProcessor {
   }
 
   constructor(container: HTMLElement) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      this.canvas = { style: {}, width: 0, height: 0, remove: () => {}, getContext: () => null } as any
+      return
+    }
     this.canvas = document.createElement('canvas')
     this.canvas.style.cssText =
       'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;z-index:1'
-    container.append(this.canvas)
+    container.append?.(this.canvas)
   }
 
   get active(): boolean {

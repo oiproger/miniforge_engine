@@ -1,3 +1,4 @@
+import { nativizeProjectEventGraphs } from './nativizeEventGraph'
 import { strToU8, strFromU8, zipSync, unzipSync } from 'fflate'
 import { needsPhysics, validateProject, serializeProject, parseProject, type Project, type Entity } from '../../project-schema/src'
 import type { Profile } from '../../platform-sdk/src'
@@ -83,6 +84,9 @@ async function prepare(project: Project, preview: boolean, read: RuntimeLoader) 
   if(issues.length)throw new Error(issues.map(i=>i.owner+' · '+i.message).join('\n'))
   const compiled = structuredClone(project)
   compiled.assets = usedAssets(compiled)
+  const nativizedGraphs = !preview && compiled.settings?.export?.nativizeEventGraphs
+    ? nativizeProjectEventGraphs(compiled)
+    : 0
   const files: Files = {}
   const modules: Record<string, string> = Object.create(null)
   const resources = new Map<string, string>()
@@ -119,7 +123,7 @@ async function prepare(project: Project, preview: boolean, read: RuntimeLoader) 
     physics = preview ? 'data:text/javascript;charset=utf-8,' + encodeURIComponent(js) : './physics.js'
     if (!preview) files['physics.js'] = strToU8(js)
   }
-  return { config: { project: compiled, modules, physics }, files, assetSizes }
+  return { config: { project: compiled, modules, physics }, files, assetSizes, nativizedGraphs }
 }
 
 export async function buildGame(
@@ -128,7 +132,7 @@ export async function buildGame(
   read: RuntimeLoader = loadRuntime,
 ) {
   if (!['web', 'yandex', 'poki'].includes(profile)) throw new Error('Invalid web export profile')
-  const { config, files, assetSizes } = await prepare(project, false, read)
+  const { config, files, assetSizes, nativizedGraphs } = await prepare(project, false, read)
   files['index.html'] = strToU8(
     head +
       '<title>' +
@@ -154,6 +158,7 @@ export async function buildGame(
     assetSizes: assetSizes.sort((a, b) => b.bytes - a.bytes),
     warnings: assetSizes.filter((a) => a.bytes > 1024 * 1024).map((a) => a.name + ' exceeds 1 MiB'),
     files: Object.keys(files),
+    nativizedGraphs,
     path: profile + '/',
   }
   return { files, blob: toBlob(packed, 'application/zip'), report }

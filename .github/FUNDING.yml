@@ -1,0 +1,9 @@
+# GitHub Sponsor button configuration
+# Replace the placeholder URLs below with your real donation links (up to 4 custom URLs).
+# Docs: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+custom:
+  - https://boosty.to/YOUR_USERNAME
+  - https://pay.cloudtips.ru/p/YOUR_CODE
+  - https://t.me/tribute/app?startapp=YOUR_LINK
+  - https://app.lava.top/YOUR_USERNAME

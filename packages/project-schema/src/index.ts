@@ -90,6 +90,44 @@ export interface Project {
   locales: Record<string, Record<string, string>>
   settings: { duration: number; language: string; [key: string]: any }
 }
+
+export interface ExportSettingsConfig {
+  appName: string
+  version: string
+  identifier: string
+  author?: string
+  iconDataUrl?: string
+  windowWidth: number
+  windowHeight: number
+  fullscreen: boolean
+  resizable: boolean
+  decorated: boolean
+  desktopMode: 'template' | 'source'
+  templateBaseUrl?: string
+  webBackground?: string
+  nativizeEventGraphs?: boolean
+}
+
+export function defaultExportSettings(project: Project): ExportSettingsConfig {
+  const slug = (project.id || 'game').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40) || 'game'
+  return {
+    appName: project.name || 'Miniforge Game',
+    version: '1.0.0',
+    identifier: 'dev.miniforge.game.' + slug,
+    author: '',
+    iconDataUrl: '',
+    windowWidth: 1280,
+    windowHeight: 720,
+    fullscreen: false,
+    resizable: true,
+    decorated: true,
+    desktopMode: 'template',
+    templateBaseUrl: './export-templates/',
+    webBackground: '#0d1117',
+    nativizeEventGraphs: false,
+  }
+}
+
 export const uid = (prefix = 'id'): string => {
   const uuid = globalThis.crypto?.randomUUID?.()
   return prefix + '-' + (uuid ?? Date.now().toString(36) + '-' + Math.random().toString(36).slice(2))

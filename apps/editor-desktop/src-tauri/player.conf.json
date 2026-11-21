@@ -1,0 +1,12 @@
+{
+  "mainBinaryName": "miniforge-player",
+  "productName": "Miniforge Player",
+  "identifier": "dev.miniforge.player",
+  "build": { "frontendDist": "player-placeholder" },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": { "capabilities": [] }
+  },
+  "bundle": { "active": false }
+}

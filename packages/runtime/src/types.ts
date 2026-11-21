@@ -365,6 +365,26 @@ export interface GameAPI {
   setActive(id: string, active: boolean): void
   /** Return IDs of all entities carrying a given tag. */
   findByTag(tag: string): string[]
+  /** Check whether an entity carries a given tag. */
+  hasTag(id: string | undefined, tag: string): boolean
+  /** Add a tag to an entity at runtime. */
+  addTag(id: string | undefined, tag: string): void
+  /** Remove a tag from an entity at runtime. */
+  removeTag(id: string | undefined, tag: string): void
+  /** Return all tags currently assigned to an entity. */
+  getTags(id?: string): string[]
+  /** Find the first entity ID matching an exact name. */
+  findByName(name: string): string | undefined
+  /** Return IDs of all entities carrying an enabled component of the given type. */
+  findByComponent(type: string): string[]
+  /** Return the parent entity ID of an entity (or null if root). */
+  getParent(id?: string): string | null
+  /** Return direct child entity IDs of an entity. */
+  getChildren(id?: string): string[]
+  /** Find a child (direct or nested) of an entity by name. */
+  getChildByName(id: string, name: string): string | undefined
+  /** Find an enabled component of a given type on any entity by ID. */
+  getComponent(id: string, type: string): Component | undefined
   /** Find an enabled component of a given type on this entity. */
   component(type: string): Component | undefined
   /** GLTF skeletal & node animation controls (crossfade, timeline, bone world positions). */

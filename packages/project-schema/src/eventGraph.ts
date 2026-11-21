@@ -1,6 +1,6 @@
 // Unreal Blueprint-style visual Event Graph schema & node catalog for Miniforge Engine v1.4
 
-export type PinType = 'exec' | 'boolean' | 'number' | 'string' | 'vec3' | 'entity' | 'any'
+export type PinType = 'exec' | 'boolean' | 'number' | 'string' | 'vec3' | 'entity' | 'array' | 'enum' | 'map' | 'object' | 'any'
 
 export interface GraphPinDef {
   id: string
@@ -16,6 +16,7 @@ export interface GraphVariable {
   defaultValue: any
   exposed?: boolean
   scope?: 'local' | 'vars' | 'worldState'
+  enumValues?: string[]
 }
 
 export interface GraphNode {
@@ -67,6 +68,7 @@ export interface GraphNodeSpec {
     | 'Animation & AI'
     | 'World & FX'
     | 'Audio & UI'
+    | 'Collections'
   pure?: boolean
   color?: string
   inputs: GraphPinDef[]
@@ -81,6 +83,10 @@ export const PIN_COLORS: Record<PinType, string> = {
   string: '#e066d0',
   vec3: '#f5b82e',
   entity: '#38bdf8',
+  array: '#f97316',
+  enum: '#a78bfa',
+  map: '#14b8a6',
+  object: '#eab308',
   any: '#9aa7b8',
 }
 
@@ -93,6 +99,7 @@ export const CATEGORY_COLORS: Record<GraphNodeSpec['category'], string> = {
   Entity: '#1e548a',
   'Player & Input': '#1f617a',
   Physics: '#3e428c',
+  Collections: '#7c4a15',
   'Animation & AI': '#9a5418',
   'World & FX': '#1b6b66',
   'Audio & UI': '#7a2e5c',
@@ -1036,6 +1043,435 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'success', label: 'Success', type: 'boolean' },
     ],
   },
+  // === Hierarchy & Component Nodes (v2.5) ===
+  {
+    type: 'entity.findByName',
+    title: 'Find Entity By Name',
+    category: 'Entity',
+    pure: true,
+    inputs: [{ id: 'name', label: 'Name', type: 'string', defaultValue: '' }],
+    outputs: [
+      { id: 'entity', label: 'Entity', type: 'entity' },
+      { id: 'found', label: 'Found', type: 'boolean' },
+    ],
+    keywords: 'find entity name search lookup reference',
+  },
+  {
+    type: 'entity.findByComponent',
+    title: 'Find Entity By Component',
+    category: 'Entity',
+    pure: true,
+    inputs: [{ id: 'componentType', label: 'Component Type', type: 'string', defaultValue: 'light' }],
+    outputs: [
+      { id: 'entity', label: 'First Entity', type: 'entity' },
+      { id: 'entities', label: 'All Entities', type: 'array' },
+      { id: 'count', label: 'Count', type: 'number' },
+    ],
+    keywords: 'find entity type component light collider audio behavior',
+  },
+  {
+    type: 'entity.getParent',
+    title: 'Get Parent Entity',
+    category: 'Entity',
+    pure: true,
+    inputs: [{ id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' }],
+    outputs: [
+      { id: 'parent', label: 'Parent', type: 'entity' },
+      { id: 'hasParent', label: 'Has Parent', type: 'boolean' },
+    ],
+    keywords: 'parent hierarchy transform root',
+  },
+  {
+    type: 'entity.getChildByName',
+    title: 'Get Child By Name',
+    category: 'Entity',
+    pure: true,
+    inputs: [
+      { id: 'entity', label: 'Parent Entity', type: 'entity', defaultValue: '' },
+      { id: 'name', label: 'Child Name', type: 'string', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'child', label: 'Child', type: 'entity' },
+      { id: 'found', label: 'Found', type: 'boolean' },
+    ],
+    keywords: 'child hierarchy find nested subentity',
+  },
+  {
+    type: 'entity.getChildren',
+    title: 'Get Children',
+    category: 'Entity',
+    pure: true,
+    inputs: [{ id: 'entity', label: 'Parent Entity', type: 'entity', defaultValue: '' }],
+    outputs: [
+      { id: 'children', label: 'Children', type: 'array' },
+      { id: 'count', label: 'Count', type: 'number' },
+    ],
+    keywords: 'children hierarchy array list subentities',
+  },
+  {
+    type: 'entity.hasComponent',
+    title: 'Has Component',
+    category: 'Entity',
+    pure: true,
+    inputs: [
+      { id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'componentType', label: 'Component Type', type: 'string', defaultValue: 'light' },
+    ],
+    outputs: [{ id: 'result', label: 'Has Component', type: 'boolean' }],
+    keywords: 'has component check type',
+  },
+  {
+    type: 'entity.getComponentProp',
+    title: 'Get Component Property',
+    category: 'Entity',
+    pure: true,
+    inputs: [
+      { id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'componentType', label: 'Component Type', type: 'string', defaultValue: 'light' },
+      { id: 'property', label: 'Property', type: 'string', defaultValue: 'intensity' },
+      { id: 'fallback', label: 'Fallback', type: 'any', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'value', label: 'Value', type: 'any' },
+      { id: 'found', label: 'Found', type: 'boolean' },
+    ],
+    keywords: 'get component property field read',
+  },
+  {
+    type: 'entity.setComponentProp',
+    title: 'Set Component Property',
+    category: 'Entity',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'componentType', label: 'Component Type', type: 'string', defaultValue: 'light' },
+      { id: 'property', label: 'Property', type: 'string', defaultValue: 'intensity' },
+      { id: 'value', label: 'Value', type: 'any', defaultValue: '' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    keywords: 'set component property field write modify',
+  },
+
+  // === Collections: Array, Map, Object, Enum (v2.5) ===
+  {
+    type: 'array.make',
+    title: 'Make Array',
+    category: 'Collections',
+    pure: true,
+    inputs: [{ id: 'itemsJson', label: 'JSON / CSV', type: 'string', defaultValue: '[]' }],
+    outputs: [{ id: 'array', label: 'Array', type: 'array' }],
+    keywords: 'array list create make',
+  },
+  {
+    type: 'array.get',
+    title: 'Array Get',
+    category: 'Collections',
+    pure: true,
+    inputs: [
+      { id: 'array', label: 'Array', type: 'array' },
+      { id: 'index', label: 'Index', type: 'number', defaultValue: 0 },
+    ],
+    outputs: [{ id: 'value', label: 'Item', type: 'any' }],
+    keywords: 'array get index element',
+  },
+  {
+    type: 'array.set',
+    title: 'Array Set',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'array', label: 'Array', type: 'array' },
+      { id: 'index', label: 'Index', type: 'number', defaultValue: 0 },
+      { id: 'value', label: 'Value', type: 'any', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'array', label: 'Array', type: 'array' },
+    ],
+    keywords: 'array set replace index',
+  },
+  {
+    type: 'array.push',
+    title: 'Array Push',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'array', label: 'Array', type: 'array' },
+      { id: 'value', label: 'Item', type: 'any', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'array', label: 'Array', type: 'array' },
+      { id: 'length', label: 'Length', type: 'number' },
+    ],
+    keywords: 'array push append add item',
+  },
+  {
+    type: 'array.removeAt',
+    title: 'Array Remove At',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'array', label: 'Array', type: 'array' },
+      { id: 'index', label: 'Index', type: 'number', defaultValue: 0 },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'array', label: 'Array', type: 'array' },
+      { id: 'removed', label: 'Removed', type: 'any' },
+    ],
+    keywords: 'array remove delete splice index',
+  },
+  {
+    type: 'array.length',
+    title: 'Array Length',
+    category: 'Collections',
+    pure: true,
+    inputs: [{ id: 'array', label: 'Array', type: 'array' }],
+    outputs: [{ id: 'length', label: 'Length', type: 'number' }],
+    keywords: 'array length count size',
+  },
+  {
+    type: 'array.contains',
+    title: 'Array Contains',
+    category: 'Collections',
+    pure: true,
+    inputs: [
+      { id: 'array', label: 'Array', type: 'array' },
+      { id: 'value', label: 'Item', type: 'any', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'result', label: 'Contains', type: 'boolean' },
+      { id: 'index', label: 'Index', type: 'number' },
+    ],
+    keywords: 'array contains includes find index',
+  },
+  {
+    type: 'array.forEach',
+    title: 'For Each (Array)',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'array', label: 'Array', type: 'array' },
+    ],
+    outputs: [
+      { id: 'loopBody', label: 'Loop Body', type: 'exec' },
+      { id: 'element', label: 'Element', type: 'any' },
+      { id: 'index', label: 'Index', type: 'number' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+    ],
+    keywords: 'array foreach loop iterate elements',
+  },
+  {
+    type: 'map.make',
+    title: 'Make Map',
+    category: 'Collections',
+    pure: true,
+    inputs: [{ id: 'json', label: 'Initial JSON', type: 'string', defaultValue: '{}' }],
+    outputs: [{ id: 'map', label: 'Map', type: 'map' }],
+    keywords: 'map dictionary create make',
+  },
+  {
+    type: 'map.get',
+    title: 'Map Get',
+    category: 'Collections',
+    pure: true,
+    inputs: [
+      { id: 'map', label: 'Map', type: 'map' },
+      { id: 'key', label: 'Key', type: 'string', defaultValue: '' },
+      { id: 'fallback', label: 'Fallback', type: 'any', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'value', label: 'Value', type: 'any' },
+      { id: 'hasKey', label: 'Has Key', type: 'boolean' },
+    ],
+    keywords: 'map dictionary get lookup key',
+  },
+  {
+    type: 'map.set',
+    title: 'Map Set',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'map', label: 'Map', type: 'map' },
+      { id: 'key', label: 'Key', type: 'string', defaultValue: '' },
+      { id: 'value', label: 'Value', type: 'any', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'map', label: 'Map', type: 'map' },
+    ],
+    keywords: 'map dictionary set put key value',
+  },
+  {
+    type: 'map.delete',
+    title: 'Map Delete',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'map', label: 'Map', type: 'map' },
+      { id: 'key', label: 'Key', type: 'string', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'map', label: 'Map', type: 'map' },
+    ],
+    keywords: 'map dictionary delete remove key',
+  },
+  {
+    type: 'map.keys',
+    title: 'Map Keys',
+    category: 'Collections',
+    pure: true,
+    inputs: [{ id: 'map', label: 'Map', type: 'map' }],
+    outputs: [
+      { id: 'keys', label: 'Keys', type: 'array' },
+      { id: 'size', label: 'Size', type: 'number' },
+    ],
+    keywords: 'map keys size count',
+  },
+  {
+    type: 'object.make',
+    title: 'Make Object',
+    category: 'Collections',
+    pure: true,
+    inputs: [{ id: 'json', label: 'JSON', type: 'string', defaultValue: '{}' }],
+    outputs: [{ id: 'object', label: 'Object', type: 'object' }],
+    keywords: 'object struct json create',
+  },
+  {
+    type: 'object.getField',
+    title: 'Get Object Field',
+    category: 'Collections',
+    pure: true,
+    inputs: [
+      { id: 'object', label: 'Object', type: 'object' },
+      { id: 'field', label: 'Field', type: 'string', defaultValue: '' },
+      { id: 'fallback', label: 'Fallback', type: 'any', defaultValue: '' },
+    ],
+    outputs: [{ id: 'value', label: 'Value', type: 'any' }],
+    keywords: 'object struct property get field',
+  },
+  {
+    type: 'object.setField',
+    title: 'Set Object Field',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'object', label: 'Object', type: 'object' },
+      { id: 'field', label: 'Field', type: 'string', defaultValue: '' },
+      { id: 'value', label: 'Value', type: 'any', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'object', label: 'Object', type: 'object' },
+    ],
+    keywords: 'object struct property set field',
+  },
+  {
+    type: 'object.toJson',
+    title: 'To JSON String',
+    category: 'Collections',
+    pure: true,
+    inputs: [{ id: 'value', label: 'Value', type: 'any' }],
+    outputs: [{ id: 'json', label: 'JSON', type: 'string' }],
+    keywords: 'json stringify serialize object array map',
+  },
+  {
+    type: 'object.fromJson',
+    title: 'Parse JSON',
+    category: 'Collections',
+    pure: true,
+    inputs: [{ id: 'json', label: 'JSON', type: 'string', defaultValue: '{}' }],
+    outputs: [
+      { id: 'value', label: 'Value', type: 'any' },
+      { id: 'ok', label: 'Valid', type: 'boolean' },
+    ],
+    keywords: 'json parse deserialize object array map',
+  },
+  {
+    type: 'enum.switch',
+    title: 'Switch on Enum / String',
+    category: 'Collections',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'value', label: 'Enum', type: 'enum', defaultValue: '' },
+      { id: 'case0', label: 'Case 0', type: 'string', defaultValue: 'Idle' },
+      { id: 'case1', label: 'Case 1', type: 'string', defaultValue: 'Patrol' },
+      { id: 'case2', label: 'Case 2', type: 'string', defaultValue: 'Chase' },
+      { id: 'case3', label: 'Case 3', type: 'string', defaultValue: 'Attack' },
+    ],
+    outputs: [
+      { id: 'out0', label: 'Case 0', type: 'exec' },
+      { id: 'out1', label: 'Case 1', type: 'exec' },
+      { id: 'out2', label: 'Case 2', type: 'exec' },
+      { id: 'out3', label: 'Case 3', type: 'exec' },
+      { id: 'default', label: 'Default', type: 'exec' },
+    ],
+    keywords: 'enum switch branch state machine match',
+  },
+  {
+    type: 'enum.equals',
+    title: 'Enum Equals',
+    category: 'Collections',
+    pure: true,
+    inputs: [
+      { id: 'a', label: 'Enum A', type: 'enum', defaultValue: '' },
+      { id: 'b', label: 'Value B', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'result', label: 'Equal', type: 'boolean' }],
+    keywords: 'enum equals compare state',
+  },
+
+  {
+    type: 'entity.hasTag',
+    title: 'Has Tag',
+    category: 'Entity',
+    pure: true,
+    inputs: [
+      { id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'tag', label: 'Tag', type: 'string', defaultValue: 'enemy' },
+    ],
+    outputs: [{ id: 'result', label: 'Has Tag', type: 'boolean' }],
+    keywords: 'tag check has entity label',
+  },
+  {
+    type: 'entity.getTags',
+    title: 'Get Entity Tags',
+    category: 'Entity',
+    pure: true,
+    inputs: [{ id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' }],
+    outputs: [
+      { id: 'tags', label: 'Tags', type: 'array' },
+      { id: 'count', label: 'Count', type: 'number' },
+    ],
+    keywords: 'tags list array get entity',
+  },
+  {
+    type: 'entity.addTag',
+    title: 'Add Tag',
+    category: 'Entity',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'tag', label: 'Tag', type: 'string', defaultValue: 'enemy' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    keywords: 'add tag entity label',
+  },
+  {
+    type: 'entity.removeTag',
+    title: 'Remove Tag',
+    category: 'Entity',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'entity', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'tag', label: 'Tag', type: 'string', defaultValue: 'enemy' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    keywords: 'remove delete tag entity label',
+  },
+
 ]
 
 export const GRAPH_NODE_MAP: Record<string, GraphNodeSpec> = Object.fromEntries(

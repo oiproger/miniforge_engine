@@ -29,12 +29,15 @@ import {
 } from '../../../packages/project-schema/src'
 import { SceneEntityPickerButton } from './SceneEntityPicker'
 
-const VAR_TYPES: Exclude<PinType, 'exec'>[] = ['number', 'boolean', 'string', 'vec3', 'entity', 'any']
+const VAR_TYPES: Exclude<PinType, 'exec'>[] = ['number', 'boolean', 'string', 'vec3', 'entity', 'array', 'enum', 'map', 'object', 'any']
 
 function defaultForType(t: Exclude<PinType, 'exec'>): any {
   if (t === 'number') return 0
   if (t === 'boolean') return false
   if (t === 'vec3') return [0, 0, 0]
+  if (t === 'array') return []
+  if (t === 'map' || t === 'object') return {}
+  if (t === 'enum') return 'Idle'
   return ''
 }
 
@@ -540,7 +543,11 @@ export function EventGraphEditor({
                           value={v.type}
                           onChange={(e) => {
                             const t = e.target.value as Exclude<PinType, 'exec'>
-                            updateVariable(v.id, { type: t, defaultValue: defaultForType(t) })
+                            updateVariable(v.id, {
+                              type: t,
+                              defaultValue: defaultForType(t),
+                              ...(t === 'enum' ? { enumValues: v.enumValues?.length ? v.enumValues : ['Idle', 'Patrol', 'Chase', 'Attack'] } : {}),
+                            })
                           }}
                         >
                           {VAR_TYPES.map((t) => (
@@ -567,6 +574,37 @@ export function EventGraphEditor({
                           />
                           Default: {String(Boolean(v.defaultValue))}
                         </label>
+                      ) : v.type === 'enum' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <input
+                            value={(v.enumValues || ['Idle', 'Patrol', 'Chase']).join(', ')}
+                            placeholder="Enum values (comma-separated)"
+                            title="Enum options separated by commas"
+                            onChange={(e) => {
+                              const vals = e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
+                              updateVariable(v.id, { enumValues: vals, defaultValue: vals.includes(String(v.defaultValue)) ? v.defaultValue : (vals[0] || '') })
+                            }}
+                          />
+                          <select
+                            value={String(v.defaultValue ?? '')}
+                            onChange={(e) => updateVariable(v.id, { defaultValue: e.target.value })}
+                          >
+                            {(v.enumValues?.length ? v.enumValues : ['Idle', 'Patrol', 'Chase']).map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : v.type === 'array' || v.type === 'map' || v.type === 'object' ? (
+                        <input
+                          defaultValue={JSON.stringify(v.defaultValue ?? (v.type === 'array' ? [] : {}))}
+                          placeholder={v.type === 'array' ? '["a", "b"]' : '{"key": 1}'}
+                          title="JSON default value"
+                          onBlur={(e) => {
+                            try {
+                              updateVariable(v.id, { defaultValue: JSON.parse(e.target.value) })
+                            } catch {}
+                          }}
+                        />
                       ) : (
                         <input
                           value={Array.isArray(v.defaultValue) ? v.defaultValue.join(', ') : String(v.defaultValue ?? '')}

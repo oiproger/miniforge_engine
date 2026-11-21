@@ -333,7 +333,7 @@ export function brushTerrain(
 
   for (let j = Math.max(0, Math.floor(z - radius)); j <= Math.min(width - 1, Math.ceil(z + radius)); j++) {
     for (let i = Math.max(0, Math.floor(x - radius)); i <= Math.min(width - 1, Math.ceil(x + radius)); i++) {
-      const distance = Math.hypot(i - x, j - z)
+      const distance = paint ? Math.hypot(i + 0.5 - x, j + 0.5 - z) : Math.hypot(i - x, j - z)
       if (distance > radius) continue
       const k = j * width + i
       const norm = Math.max(0, 1 - distance / Math.max(0.001, radius))

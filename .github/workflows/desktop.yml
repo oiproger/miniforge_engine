@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-24.04]
+        os: [windows-latest, macos-latest, ubuntu-24.04]
         app: [editor, game]
     runs-on: ${{ matrix.os }}
     steps:
@@ -53,3 +53,4 @@ jobs:
           path: |
             apps/editor-desktop/src-tauri/target/release/bundle/deb/*.deb
             apps/editor-desktop/src-tauri/target/release/bundle/nsis/*.exe
+            apps/editor-desktop/src-tauri/target/release/bundle/dmg/*.dmg

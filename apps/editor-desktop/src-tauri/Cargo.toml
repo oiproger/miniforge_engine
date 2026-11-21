@@ -15,4 +15,5 @@ rfd = { version = "0.15", optional = true, default-features = false, features = 
 [features]
 default = []
 editor = ["dep:rfd"]
+player = []
 custom-protocol = ["tauri/custom-protocol"]

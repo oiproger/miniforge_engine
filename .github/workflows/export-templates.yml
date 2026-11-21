@@ -1,0 +1,61 @@
+name: Build Export Templates (Windows, macOS, Linux)
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-templates:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            bin: apps/editor-desktop/src-tauri/target/release/miniforge.exe
+            out: miniforge-player-windows.exe
+          - os: macos-latest
+            platform: macos
+            bin: apps/editor-desktop/src-tauri/target/release/miniforge
+            out: miniforge-player-macos
+          - os: ubuntu-24.04
+            platform: linux
+            bin: apps/editor-desktop/src-tauri/target/release/miniforge
+            out: miniforge-player-linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux WebView dev packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libgtk-3-dev libssl-dev build-essential file libxdo-dev
+
+      - name: Build universal Miniforge Player template
+        working-directory: apps/editor-desktop/src-tauri
+        run: cargo build --release --features player
+
+      - name: Prepare template binary
+        shell: bash
+        run: |
+          mkdir -p dist/export-templates
+          cp "${{ matrix.bin }}" "dist/export-templates/${{ matrix.out }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: export-template-${{ matrix.platform }}
+          path: dist/export-templates/${{ matrix.out }}
+
+      - name: Attach template to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/export-templates/${{ matrix.out }}

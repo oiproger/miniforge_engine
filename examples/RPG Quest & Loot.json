@@ -1,0 +1,596 @@
+{
+  "version": 1,
+  "id": "ex-rpg-quest",
+  "name": "RPG Quest & Loot",
+  "description": "Village square with NPC quest giver, tavern building, glowing loot chests, and HP/Gold HUD.",
+  "activeScene": "scene-main",
+  "scenes": [
+    {
+      "id": "scene-main",
+      "name": "RPG Quest & Loot",
+      "environment": {
+        "background": "#1f2937",
+        "ambient": 1.15,
+        "sunColor": "#fff3d9",
+        "sunIntensity": 1.1,
+        "shadows": true
+      },
+      "entities": [
+        {
+          "id": "floor",
+          "name": "Ground",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.2,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              14,
+              0.4,
+              14
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-grass"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                14,
+                0.4,
+                14
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "ground"
+            ]
+          }
+        },
+        {
+          "id": "sun",
+          "name": "Sun Light",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              6,
+              10,
+              6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "directional",
+              "color": "#fff3d9",
+              "intensity": 1.15,
+              "castShadow": true
+            }
+          ],
+          "properties": {
+            "tags": []
+          }
+        },
+        {
+          "id": "camera",
+          "name": "Main Camera",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              6.8,
+              7.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "camera",
+              "fov": 50,
+              "active": true
+            }
+          ],
+          "properties": {
+            "tags": []
+          }
+        },
+        {
+          "id": "player",
+          "name": "Player",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.7,
+              3.0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.6,
+              1.3,
+              0.6
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "capsule",
+              "material": "mat-sea"
+            },
+            {
+              "type": "behavior",
+              "kind": "player",
+              "params": {
+                "speed": 4.5
+              }
+            },
+            {
+              "type": "collider",
+              "shape": "capsule",
+              "size": [
+                0.6,
+                1.3,
+                0.6
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "player"
+            ]
+          }
+        },
+        {
+          "id": "tavern",
+          "name": "Village Tavern",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.1,
+              1.2,
+              -2.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              3.2,
+              2.4,
+              2.8
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                3.2,
+                2.4,
+                2.8
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "building"
+            ]
+          }
+        },
+        {
+          "id": "roof",
+          "name": "Tavern Roof",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -3.1,
+              3.0,
+              -2.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              3.8,
+              1.5,
+              3.4
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cone",
+              "material": "mat-scarf"
+            }
+          ],
+          "properties": {
+            "tags": [
+              "building"
+            ]
+          }
+        },
+        {
+          "id": "npc-elder",
+          "name": "Village Elder",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -0.3,
+              0.85,
+              -1.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.65,
+              1.4,
+              0.65
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "capsule",
+              "material": "mat-sea"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.8,
+                1.5,
+                0.8
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "npc",
+              "interactable"
+            ]
+          }
+        },
+        {
+          "id": "chest-0",
+          "name": "Loot Chest 1",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              2.3,
+              0.35,
+              -1.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.7,
+              0.55,
+              0.55
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-gold"
+            },
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 15,
+                "radius": 0.9
+              }
+            }
+          ],
+          "properties": {
+            "tags": [
+              "loot",
+              "interactable"
+            ]
+          }
+        },
+        {
+          "id": "chest-1",
+          "name": "Loot Chest 2",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              3.1999999999999997,
+              0.35,
+              -0.20000000000000018
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.7,
+              0.55,
+              0.55
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-gold"
+            },
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 15,
+                "radius": 0.9
+              }
+            }
+          ],
+          "properties": {
+            "tags": [
+              "loot",
+              "interactable"
+            ]
+          }
+        },
+        {
+          "id": "chest-2",
+          "name": "Loot Chest 3",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              4.1,
+              0.35,
+              1.1999999999999997
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.7,
+              0.55,
+              0.55
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-gold"
+            },
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 15,
+                "radius": 0.9
+              }
+            }
+          ],
+          "properties": {
+            "tags": [
+              "loot",
+              "interactable"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "prefab-coin",
+      "type": "prefab",
+      "name": "Gold Coin",
+      "data": "[{\"id\":\"coin-0\",\"name\":\"Gold Coin\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0.52,0],\"rotation\":[0,0.4,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"behavior\",\"kind\":\"collectible\",\"params\":{\"value\":1,\"radius\":0.6}},{\"type\":\"behavior\",\"kind\":\"rotate\",\"params\":{\"speed\":1.2,\"axis\":\"y\"}}],\"properties\":{}},{\"id\":\"coin-0-Rim\",\"name\":\"Rim\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[1.5707963267948966,0,0],\"scale\":[0.66,0.13,0.66]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-rim\",\"segments\":12}],\"properties\":{}},{\"id\":\"coin-0-Minted-face\",\"name\":\"Minted face\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[1.5707963267948966,0,0],\"scale\":[0.54,0.147,0.54]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-gold\",\"segments\":12}],\"properties\":{}},{\"id\":\"coin-0-Stamp\",\"name\":\"Stamp\",\"parent\":\"coin-0\",\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[0.095,0.27,0.18]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-rim\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#ffbd39",
+        "icon": "coin",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-pine",
+      "type": "prefab",
+      "name": "Pine Tree",
+      "data": "[{\"id\":\"pine-0\",\"name\":\"Pine Tree\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1.33,1.33,1.33]},\"components\":[{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.6384,1.995,0.6384],\"trigger\":false}],\"properties\":{}},{\"id\":\"pine-0-Trunk\",\"name\":\"Trunk\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,0.4,0],\"rotation\":[0,0,0],\"scale\":[0.42,0.8,0.42]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cylinder\",\"material\":\"mat-bark\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Lower-boughs\",\"name\":\"Lower boughs\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,1.02,0],\"rotation\":[0,0,0],\"scale\":[1.58,1.42,1.58]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-pine\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Middle-boughs\",\"name\":\"Middle boughs\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,1.55,0],\"rotation\":[0,0.54,0],\"scale\":[1.26,1.28,1.26]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-needles\",\"segments\":7}],\"properties\":{}},{\"id\":\"pine-0-Crown\",\"name\":\"Crown\",\"parent\":\"pine-0\",\"active\":true,\"transform\":{\"position\":[0,2.06,0],\"rotation\":[0,0.25,0],\"scale\":[0.89,1.16,0.89]},\"components\":[{\"type\":\"mesh\",\"shape\":\"cone\",\"material\":\"mat-tips\",\"segments\":7}],\"properties\":{}}]",
+      "properties": {
+        "color": "#53945f",
+        "icon": "pine",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-crate",
+      "type": "prefab",
+      "name": "Wooden Crate",
+      "data": "[{\"id\":\"crate-0\",\"name\":\"Wooden Crate\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0.14,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.91,1,0.91],\"trigger\":false}],\"properties\":{}},{\"id\":\"crate-0-Box\",\"name\":\"Box\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.45,0],\"rotation\":[0,0,0],\"scale\":[0.91,0.9,0.91]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-grain\"}],\"properties\":{}},{\"id\":\"crate-0-Back-slats\",\"name\":\"Back slats\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,-0.461],\"rotation\":[0,0,0],\"scale\":[0.74,0.73,0.03]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"crate-0-Back-brace\",\"name\":\"Back brace\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,-0.481745],\"rotation\":[0,0,-0.75],\"scale\":[0.12,0.94,0.052]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-straw\"}],\"properties\":{}},{\"id\":\"crate-0-Front-slats\",\"name\":\"Front slats\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,0.461],\"rotation\":[0,0,0],\"scale\":[0.74,0.73,0.03]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"crate-0-Front-brace\",\"name\":\"Front brace\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.46,0.481745],\"rotation\":[0,0,-0.75],\"scale\":[0.12,0.94,0.052]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-straw\"}],\"properties\":{}},{\"id\":\"crate-0-Band-lower\",\"name\":\"Band lower\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.08,0],\"rotation\":[0,0,0],\"scale\":[0.98,0.12,0.98]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-planks\"}],\"properties\":{}},{\"id\":\"crate-0-Band-upper\",\"name\":\"Band upper\",\"parent\":\"crate-0\",\"active\":true,\"transform\":{\"position\":[0,0.81,0],\"rotation\":[0,0,0],\"scale\":[0.98,0.12,0.98]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-planks\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#bd884e",
+        "icon": "crate",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-rock",
+      "type": "prefab",
+      "name": "Boulder",
+      "data": "[{\"id\":\"rock-0\",\"name\":\"Boulder\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0.2,0,0.08],\"scale\":[1.1889999999999998,0.82,1.0495999999999999]},\"components\":[{\"type\":\"mesh\",\"shape\":\"icosahedron\",\"material\":\"mat-limestone\"},{\"type\":\"collider\",\"shape\":\"box\",\"size\":[0.7789999999999999,0.82,0.7871999999999999],\"trigger\":false}],\"properties\":{}}]",
+      "properties": {
+        "color": "#989a96",
+        "icon": "rock",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-player",
+      "type": "prefab",
+      "name": "Player",
+      "data": "[{\"id\":\"player\",\"name\":\"Player\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1,1,1]},\"components\":[{\"type\":\"behavior\",\"kind\":\"player\",\"params\":{\"speed\":3.4}},{\"type\":\"collider\",\"shape\":\"capsule\",\"size\":[0.46,0.96,0.46],\"trigger\":false}],\"properties\":{}},{\"id\":\"player-Left-boot\",\"name\":\"Left boot\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.13,0.1,0.055],\"rotation\":[0,0,0],\"scale\":[0.17,0.21,0.25]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-leather\"}],\"properties\":{}},{\"id\":\"player-Right-boot\",\"name\":\"Right boot\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.13,0.1,0.055],\"rotation\":[0,0,0],\"scale\":[0.17,0.21,0.25]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-leather\"}],\"properties\":{}},{\"id\":\"player-Tunic\",\"name\":\"Tunic\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.39,0],\"rotation\":[0,0,0],\"scale\":[0.45,0.43,0.3]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Satchel\",\"name\":\"Satchel\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.45,-0.2],\"rotation\":[0,0,0],\"scale\":[0.29,0.31,0.14]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-timber\"}],\"properties\":{}},{\"id\":\"player-Scarf\",\"name\":\"Scarf\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.63,0],\"rotation\":[0,0,0],\"scale\":[0.43,0.13,0.33]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-scarf\"}],\"properties\":{}},{\"id\":\"player-Face\",\"name\":\"Face\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,0.84,0.035],\"rotation\":[0,0,0],\"scale\":[0.38,0.36,0.34]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}},{\"id\":\"player-Left-eye\",\"name\":\"Left eye\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.088,0.864,0.208],\"rotation\":[0,0,0],\"scale\":[0.043,0.055,0.022]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Right-eye\",\"name\":\"Right eye\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.088,0.864,0.208],\"rotation\":[0,0,0],\"scale\":[0.043,0.055,0.022]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Scarf-end\",\"name\":\"Scarf end\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.137,0.53,0.17],\"rotation\":[0,0,-0.23],\"scale\":[0.11,0.21,0.045]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-scarf\"}],\"properties\":{}},{\"id\":\"player-Hair\",\"name\":\"Hair\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,1.01,0],\"rotation\":[0,0,0],\"scale\":[0.41,0.12,0.38]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-hair\"}],\"properties\":{}},{\"id\":\"player-Cap\",\"name\":\"Cap\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.025,1.1,-0.025],\"rotation\":[0,0,0],\"scale\":[0.49,0.15,0.44]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Brim\",\"name\":\"Brim\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0,1.045,0.15],\"rotation\":[0,0,0],\"scale\":[0.49,0.055,0.24]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-sea\"}],\"properties\":{}},{\"id\":\"player-Left-hand\",\"name\":\"Left hand\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[-0.275,0.4,0.02],\"rotation\":[0,0,0],\"scale\":[0.12,0.3,0.15]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}},{\"id\":\"player-Right-hand\",\"name\":\"Right hand\",\"parent\":\"player\",\"active\":true,\"transform\":{\"position\":[0.275,0.4,0.02],\"rotation\":[0,0,0],\"scale\":[0.12,0.3,0.15]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-skin\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#4096a2",
+        "icon": "player",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "prefab-tile",
+      "type": "prefab",
+      "name": "Grass Tile",
+      "data": "[{\"id\":\"grass-tile\",\"name\":\"Grass Tile\",\"parent\":null,\"active\":true,\"transform\":{\"position\":[0,0,0],\"rotation\":[0,0,0],\"scale\":[1,0.2,1]},\"components\":[{\"type\":\"mesh\",\"shape\":\"box\",\"material\":\"mat-turf\"}],\"properties\":{}}]",
+      "properties": {
+        "color": "#93c85c",
+        "icon": "tile",
+        "folder": "Prefabs"
+      }
+    },
+    {
+      "id": "default-material",
+      "name": "Porcelain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d9dfdf",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-turf",
+      "name": "Meadow",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#93c85c",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": "hp",
+      "type": "counter",
+      "text": "HP",
+      "variable": "hp",
+      "x": 4,
+      "y": 6
+    },
+    {
+      "id": "gold",
+      "type": "counter",
+      "text": "Gold",
+      "variable": "gold",
+      "x": 4,
+      "y": 14
+    }
+  ],
+  "locales": {
+    "en": {
+      "menu.play": "Play",
+      "menu.resume": "Resume",
+      "menu.retry": "Try again",
+      "menu.pause": "Pause",
+      "menu.results": "Results",
+      "hud.score": "Coins",
+      "hud.time": "Time",
+      "hud.best": "Personal best",
+      "menu.reward": "Watch ad · +15 seconds",
+      "menu.controls": "Move with WASD, arrow keys or the touch stick."
+    },
+    "ru": {
+      "menu.play": "Играть",
+      "menu.resume": "Продолжить",
+      "menu.retry": "Ещё раз",
+      "menu.pause": "Пауза",
+      "menu.results": "Результаты",
+      "hud.score": "Монеты",
+      "hud.time": "Время",
+      "hud.best": "Рекорд",
+      "menu.reward": "Реклама · +15 секунд",
+      "menu.controls": "Управление — WASD, стрелки или экранный джойстик."
+    }
+  },
+  "settings": {
+    "duration": 60,
+    "language": "en",
+    "mode": "rpg",
+    "bounds": [
+      -5.5,
+      5.5,
+      -5.5,
+      5.5
+    ],
+    "variables": {
+      "hp": 100,
+      "gold": 0
+    }
+  }
+}
