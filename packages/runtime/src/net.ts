@@ -98,7 +98,7 @@ type PeerHandler = (peerId: string) => void
 
 export class NetManager {
   mode: MultiplayerMode = 'singleplayer'
-  peerId: string = 'peer-' + Math.random().toString(36).slice(2, 8)
+  peerId: string = 'peer-' + Date.now().toString(36).padStart(9, '0') + '-' + Math.random().toString(36).slice(2, 6)
   peerName: string = 'Player'
   room: string = 'lobby-1'
   isHost: boolean = true
