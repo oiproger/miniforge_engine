@@ -1,12 +1,24 @@
 {
+  "$schema": "https://schema.tauri.app/config/2",
   "mainBinaryName": "miniforge-player",
   "productName": "Miniforge Player",
+  "version": "3.0.0",
   "identifier": "dev.miniforge.player",
-  "build": { "frontendDist": "player-placeholder" },
-  "app": {
-    "withGlobalTauri": false,
-    "windows": [],
-    "security": { "capabilities": [] }
+  "build": {
+    "frontendDist": "player-placeholder"
   },
-  "bundle": { "active": false }
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "capabilities": []
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico"
+    ]
+  }
 }

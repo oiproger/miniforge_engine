@@ -1,3 +1,5 @@
+import { AnimStateMachineEditor } from './AnimStateMachineEditor'
+import { MaterialPreview } from './MaterialPreview'
 import { useEffect, useRef, useState } from 'react'
 import {
   SlidersHorizontal,
@@ -31,6 +33,7 @@ import {
   Sliders,
   Compass,
   Route,
+  Wifi,
   Trash2,
 } from 'lucide-react'
 import {
@@ -89,6 +92,7 @@ const COMPONENT_CATALOG: ComponentMeta[] = [
   { type: 'audio', name: 'Audio Source', category: 'Audio', desc: '3D spatial or ambient sound emitter', icon: AudioLines, keywords: 'sound music sfx hrtf' },
   { type: 'animation', name: 'Animation Player', category: 'Animation', desc: 'Play glTF skeletal / transform clips', icon: Film, keywords: 'clip gltf keyframe' },
   { type: 'navZone', name: 'NavGrid Zone', category: 'Navigation', desc: 'Bakeable A* pathfinding grid + Off-Mesh Links', icon: Compass, keywords: 'navmesh pathfinding astar npc walk' },
+  { type: 'networkSync', name: 'Network Sync', category: 'Logic', desc: 'Synchronize Transform, Animation & WorldState over multiplayer', icon: Wifi, keywords: 'multiplayer network sync rpc webrtc websocket' },
   { type: 'navAgent', name: 'Nav Agent (NPC)', category: 'Navigation', desc: 'Autonomous A* steering + walk/idle crossfade', icon: Route, keywords: 'npc ai pathfinding follow move' },
   { type: 'sprite', name: 'Legacy Sprite', category: 'Effects', desc: 'Simple 3D sprite quad', icon: Square, keywords: '2d quad' },
 ]
@@ -264,6 +268,7 @@ export function Inspector({
   terrainBrush?: TerrainBrushConfig
   onTerrainBrushChange?: (patch: Partial<TerrainBrushConfig>) => void
 }) {
+  const [editingAnimSM, setEditingAnimSM] = useState<number | null>(null)
   const [adding, showAdd] = useState(false)
   const [compBox, setCompBox] = useState({ top: 80, left: 16, width: 260, listMaxHeight: 260 })
   const addBtnRef = useRef<HTMLButtonElement | null>(null)
@@ -448,6 +453,16 @@ export function Inspector({
         break
       case 'navZone':
         Object.assign(item, makeNavZone())
+        break
+      case 'networkSync':
+        Object.assign(item, {
+          owner: 'host',
+          syncTransform: true,
+          syncAnimation: true,
+          syncVariables: false,
+          interpolate: true,
+          syncKeys: 'hp, ammo',
+        })
         break
       case 'navAgent':
         Object.assign(item, {
@@ -881,6 +896,35 @@ export function Inspector({
             </Field>
           </>
         )}
+        {c.type === 'networkSync' && (
+          <>
+            <Field label="Owner authority">
+              <select value={c.owner || 'host'} onChange={(e) => prop('owner', e.target.value)}>
+                <option value="host">Host authoritative</option>
+                <option value="local">Local player owned</option>
+              </select>
+            </Field>
+            <Field label="Sync Transform">
+              <input type="checkbox" checked={c.syncTransform !== false} onChange={(e) => prop('syncTransform', e.target.checked)} />
+            </Field>
+            <Field label="Sync Animation">
+              <input type="checkbox" checked={Boolean(c.syncAnimation)} onChange={(e) => prop('syncAnimation', e.target.checked)} />
+            </Field>
+            <Field label="Sync WorldState">
+              <input type="checkbox" checked={Boolean(c.syncVariables)} onChange={(e) => prop('syncVariables', e.target.checked)} />
+            </Field>
+            <Field label="Interpolate">
+              <input type="checkbox" checked={c.interpolate !== false} onChange={(e) => prop('interpolate', e.target.checked)} />
+            </Field>
+            <Field label="Sync Keys (comma)">
+              <input
+                value={String(c.syncKeys ?? '')}
+                placeholder="hp, ammo, stamina"
+                onChange={(e) => prop('syncKeys', e.target.value)}
+              />
+            </Field>
+          </>
+        )}
         {(c.type === 'animation' || c.type === 'sprite') && (
             <VisualFields
               c={c}
@@ -888,6 +932,27 @@ export function Inspector({
               modelId={entity?.components.find((part) => part.type === 'mesh' && part.shape === 'model')?.asset}
               change={prop}
             />
+          )}
+          {c.type === 'animation' && (
+            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <button
+                type="button"
+                className="mf-secondary"
+                onClick={() => setEditingAnimSM(i)}
+              >
+                <SlidersHorizontal size={12} /> {c.stateMachine?.states?.length ? `Edit State Machine (${c.stateMachine.states.length} states)` : 'Open Animation State Machine…'}
+              </button>
+              {editingAnimSM === i && (
+                <AnimStateMachineEditor
+                  value={c.stateMachine}
+                  modelAsset={project.assets.find(
+                    (a) => a.id === entity?.components.find((part) => part.type === 'mesh' && part.shape === 'model')?.asset,
+                  )}
+                  onSave={(sm) => prop('stateMachine', sm)}
+                  onClose={() => setEditingAnimSM(null)}
+                />
+              )}
+            </div>
           )}
           {c.type === 'mesh' && (
             <>
@@ -1176,6 +1241,7 @@ export function Inspector({
             {link('Surface', 'material', 'material')}
             {mat && (
               <>
+                <MaterialPreview p={project} a={mat} compact />
                 <Field label="Base color">
                   <Color
                     label="Material base color"

@@ -959,6 +959,128 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'steam.unlockAchievement': {
+        const ach = String(get('id', '')).trim()
+        if (ach) void api.steam.unlockAchievement(ach)
+        next()
+        break
+      }
+      case 'steam.setRichPresence': {
+        const k = String(get('key', 'status')).trim()
+        const v = String(get('value', ''))
+        if (k) void api.steam.setRichPresence(k, v)
+        next()
+        break
+      }
+      case 'steam.createLobby': {
+        const name = String(get('name', 'My Lobby')).trim()
+        const maxMembers = Number(get('maxMembers', 4)) || 4
+        void api.steam.createLobby({ name, maxMembers }).then(() => api.net.connect({ mode: 'steam-p2p', room: name }))
+        next()
+        break
+      }
+      case 'steam.joinLobby': {
+        const lid = String(get('lobbyId', '')).trim()
+        if (lid) void api.steam.joinLobby(lid).then(() => api.net.connect({ mode: 'steam-p2p', room: lid }))
+        next()
+        break
+      }
+      case 'steam.leaveLobby': {
+        void api.steam.leaveLobby()
+        api.net.disconnect()
+        next()
+        break
+      }
+      case 'steam.cloudSave': {
+        const fn = String(get('filename', 'save.json')).trim()
+        const data = String(get('data', '{}'))
+        if (fn) void api.steam.cloudWrite(fn, data)
+        next()
+        break
+      }
+      case 'net.hostLan': {
+        void api.net.hostLan({ room: String(get('room', 'lobby-1')), port: Number(get('port', 8765)) || 8765 })
+        next()
+        break
+      }
+      case 'net.sendChat': {
+        api.net.sendChat(String(get('text', '')))
+        next()
+        break
+      }
+      case 'net.setEntityVar': {
+        const id = resolveEntityId(get('id', 'self'))
+        const key = String(get('key', 'hp')).trim()
+        if (id && key) api.net.setEntityVar(id, key, get('value', 0))
+        next()
+        break
+      }
+      case 'net.sendRpc': {
+        const rpcName = String(get('name', '')).trim()
+        const target = String(get('target', 'all')).trim() || 'all'
+        if (rpcName) api.net.rpc(rpcName, get('payload', null), target)
+        next()
+        break
+      }
+      case 'net.connect': {
+        const room = String(get('room', 'lobby-1')).trim() || 'lobby-1'
+        const url = String(get('url', '')).trim()
+        void api.net.connect({ room, url: url || 'local' })
+        next()
+        break
+      }
+      case 'net.disconnect': {
+        api.net.disconnect()
+        next()
+        break
+      }
+      case 'anim.setParam': {
+        const id = resolveEntityId(get('id', 'self'))
+        const pName = String(get('name', 'speed')).trim()
+        if (id && pName) api.animation.setParam(id, pName, get('value', 0) as any)
+        next()
+        break
+      }
+      case 'anim.setTrigger': {
+        const id = resolveEntityId(get('id', 'self'))
+        const tName = String(get('name', 'jump')).trim()
+        if (id && tName) api.animation.setTrigger(id, tName)
+        next()
+        break
+      }
+      case 'anim.playState': {
+        const id = resolveEntityId(get('id', 'self'))
+        const stName = String(get('state', 'Idle')).trim()
+        const bt = Number(get('blendTime', 0.2)) || 0.2
+        if (id && stName) api.animation.playState(id, stName, bt)
+        next()
+        break
+      }
+      case 'fx.setShader': {
+        const id = resolveEntityId(get('id', 'self'))
+        const sh = String(get('shader', '')).trim()
+        if (id) api.materials.setShader(id, sh || null)
+        next()
+        break
+      }
+      case 'fx.setShaderUniform': {
+        const rawTarget = String(get('target', 'self')).trim()
+        const target = rawTarget === 'self' || !rawTarget ? api.entity.id : rawTarget
+        const uName = String(get('name', 'u_speed')).trim()
+        const val = get('value', 1.0)
+        if (target && uName) api.materials.setShaderUniform(target, uName, val as any)
+        next()
+        break
+      }
+      case 'fx.setShaderColor': {
+        const rawTarget = String(get('target', 'self')).trim()
+        const target = rawTarget === 'self' || !rawTarget ? api.entity.id : rawTarget
+        const uName = String(get('name', 'u_color')).trim()
+        const col = String(get('color', '#38bdf8')).trim()
+        if (target && uName) api.materials.setShaderUniform(target, uName, col)
+        next()
+        break
+      }
       case 'light.setGlow': {
         const id = resolveEntityId(get('id', 'self'))
         if (id) api.lights.setGlow(id, Number(get('glow', 1.5)) || 0, Number(get('falloff', 1.2)) || 1)
@@ -1024,6 +1146,56 @@ export function createEventGraphLifecycle(
     onCreate() {
       // Subscribe custom event nodes
       for (const n of graph.nodes) {
+        if (n.type === 'event.netRpc') {
+          const rpcName = String(n.inputs?.name || '').trim()
+          if (!rpcName) continue
+          const off = api.net.onRpc(rpcName, (payload, sender) => {
+            if (destroyed) return
+            const scope: ExecScope = {
+              ...mainScopeBase,
+              eventData: { sender, payload },
+              nodeOutputs: new Map([[n.id, { sender, payload }]]),
+            }
+            runFromPin(scope, n.id, 'exec', { steps: 0 }, 0)
+          })
+          unsubs.push(off)
+        }
+        if (n.type === 'event.peerJoin') {
+          const off = api.net.onPeerJoin((peerId) => {
+            if (destroyed) return
+            const scope: ExecScope = {
+              ...mainScopeBase,
+              eventData: { peerId },
+              nodeOutputs: new Map([[n.id, { peerId }]]),
+            }
+            runFromPin(scope, n.id, 'exec', { steps: 0 }, 0)
+          })
+          unsubs.push(off)
+        }
+        if (n.type === 'event.netChat') {
+          const off = api.net.onChat((msg) => {
+            if (destroyed) return
+            const scope: ExecScope = {
+              ...mainScopeBase,
+              eventData: { sender: msg.name || msg.sender, text: msg.text },
+              nodeOutputs: new Map([[n.id, { sender: msg.name || msg.sender, text: msg.text }]]),
+            }
+            runFromPin(scope, n.id, 'exec', { steps: 0 }, 0)
+          })
+          unsubs.push(off)
+        }
+        if (n.type === 'event.peerLeave') {
+          const off = api.net.onPeerLeave((peerId) => {
+            if (destroyed) return
+            const scope: ExecScope = {
+              ...mainScopeBase,
+              eventData: { peerId },
+              nodeOutputs: new Map([[n.id, { peerId }]]),
+            }
+            runFromPin(scope, n.id, 'exec', { steps: 0 }, 0)
+          })
+          unsubs.push(off)
+        }
         if (n.type === 'event.custom') {
           const evName = String(n.inputs?.eventName || '').trim()
           if (!evName) continue

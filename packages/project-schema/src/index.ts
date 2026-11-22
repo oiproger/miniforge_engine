@@ -694,3 +694,70 @@ export function applyAutoStaticBatching(scene: Scene, overwrite = false): number
   }
   return count
 }
+
+export type AnimConditionOp = ">" | "<" | ">=" | "<=" | "==" | "!=" | "trigger"
+export interface AnimParamDef {
+  name: string
+  type: "float" | "bool" | "trigger"
+  defaultValue: number | boolean
+}
+export interface AnimConditionDef {
+  param: string
+  op: AnimConditionOp
+  value: number | boolean
+}
+export interface AnimStateDef {
+  id: string
+  name: string
+  clip: string
+  speed: number
+  loop: boolean
+  x: number
+  y: number
+}
+export interface AnimTransitionDef {
+  id: string
+  from: string
+  to: string
+  duration: number
+  hasExitTime?: boolean
+  exitTime?: number
+  conditions: AnimConditionDef[]
+}
+export interface AnimStateMachine {
+  entryState: string
+  params: AnimParamDef[]
+  states: AnimStateDef[]
+  transitions: AnimTransitionDef[]
+}
+
+export type MultiplayerMode = "singleplayer" | "local-splitscreen" | "p2p-webrtc" | "client-server-ws" | "steam-p2p"
+export interface MultiplayerSettings {
+  mode: MultiplayerMode
+  maxPlayers?: number
+  serverUrl?: string
+  roomCode?: string
+  tickRate?: number
+  interpolationDelayMs?: number
+  simulatedLatencyMs?: number
+  simulatedPacketLoss?: number
+  splitScreenPlayers?: number
+  splitScreenLayout?: "horizontal" | "vertical" | "grid"
+  autoStartLanServer?: boolean
+  lanPort?: number
+  preferredRole?: "host" | "client"
+}
+
+export interface SteamAchievementDef {
+  id: string
+  name: string
+  description?: string
+}
+export interface SteamSettings {
+  enabled: boolean
+  appId: number
+  cloudSaves?: boolean
+  richPresence?: string
+  lobbyMaxMembers?: number
+  achievements?: SteamAchievementDef[]
+}

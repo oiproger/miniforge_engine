@@ -21,6 +21,8 @@ export const templates = [
   { id: 'shooter', name: 'Arena Shooter 3D', tag: 'Shooter', description: 'First-person arena with cover pillars, clickable enemy target drones, ammo/score HUD, and dynamic lighting.' },
   { id: 'key-vault', name: 'Key Vault', tag: 'Puzzle', description: 'Multi-room puzzle adventure with locked seals, collectible keys, lanterns, and UI screens.' },
   { id: 'clicker', name: '3D Clicker', tag: 'Casual', description: 'Interactive 3D treasure clicker with upgrade button, rotating mesh, and score counter.' },
+  { id: 'multiplayer', name: 'Multiplayer Arena 3D', tag: 'Multiplayer', description: 'Online WebSocket / WebRTC / Steam P2P arena with NetworkSync, Sync Keys (hp, score), and RPCs.' },
+  { id: 'split-screen', name: 'Split-Screen Co-op 3D', tag: 'Co-op', description: '2–4 player local co-op arena using shared keyboard (WASD + Arrows) and multi-gamepad input.' },
 ] as const
 export type TemplateId = (typeof templates)[number]['id']
 
@@ -629,7 +631,136 @@ export function createTemplate(key: string = 'coin-rush'): Project {
         chest.components.push(behavior('collectible', { value: 15, radius: 0.85 }))
       }
     }
-    if (key === 'shooter') {
+    if (key === 'multiplayer') {
+      p.name = 'Multiplayer Arena 3D'
+      p.description = 'Online WebSocket / WebRTC / Steam P2P arena with NetworkSync, Sync Keys (hp, score), and RPCs.'
+      p.settings.multiplayer = {
+        mode: 'client-server-ws',
+        maxPlayers: 4,
+        serverUrl: 'ws://localhost:8765',
+        roomCode: 'arena-1',
+        tickRate: 20,
+        interpolationDelayMs: 60,
+        simulatedLatencyMs: 0,
+        simulatedPacketLoss: 0,
+      }
+      p.settings.steam = {
+        enabled: true,
+        appId: 480,
+        cloudSaves: true,
+        richPresence: 'In Multiplayer Arena',
+        lobbyMaxMembers: 4,
+        achievements: [{ id: 'ACH_FIRST_MATCH', name: 'Arena Contender', description: 'Join your first multiplayer arena match' }],
+      }
+      p.ui.push(
+        { id: 'score', type: 'counter', text: 'Score', variable: 'score', x: 4, y: 6 },
+        { id: 'players', type: 'counter', text: 'Players', variable: 'players', x: 4, y: 14 },
+      )
+      const mpScriptId = 'script-mp-arena'
+      p.assets.push({
+        id: mpScriptId,
+        name: 'MultiplayerArena.ts',
+        type: 'script',
+        properties: {},
+        data: `export default function createBehavior(api) {
+  let hp = 100
+  return {
+    onStart() {
+      api.vars.players = api.net.getStats().peerCount
+      api.net.setEntityVar(api.entity.id, "hp", hp)
+      api.net.onPeerJoin(() => {
+        api.vars.players = api.net.getStats().peerCount
+      })
+      api.net.onPeerLeave(() => {
+        api.vars.players = api.net.getStats().peerCount
+      })
+      api.net.onRpc("orbPickup", (data) => {
+        api.vars.score = Number(api.vars.score || 0) + Number(data?.points || 10)
+      })
+      api.steam.unlockAchievement("ACH_FIRST_MATCH")
+    },
+    onUpdate() {
+      api.vars.players = api.net.getStats().peerCount
+    },
+  }
+}`,
+      })
+      const pl = scene.entities.find((e) => e.id === 'player')
+      if (pl) {
+        pl.properties.hp = 100
+        pl.components.push(
+          { type: 'networkSync', owner: 'local', syncTransform: true, syncAnimation: true, syncVariables: true, interpolate: true, syncKeys: 'hp, score' },
+          { type: 'script', asset: mpScriptId },
+        )
+      }
+      for (const [cx, cz, idx] of [[-3.2, -3.2, 1], [3.2, -3.2, 2], [-3.2, 3.2, 3], [3.2, 3.2, 4]] as const) {
+        const pillar = mesh('mp-pillar-' + idx, 'Arena Pillar ' + idx, 'cylinder', 'slate', null, [cx, 1.1, cz], [0.9, 2.2, 0.9])
+        pillar.components.push(boxCollider([0.9, 2.2, 0.9]))
+      }
+      for (let i = 0; i < 6; i++) {
+        const ang = (i / 6) * Math.PI * 2
+        const orb = mesh('mp-orb-' + i, 'Energy Orb ' + (i + 1), 'icosahedron', 'gold', null, [Math.cos(ang) * 3.8, 0.9, Math.sin(ang) * 3.8], [0.55, 0.55, 0.55])
+        orb.components.push(behavior('collectible', { value: 10, radius: 0.85 }), behavior('rotate', { speed: 2.0 }))
+      }
+    }
+    if (key === 'split-screen') {
+      p.name = 'Split-Screen Co-op 3D'
+      p.description = '2–4 player local co-op arena using shared keyboard (WASD + Arrows) and multi-gamepad input.'
+      p.settings.multiplayer = {
+        mode: 'local-splitscreen',
+        maxPlayers: 4,
+        splitScreenPlayers: 2,
+        splitScreenLayout: 'horizontal',
+      }
+      p.ui.push(
+        { id: 'score', type: 'counter', text: 'Team Score', variable: 'score', x: 4, y: 6 },
+      )
+      const coopScriptId = 'script-splitscreen-coop'
+      p.assets.push({
+        id: coopScriptId,
+        name: 'LocalCoopController.ts',
+        type: 'script',
+        properties: {},
+        data: `export default function createBehavior(api) {
+  const playerIndex = Number(api.entity.properties?.playerIndex || 0)
+  const speed = 5.5
+  return {
+    onUpdate(dt) {
+      const [mx, mz] = api.net.getLocalPlayerMove(playerIndex)
+      const pos = api.transform.position
+      let nx = pos.x, ny = pos.y, nz = pos.z
+      if (mx !== 0 || mz !== 0) {
+        nx = Math.max(-5.2, Math.min(5.2, nx + mx * speed * dt))
+        nz = Math.max(-5.2, Math.min(5.2, nz + mz * speed * dt))
+        api.transform.rotation.set(0, Math.atan2(mx, mz), 0)
+      }
+      if (ny <= 0.92 && api.net.getLocalPlayerAction(playerIndex, "jump")) {
+        ny = 1.65
+      } else if (ny > 0.9) {
+        ny = Math.max(0.9, ny - 4.5 * dt)
+      }
+      pos.set(nx, ny, nz)
+    },
+  }
+}`,
+      })
+      const p1 = scene.entities.find((e) => e.id === 'player')
+      if (p1) {
+        p1.name = 'Player 1 (WASD / Pad 1)'
+        p1.transform.position = [-1.8, 0.9, 1.5]
+        p1.properties.playerIndex = 0
+        p1.components = p1.components.filter((c) => c.type !== 'behavior')
+        p1.components.push({ type: 'script', asset: coopScriptId })
+      }
+      const p2 = mesh('player-2', 'Player 2 (Arrows / Pad 2)', 'capsule', 'scarf', null, [1.8, 0.9, 1.5], [0.7, 1.4, 0.7])
+      p2.properties.playerIndex = 1
+      p2.components.push({ type: 'script', asset: coopScriptId })
+      for (let i = 0; i < 6; i++) {
+        const cEnt = mesh('coop-gem-' + i, 'Co-op Gem ' + (i + 1), 'icosahedron', 'gold', null, [-3.5 + i * 1.4, 0.85, -2.4 + (i % 2) * 1.8], [0.5, 0.5, 0.5])
+        cEnt.components.push(behavior('collectible', { value: 25, radius: 0.9 }), behavior('rotate', { speed: 2.2 }))
+      }
+    }
+        if (key === 'shooter') {
       p.name = 'Arena Shooter 3D'
       p.description = 'First-person 3D target arena with cover pillars, clickable enemy drones, and score HUD.'
       p.settings.mode = 'shooter'

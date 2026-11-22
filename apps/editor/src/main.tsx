@@ -1,4 +1,9 @@
 import { ExportSettingsPanel } from './ExportSettings'
+import { SceneProfiler } from './SceneProfiler'
+import { ScatterBrushPanel, DEFAULT_SCATTER_BRUSH } from './ScatterBrush'
+import { InputManager } from './InputManager'
+import { MultiplayerStudio } from './MultiplayerStudio'
+import { SteamStudio } from './SteamStudio'
 import { ProjectHub } from './ProjectHub'
 import { collectEditorPluginActions } from './editorPlugins'
 import React, { useEffect, useRef, useState } from 'react'
@@ -22,6 +27,8 @@ import {
   Circle,
   Layers3,
   Gamepad2,
+  Wifi,
+  Radio,
   MousePointer2,
   Move,
   RotateCw,
@@ -44,6 +51,7 @@ import {
   Volume2,
   Hammer,
   Activity,
+  Trees,
   Plus,
   Globe,
   Monitor,
@@ -93,7 +101,7 @@ import {
   type Vec3,
 } from '../../../packages/project-schema/src'
 import { createTemplate, freshTemplate } from '../../../templates'
-import { SceneViewport, type TerrainBrushConfig } from '../../../packages/editor-tools/src'
+import { SceneViewport, type TerrainBrushConfig, type ScatterBrushConfig } from '../../../packages/editor-tools/src'
 import { buildGame, previewGame, exportProject, importProject } from '../../../packages/exporter/src'
 import { projectIssues, type ProjectIssue } from '../../../packages/project-schema/src/references'
 import { Inspector } from './Inspector'
@@ -171,7 +179,7 @@ function App() {
   const [tool, setTool] = useState<Tool>('translate'),
     [grid, setGrid] = useState(true),
     [snap, setSnap] = useState(false),
-    [ortho, setOrtho] = useState(true),
+    [ortho, setOrtho] = useState(false),
     [helpers, setHelpers] = useState(true),
     [focus, setFocus] = useState(0)
   const [terrainBrush, setTerrainBrush] = useState<TerrainBrushConfig>({
@@ -183,11 +191,7 @@ function App() {
     hardness: 0.5,
     level: 0.5,
     activeLayer: 1,
-    scatterAssets: [],
-    scatterDensity: 4,
-    scatterScaleMin: 0.75,
-    scatterScaleMax: 1.35,
-    scatterSpacing: 1.2,
+
   })
   const patchTerrainBrush = (patchData: Partial<TerrainBrushConfig>) =>
     setTerrainBrush((prev) => ({ ...prev, ...patchData }))
@@ -196,6 +200,11 @@ function App() {
     [activeScript, setActiveScript] = useState<string>(''),
     [preview, setPreview] = useState<Project | null>(null),
     [full, setFull] = useState(false)
+  const [showProfiler, setShowProfiler] = useState(false)
+  const [showInputManager, setShowInputManager] = useState(false)
+  const [showMultiplayer, setShowMultiplayer] = useState(false)
+  const [showSteam, setShowSteam] = useState(false)
+  const [scatterBrush, setScatterBrush] = useState<ScatterBrushConfig>(DEFAULT_SCATTER_BRUSH)
   const [focusUiId, setFocusUiId] = useState<string>()
   const [target, edit] = useState(''),
     [dialog, modal] = useState(''),
@@ -813,7 +822,8 @@ function App() {
   ]
   const pluginActions = collectEditorPluginActions(p, patch, note)
   const pluginsMenu: MenuItem[] = [
-    ['New Plugin / Browse Examples…', () => edit('new-plugin'), Puzzle],
+    ['Plugin Manager (Installed & Available)…', () => edit('plugins'), Puzzle],
+    ['New Custom Plugin…', () => edit('new-plugin'), Plus],
     ...pluginActions.map((act) => [act.label, act.run, Puzzle] as MenuItem),
   ]
   useEffect(() => {
@@ -929,6 +939,11 @@ function App() {
                 ['Export settings', () => modal('exportSettings'), Settings2],
                 ['Platform settings', () => modal('platform'), Globe],
                 ['Build profiles', () => modal('export'), Hammer],
+                ['Input, Gamepad & Touch', () => setShowInputManager(true), Gamepad2],
+                ['Multiplayer & Net Debugger', () => setShowMultiplayer(true), Wifi],
+                ['Steamworks & Debug Panel', () => setShowSteam(true), Radio],
+                ['Prop / Foliage Scatter Brush', () => setScatterBrush((b) => ({ ...b, enabled: !b.enabled })), Trees],
+                ['Scene Profiler', () => setShowProfiler((v) => !v), Activity],
               ],
             ],
           ].map(([label, items]) => (
@@ -1098,16 +1113,13 @@ function App() {
                   setP(next)
                 }
               }}
-              onTerrainScatter={(entityId, worldPos, radiusMeters, erase) => {
+              scatterBrush={scatterBrush}
+              onScatter={(worldPos, radiusMeters, erase) => {
                 const next = structuredClone(live.current)
                 const sc = getScene(next)
-                const tEnt = sc.entities.find((e) => e.id === entityId)
-                const tc = tEnt?.components.find((c) => c.type === 'terrain') as Terrain | undefined
-                if (!tEnt || !tc) return
                 if (erase) {
                   const toDrop = sc.entities.filter(
                     (e) =>
-                      e.id !== entityId &&
                       Array.isArray(e.properties?.tags) &&
                       e.properties.tags.includes('scatter') &&
                       Math.hypot(e.transform.position[0] - worldPos[0], e.transform.position[2] - worldPos[2]) <= radiusMeters,
@@ -1116,25 +1128,30 @@ function App() {
                   if (toDrop.length) change(next)
                   return
                 }
-                const pickedIds = terrainBrush.scatterAssets?.length
-                  ? terrainBrush.scatterAssets
+                const pickedIds = scatterBrush.assets.length
+                  ? scatterBrush.assets
                   : next.assets.filter((a) => a.type === 'prefab' || a.type === 'model').slice(0, 1).map((a) => a.id)
-                if (!pickedIds.length) {
-                  note('Select at least one Prefab or Model in Terrain Scatter settings')
-                  return
-                }
-                const density = Math.max(1, Math.min(25, terrainBrush.scatterDensity ?? 4))
-                const spacing = Math.max(0.2, terrainBrush.scatterSpacing ?? 1.2)
-                const sMin = terrainBrush.scatterScaleMin ?? 0.75
-                const sMax = Math.max(sMin, terrainBrush.scatterScaleMax ?? 1.35)
+                const terrains = sc.entities
+                  .map((e) => ({ ent: e, tc: e.components.find((c) => c.type === 'terrain' && c.enabled !== false) as Terrain | undefined }))
+                  .filter((x): x is { ent: Entity; tc: Terrain } => Boolean(x.tc))
+                const density = Math.max(1, Math.min(25, scatterBrush.density || 4))
+                const spacing = Math.max(0.2, scatterBrush.spacing || 1.2)
+                const sMin = scatterBrush.scaleMin || 0.75
+                const sMax = Math.max(sMin, scatterBrush.scaleMax || 1.35)
                 let spawned = 0
                 for (let k = 0; k < density; k++) {
                   const ang = Math.random() * Math.PI * 2
                   const r = Math.sqrt(Math.random()) * radiusMeters
                   const wx = worldPos[0] + Math.cos(ang) * r
                   const wz = worldPos[2] + Math.sin(ang) * r
-                  const sample = sampleTerrainLayerAt(tc, wx, wz, tEnt.transform)
-                  if (!sample.inside) continue
+                  let wy = worldPos[1]
+                  for (const t of terrains) {
+                    const sample = sampleTerrainLayerAt(t.tc, wx, wz, t.ent.transform)
+                    if (sample.inside) {
+                      wy = sample.height
+                      break
+                    }
+                  }
                   const tooClose = sc.entities.some(
                     (e) =>
                       Array.isArray(e.properties?.tags) &&
@@ -1142,21 +1159,28 @@ function App() {
                       Math.hypot(e.transform.position[0] - wx, e.transform.position[2] - wz) < spacing,
                   )
                   if (tooClose) continue
-                  const chosenId = pickedIds[Math.floor(Math.random() * pickedIds.length)]
-                  const asset = next.assets.find((a) => a.id === chosenId)
-                  if (!asset) continue
                   let placed: Entity
-                  if (asset.type === 'prefab') {
-                    placed = instantiatePrefab(sc, asset, null)
+                  if (pickedIds.length) {
+                    const chosenId = pickedIds[Math.floor(Math.random() * pickedIds.length)]
+                    const asset = next.assets.find((a) => a.id === chosenId)
+                    if (!asset) continue
+                    if (asset.type === 'prefab') {
+                      placed = instantiatePrefab(sc, asset, null)
+                    } else {
+                      placed = makeEntity(asset.name.replace(/\.[^.]+$/, ''))
+                      placed.components.push({ type: 'mesh', shape: 'model', asset: asset.id })
+                      sc.entities.push(placed)
+                    }
                   } else {
-                    placed = makeEntity(asset.name.replace(/\.[^.]+$/, ''))
-                    placed.components.push({ type: 'mesh', shape: 'model', asset: asset.id })
+                    placed = makeEntity('Foliage Prop')
+                    placed.components.push({ type: 'mesh', shape: Math.random() < 0.65 ? 'cone' : 'sphere', color: Math.random() < 0.65 ? '#3c8c4a' : '#6c757d' })
                     sc.entities.push(placed)
                   }
                   const scVal = sMin + Math.random() * (sMax - sMin)
-                  placed.transform.position = [wx, sample.height, wz]
-                  placed.transform.rotation = [0, Math.random() * Math.PI * 2, 0]
+                  placed.transform.position = [wx, wy, wz]
+                  placed.transform.rotation = [0, scatterBrush.randomYaw ? Math.random() * Math.PI * 2 : 0, 0]
                   placed.transform.scale = [scVal, scVal, scVal]
+                  placed.properties = { ...(placed.properties || {}), staticBatch: Boolean(scatterBrush.staticBatch) }
                   const existingTags = Array.isArray(placed.properties.tags) ? placed.properties.tags : []
                   placed.properties.tags = [...new Set([...existingTags, 'scatter'])]
                   spawned++
@@ -1197,6 +1221,14 @@ function App() {
                     {iconBtn('Grid', Grid2X2, () => setGrid(!grid), grid)}
                     {iconBtn('Snap to grid', Magnet, () => setSnap(!snap), snap)}
                   </div>
+                  <div className="toolstrip">
+                    {iconBtn(
+                      'Prop / Foliage Scatter Brush',
+                      Trees,
+                      () => setScatterBrush((b) => ({ ...b, enabled: !b.enabled })),
+                      scatterBrush.enabled,
+                    )}
+                  </div>
                 </div>
                 <button
                   className="view-mode"
@@ -1221,7 +1253,24 @@ function App() {
         </section>
         <div className="split right" onPointerDown={(e) => resize(e, 'right')} />
         <aside className="inspect-wrap">
-          <Inspector project={p} entityId={selected} onChange={change} onEditAsset={edit} terrainBrush={terrainBrush} onTerrainBrushChange={patchTerrainBrush} />
+          {scatterBrush.enabled ? (
+            <ScatterBrushPanel
+              p={p}
+              brush={scatterBrush}
+              scatteredCount={scene.entities.filter((e) => Array.isArray(e.properties?.tags) && e.properties.tags.includes('scatter')).length}
+              onChange={(patchData) => setScatterBrush((b) => ({ ...b, ...patchData }))}
+              onClearAll={() => {
+                const next = structuredClone(live.current)
+                const sc = getScene(next)
+                const targets = sc.entities.filter((e) => Array.isArray(e.properties?.tags) && e.properties.tags.includes('scatter'))
+                for (const dEnt of targets) removeEntity(sc, dEnt.id)
+                if (targets.length) change(next)
+              }}
+              onClose={() => setScatterBrush((b) => ({ ...b, enabled: false }))}
+            />
+          ) : (
+            <Inspector project={p} entityId={selected} onChange={change} onEditAsset={edit} terrainBrush={terrainBrush} onTerrainBrushChange={patchTerrainBrush} />
+          )}
         </aside>
         <section className="dock">
           <div className="split dock-split" onPointerDown={(e) => resize(e, 'dock')} />
@@ -1286,11 +1335,21 @@ function App() {
                 </>
               ) : (
                 <>
-                  <strong>Preview performance</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                    <strong>Preview performance</strong>
+                    <button
+                      type="button"
+                      className={showProfiler ? 'mf-primary' : 'mf-btn'}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, padding: '4px 10px' }}
+                      onClick={() => setShowProfiler((v) => !v)}
+                    >
+                      <Activity size={13} /> {showProfiler ? 'Hide Scene Profiler' : 'Open Scene Profiler'}
+                    </button>
+                  </div>
                   {Object.keys(stats).length ? (
                     <pre>{JSON.stringify(stats, null, 2)}</pre>
                   ) : (
-                    <p>Run the game to measure rendering performance.</p>
+                    <p>Run the game to measure rendering performance, or open Scene Profiler for live FPS, draw-call, triangle and asset memory stats.</p>
                   )}
                 </>
               )}
@@ -1305,7 +1364,7 @@ function App() {
           <Workflow size={12} />
           {scene.name}
           <i />
-          Miniforge Engine <b>v0.2.0</b>
+          Miniforge Engine <b>v3.0.0</b>
         </span>
       </footer>
       <input
@@ -1355,6 +1414,42 @@ function App() {
       )}
       {target && (
         <Authoring key={target} project={p} target={target} focusUiId={focusUiId} onChange={change} onClose={() => {setFocusUiId(undefined);edit('')}} />
+      )}
+      {showProfiler && <SceneProfiler p={p} onClose={() => setShowProfiler(false)} />}
+      {showSteam && (
+        <SteamStudio
+          p={p}
+          onSave={(steam) =>
+            patch((n) => {
+              n.settings.steam = steam
+            })
+          }
+          onClose={() => setShowSteam(false)}
+        />
+      )}
+      {showMultiplayer && (
+        <MultiplayerStudio
+          p={p}
+          onSave={(mp) =>
+            patch((n) => {
+              n.settings.multiplayer = mp
+            })
+          }
+          onClose={() => setShowMultiplayer(false)}
+        />
+      )}
+      {showInputManager && (
+        <InputManager
+          p={p}
+          onSave={(bindings, deadzone, touch) =>
+            patch((n) => {
+              n.settings.bindings = bindings
+              ;(n.settings as any).gamepadDeadzone = deadzone
+              n.settings.touch = touch
+            })
+          }
+          onClose={() => setShowInputManager(false)}
+        />
       )}
       {dialog && (
         <div

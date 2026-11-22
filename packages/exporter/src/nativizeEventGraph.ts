@@ -444,6 +444,42 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       return `${indent}api.particles.play(${eid()});\n` + next()
     case 'fx.particleStop':
       return `${indent}api.particles.stop(${eid()});\n` + next()
+    case 'steam.unlockAchievement':
+      return `${indent}void api.steam.unlockAchievement(String(${g('id', '')}));\n` + next()
+    case 'steam.setRichPresence':
+      return `${indent}void api.steam.setRichPresence(String(${g('key', 'status')}), String(${g('value', '')}));\n` + next()
+    case 'steam.createLobby':
+      return `${indent}void api.steam.createLobby({ name: String(${g('name', 'My Lobby')}), maxMembers: Number(${g('maxMembers', 4)}) || 4 }).then(() => api.net.connect({ mode: "steam-p2p", room: String(${g('name', 'My Lobby')}) }));\n` + next()
+    case 'steam.joinLobby':
+      return `${indent}void api.steam.joinLobby(String(${g('lobbyId', '')})).then(() => api.net.connect({ mode: "steam-p2p", room: String(${g('lobbyId', '')}) }));\n` + next()
+    case 'steam.leaveLobby':
+      return `${indent}void api.steam.leaveLobby(); api.net.disconnect();\n` + next()
+    case 'steam.cloudSave':
+      return `${indent}void api.steam.cloudWrite(String(${g('filename', 'save.json')}), String(${g('data', '{}')}));\n` + next()
+    case 'net.hostLan':
+      return `${indent}void api.net.hostLan({ room: String(${g('room', 'lobby-1')}), port: Number(${g('port', 8765)}) || 8765 });\n` + next()
+    case 'net.sendChat':
+      return `${indent}api.net.sendChat(String(${g('text', '')}));\n` + next()
+    case 'net.setEntityVar':
+      return `${indent}api.net.setEntityVar(${eid()}, String(${g('key', 'hp')}), ${g('value', 0)});\n` + next()
+    case 'net.sendRpc':
+      return `${indent}api.net.rpc(String(${g('name', '')}), ${g('payload', null)}, String(${g('target', 'all')}) || "all");\n` + next()
+    case 'net.connect':
+      return `${indent}void api.net.connect({ room: String(${g('room', 'lobby-1')}), url: String(${g('url', '')}) || "local" });\n` + next()
+    case 'net.disconnect':
+      return `${indent}api.net.disconnect();\n` + next()
+    case 'anim.setParam':
+      return `${indent}api.animation.setParam(${eid()}, String(${g('name', 'speed')}), ${g('value', 0)});\n` + next()
+    case 'anim.setTrigger':
+      return `${indent}api.animation.setTrigger(${eid()}, String(${g('name', 'jump')}));\n` + next()
+    case 'anim.playState':
+      return `${indent}api.animation.playState(${eid()}, String(${g('state', 'Idle')}), Number(${g('blendTime', 0.2)}) || 0.2);\n` + next()
+    case 'fx.setShader':
+      return `${indent}api.materials.setShader(${eid()}, String(${g('shader', '')}).trim() || null);\n` + next()
+    case 'fx.setShaderUniform':
+      return `${indent}{ const _t = String(${g('target', 'self')}).trim(); api.materials.setShaderUniform(_t === "self" || !_t ? api.entity.id : _t, String(${g('name', 'u_speed')}), ${g('value', 1.0)}); }\n` + next()
+    case 'fx.setShaderColor':
+      return `${indent}{ const _t = String(${g('target', 'self')}).trim(); api.materials.setShaderUniform(_t === "self" || !_t ? api.entity.id : _t, String(${g('name', 'u_color')}), String(${g('color', '#38bdf8')})); }\n` + next()
     case 'light.setGlow':
       return `${indent}api.lights.setGlow(${eid()}, Number(${g('glow', 1.5)}) || 0, Number(${g('falloff', 1.2)}) || 1);\n` + next()
     case 'nav.setObstacle':
@@ -489,6 +525,32 @@ export function compileEventGraphToScript(graph: EventGraphData, assetName: stri
   // Custom event subscriptions in onCreate
   let customSubs = ''
   for (const n of graph.nodes) {
+    if (n.type === 'event.netRpc') {
+      const rpcName = String(n.inputs?.name || '').trim()
+      if (!rpcName) continue
+      const ctx = makeCtx([[n.id + ':sender', 'sender'], [n.id + ':payload', 'payload']])
+      const body = genFromPin(ctx, n.id, 'exec', '        ', 0)
+      customSubs += `      _unsubs.push(api.net.onRpc(${lit(rpcName)}, (payload: any, sender: string) => {\n        if (_dead) return;\n${body}      }));\n`
+      continue
+    }
+    if (n.type === 'event.peerJoin') {
+      const ctx = makeCtx([[n.id + ':peerId', 'peerId']])
+      const body = genFromPin(ctx, n.id, 'exec', '        ', 0)
+      customSubs += `      _unsubs.push(api.net.onPeerJoin((peerId: string) => {\n        if (_dead) return;\n${body}      }));\n`
+      continue
+    }
+    if (n.type === 'event.netChat') {
+      const ctx = makeCtx([[n.id + ':sender', '(msg.name || msg.sender)'], [n.id + ':text', 'msg.text']])
+      const body = genFromPin(ctx, n.id, 'exec', '        ', 0)
+      customSubs += `      _unsubs.push(api.net.onChat((msg: any) => {\n        if (_dead) return;\n${body}      }));\n`
+      continue
+    }
+    if (n.type === 'event.peerLeave') {
+      const ctx = makeCtx([[n.id + ':peerId', 'peerId']])
+      const body = genFromPin(ctx, n.id, 'exec', '        ', 0)
+      customSubs += `      _unsubs.push(api.net.onPeerLeave((peerId: string) => {\n        if (_dead) return;\n${body}      }));\n`
+      continue
+    }
     if (n.type !== 'event.custom') continue
     const evName = String(n.inputs?.eventName || '').trim()
     if (!evName) continue

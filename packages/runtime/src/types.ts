@@ -4,6 +4,8 @@ import type { PostProcessOptions, ProceduralSkyOptions, SkyboxFaces, RenderWorld
 import type { PlatformAdapter } from '../../platform-sdk/src'
 import type { Events, ScriptLifecycle } from './lifecycle'
 import type { Input } from './input'
+import type { LanDiscoveredGame, LanServerInfo, MultiplayerMode, NetChatMessage, NetConnectOptions, NetPeer, NetStats } from './net'
+import type { SteamLobby, SteamLogEntry, SteamUserInfo } from './steam'
 import type { AudioBus, AudioPlayOptions } from './audio'
 import type { Tween } from './tween'
 import type { SaveSnapshot, SaveOptions, LoadOptions } from './saveSystem'
@@ -212,6 +214,10 @@ export interface MaterialsAPI {
   setEmissive(entityId: string, hex: string, intensity?: number): void
   /** Apply or clear a custom GLSL shader asset on an entity at runtime. */
   setShader(entityId: string, shaderAssetId: string | null): void
+  /** Set a custom GLSL shader uniform at runtime (target can be an entity ID, shader asset ID, or shader name; supports float, bool, vec2/vec3/vec4 arrays, or #rrggbb hex color). */
+  setShaderUniform(target: string, name: string, value: number | boolean | number[] | string): void
+  /** Batch-update multiple custom GLSL shader uniforms at runtime. */
+  setShaderUniforms(target: string, uniforms: Record<string, number | boolean | number[] | string>): void
   /** Create a new material asset at runtime and return its ID. */
   create(name: string, properties: Record<string, any>): string
   /** Query surface material & terrain layer under any world position (works on both Terrain and any 3D model/mesh). */
@@ -317,6 +323,10 @@ export interface GameAPI {
   params: Record<string, any>
   /** Keyboard, virtual HUD, and pointer input state. */
   input: Input
+  /** Multiplayer networking, RPCs, lobbies, and local split-screen player input. */
+  net: NetAPI
+  /** Steamworks SDK: Lobbies, Steam P2P, Achievements, Cloud Saves, and Rich Presence. */
+  steam: SteamAPI
   /** Scoped event bus for publishing and subscribing to game events. */
   events: Pick<Events, 'on' | 'emit'>
   /** Platform adapter (Web, Yandex, Poki). */
@@ -399,6 +409,11 @@ export interface GameAPI {
     bones(id: string): string[]
     getState(id: string): { clip: string; time: number; duration: number; playing: boolean; speed: number; loop: boolean } | undefined
     getBonePosition(id: string, boneName: string): Vec3 | undefined
+    setParam(id: string, name: string, value: number | boolean): void
+    getParam(id: string, name: string): number | boolean | undefined
+    setTrigger(id: string, name: string): void
+    playState(id: string, stateName: string, blendTime?: number): boolean
+    getCurrentState(id: string): string | undefined
   }
   /** Terrain height & multi-material layer queries (ideal for footstep sounds). */
   terrain: TerrainAPI
@@ -547,3 +562,63 @@ export interface GameSession {
 }
 
 export type ScriptFactory = (api: GameAPI) => ScriptLifecycle
+
+export interface NetAPI {
+  connect(opts?: NetConnectOptions): Promise<boolean>
+  disconnect(): void
+  rpc(name: string, payload?: any, target?: "all" | "others" | "host" | string): void
+  onRpc(name: string, handler: (payload: any, senderPeerId: string) => void): () => void
+  onPeerJoin(handler: (peerId: string) => void): () => void
+  onPeerLeave(handler: (peerId: string) => void): () => void
+  getPeers(): NetPeer[]
+  getStats(): NetStats
+  isHost(): boolean
+  peerId(): string
+  room(): string
+  mode(): MultiplayerMode
+  setSimulation(latencyMs: number, packetLossPct: number): void
+  getLocalPlayerMove(playerIndex: number): [number, number]
+  getLocalPlayerAction(playerIndex: number, action: "jump" | "interact" | "attack"): boolean
+  /** Set a synchronized per-entity variable (writes entity.properties[key] and syncs delta to remote peers). */
+  setEntityVar(entityId: string, key: string, value: any): void
+  /** Read a synchronized per-entity variable (from entity.properties[key]). */
+  getEntityVar<T = any>(entityId: string, key: string, fallback?: T): T
+  /** Subscribe to remote updates of a specific synced variable on an entity. */
+  onEntityVarChange(entityId: string, key: string, handler: (value: any, prevValue: any) => void): () => void
+  /** Start embedded Rust LAN WebSocket + UDP discovery server (Desktop Tauri) and join as host. */
+  hostLan(opts?: { port?: number; room?: string; gameName?: string; mode?: MultiplayerMode }): Promise<LanServerInfo | null>
+  /** Stop the embedded LAN server. */
+  stopLan(): Promise<boolean>
+  /** Discover active LAN games broadcasting via UDP on the local network (Desktop Tauri). */
+  discoverLan(timeoutMs?: number): Promise<LanDiscoveredGame[]>
+  /** Send an in-game lobby/match chat message to all peers. */
+  sendChat(text: string): void
+  /** Subscribe to incoming lobby/match chat messages. */
+  onChat(handler: (msg: NetChatMessage) => void): () => void
+  /** Spawn a prefab with NetworkSync attached and broadcast spawn RPC to remote peers. */
+  spawnNetworkPlayer(prefabId: string, ownerPeerId?: string, pos?: Vec3): string
+}
+
+export interface SteamAPI {
+  init(appId?: number): Promise<SteamUserInfo>
+  isAvailable(): boolean
+  isNative(): boolean
+  getUser(): SteamUserInfo
+  unlockAchievement(id: string): Promise<boolean>
+  clearAchievement(id: string): Promise<boolean>
+  hasAchievement(id: string): boolean
+  listAchievements(): string[]
+  setRichPresence(key: string, value: string): Promise<boolean>
+  clearRichPresence(): Promise<void>
+  cloudWrite(filename: string, content: string): Promise<boolean>
+  cloudRead(filename: string): Promise<string | null>
+  cloudDelete(filename: string): Promise<boolean>
+  cloudList(): string[]
+  createLobby(opts?: { maxMembers?: number; type?: "public" | "friends" | "private"; name?: string; data?: Record<string, string> }): Promise<SteamLobby>
+  listLobbies(): Promise<SteamLobby[]>
+  joinLobby(lobbyId: string): Promise<SteamLobby | null>
+  leaveLobby(): Promise<void>
+  setLobbyData(key: string, value: string): Promise<boolean>
+  getLobby(): SteamLobby | null
+  getLogs(): SteamLogEntry[]
+}

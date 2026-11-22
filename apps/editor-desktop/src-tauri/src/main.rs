@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod lan;
+
 #[cfg(feature = "editor")]
 #[tauri::command]
 async fn save_bytes(name: String, bytes: Vec<u8>) -> Result<bool, String> {
@@ -205,14 +207,22 @@ fn main() {
         pick_project_file,
         write_project_file,
         open_project_file,
-        convert_model_to_glb
+        convert_model_to_glb,
+        lan::lan_start_server,
+        lan::lan_stop_server,
+        lan::lan_discover
     ]);
     #[cfg(feature = "player")]
     let app = {
         let game_dir = player_host::find_game_dir();
         let game_dir_proto = game_dir.clone();
         let cfg = player_host::load_config(&game_dir);
-        app.register_uri_scheme_protocol("mfgame", move |_ctx, req| {
+        app.invoke_handler(tauri::generate_handler![
+            lan::lan_start_server,
+            lan::lan_stop_server,
+            lan::lan_discover
+        ])
+        .register_uri_scheme_protocol("mfgame", move |_ctx, req| {
             let raw_path = req.uri().path().trim_start_matches('/');
             let rel = if raw_path.is_empty() { "index.html" } else { raw_path };
             let target = game_dir_proto.join(rel);
@@ -230,6 +240,10 @@ fn main() {
             }
         })
         .setup(move |app_handle| {
+            use tauri::Manager;
+            if let Some(extra) = app_handle.get_webview_window("main") {
+                let _ = extra.close();
+            }
             let url = tauri::WebviewUrl::External("mfgame://localhost/index.html".parse().unwrap());
             tauri::WebviewWindowBuilder::new(app_handle, "game", url)
                 .title(&cfg.title)
@@ -241,5 +255,8 @@ fn main() {
             Ok(())
         })
     };
+    #[cfg(feature = "player")]
+    app.run(tauri::generate_context!("player.conf.json")).expect("Miniforge could not open the system webview");
+    #[cfg(not(feature = "player"))]
     app.run(tauri::generate_context!()).expect("Miniforge could not open the system webview");
 }

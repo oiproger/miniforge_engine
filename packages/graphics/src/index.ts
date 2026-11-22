@@ -282,7 +282,102 @@ export function createWorld(
     models = new Map<string, Promise<L.GLTFModel>>()
   const liveCanvasTextures = new Map<string, L.TextureInfo>()
   const textures = new Map<string, Promise<L.TextureInfo>>(),
-    shaders = new Map<string, L.Shader>()
+    shaders = new Map<string, L.Shader>(),
+    customShadersByAsset = new Map<string, L.Shader>()
+
+  const BUILTIN_SHADER_UNIFORMS = new Set([
+    "iTime", "iResolution", "cameraPos", "cameraDir", "viewProj",
+    "lightDir", "lightColor", "ambientFog", "ambientGround", "fogColor",
+    "shadowParams", "fogFade", "materialParams", "emissiveTint",
+    "skyTop", "skyHorizon", "skyBottom", "gelAxes", "premultipliedTexture",
+    "tex", "normalTex", "emissiveTex", "gelTex", "envMap", "envParams", "shadowMap",
+  ])
+
+  function parseHexToRgb(hex: string): [number, number, number] | null {
+    const clean = hex.trim().replace(/^#/, "")
+    if (clean.length === 3) {
+      const r = parseInt(clean[0] + clean[0], 16) / 255
+      const g = parseInt(clean[1] + clean[1], 16) / 255
+      const b = parseInt(clean[2] + clean[2], 16) / 255
+      return Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b) ? [r, g, b] : null
+    }
+    if (clean.length >= 6) {
+      const r = parseInt(clean.slice(0, 2), 16) / 255
+      const g = parseInt(clean.slice(2, 4), 16) / 255
+      const b = parseInt(clean.slice(4, 6), 16) / 255
+      return Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b) ? [r, g, b] : null
+    }
+    return null
+  }
+
+  function normalizeUniformValue(type: string | undefined, raw: any): any {
+    if (typeof raw === "string") {
+      const rgb = parseHexToRgb(raw)
+      if (rgb) return type === "vec4" ? [rgb[0], rgb[1], rgb[2], 1] : rgb
+      const num = Number(raw)
+      if (Number.isFinite(num)) return num
+    }
+    if (type === "bool") return Boolean(raw)
+    if (type === "float") return Number(raw) || 0
+    if (type === "vec2") {
+      if (Array.isArray(raw)) return [Number(raw[0]) || 0, Number(raw[1]) || 0]
+      return [Number(raw?.x) || 0, Number(raw?.y) || 0]
+    }
+    if (type === "vec3") {
+      if (Array.isArray(raw)) return [Number(raw[0]) || 0, Number(raw[1]) || 0, Number(raw[2]) || 0]
+      return [Number(raw?.x ?? raw?.r) || 0, Number(raw?.y ?? raw?.g) || 0, Number(raw?.z ?? raw?.b) || 0]
+    }
+    if (type === "vec4") {
+      if (Array.isArray(raw)) return [Number(raw[0]) || 0, Number(raw[1]) || 0, Number(raw[2]) || 0, raw[3] === undefined ? 1 : Number(raw[3]) || 0]
+      return [Number(raw?.x ?? raw?.r) || 0, Number(raw?.y ?? raw?.g) || 0, Number(raw?.z ?? raw?.b) || 0, raw?.w ?? raw?.a ?? 1]
+    }
+    return raw
+  }
+
+  function compileCustomShader(shaderAsset: { id: string; name?: string; data: string; properties?: Record<string, any> }): L.Shader {
+    const rawFrag = String(shaderAsset.data || "")
+    const rawVert = String(shaderAsset.properties?.vertex || "")
+    const savedUniforms: Record<string, any> =
+      shaderAsset.properties?.uniforms && typeof shaderAsset.properties.uniforms === "object"
+        ? shaderAsset.properties.uniforms
+        : {}
+    const skey = shaderAsset.id + "\0" + rawFrag + "\0" + rawVert
+    let compiled = shaders.get(skey)
+    if (!compiled) {
+      const declRe = /^[ \t]*uniform\s+(float|bool|vec2|vec3|vec4)\s+([A-Za-z_][A-Za-z0-9_]*)\s*;[ \t]*$/gm
+      const initialUniforms: Record<string, any> = {}
+      const stripAndCollect = (src: string) =>
+        src.replace(declRe, (full, uType: string, uName: string) => {
+          if (BUILTIN_SHADER_UNIFORMS.has(uName)) return full
+          if (!(uName in initialUniforms)) {
+            const hasSaved = uName in savedUniforms
+            const fallback =
+              uType === "float"
+                ? 1.0
+                : uType === "bool"
+                  ? false
+                  : uType === "vec2"
+                    ? [0, 0]
+                    : uType === "vec3"
+                      ? [0.22, 0.74, 0.97]
+                      : [1, 1, 1, 1]
+            initialUniforms[uName] = normalizeUniformValue(uType, hasSaved ? savedUniforms[uName] : fallback)
+          }
+          return ""
+        })
+      const cleanFrag = stripAndCollect(rawFrag)
+      const cleanVert = stripAndCollect(rawVert)
+      compiled = new (d.Shader as any)(cleanFrag, cleanVert, initialUniforms) as L.Shader
+      shaders.set(skey, compiled)
+    } else {
+      for (const [k, v] of Object.entries(savedUniforms)) {
+        const uType = (compiled as any).uniformTypes?.[k]
+        if (uType) (compiled as any).setUniform?.(k, normalizeUniformValue(uType, v))
+      }
+    }
+    customShadersByAsset.set(shaderAsset.id, compiled)
+    return compiled
+  }
   const camera = new SceneCamera(),
     info = { render: { calls: 0, triangles: 0 }, memory: { textures: 0 } }
   const renderer = { domElement: canvas, info }
@@ -655,8 +750,7 @@ export function createWorld(
     }
     const shader = project.assets.find((a) => a.type === 'shader' && a.id === p.shader)
     if (shader) {
-      if (!shaders.has(shader.id)) shaders.set(shader.id, new d.Shader(shader.data, shader.properties.vertex))
-      obj.shader = shaders.get(shader.id)
+      obj.shader = compileCustomShader(shader)
     } else if (p.alphaTest > 0) {
       const cutoff = Math.min(1, Number(p.alphaTest)).toFixed(5),
         key = 'cutoff:' + cutoff
@@ -2198,11 +2292,40 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
         for (const obj of objs) obj.shader = undefined
         return
       }
-      const shader = project.assets.find((a) => a.type === 'shader' && a.id === shaderAssetId)
+      const shader = project.assets.find((a) => a.type === 'shader' && (a.id === shaderAssetId || a.name === shaderAssetId))
       if (!shader) return
-      if (!shaders.has(shader.id)) shaders.set(shader.id, new d.Shader(shader.data, shader.properties.vertex))
-      const compiled = shaders.get(shader.id)
+      const compiled = compileCustomShader(shader)
       for (const obj of objs) obj.shader = compiled
+    },
+    setShaderUniform(targetIdOrShader: string, uniformName: string, value: number | boolean | number[] | string) {
+      if (!targetIdOrShader || !uniformName) return
+      const applyTo = (sh: any) => {
+        if (!sh || typeof sh.setUniform !== "function") return
+        const uType = sh.uniformTypes?.[uniformName]
+        if (uType) sh.setUniform(uniformName, normalizeUniformValue(uType, value))
+      }
+      const objs = renderables.get(targetIdOrShader)
+      if (objs && objs.length) {
+        const seen = new Set<any>()
+        for (const obj of objs) {
+          if (obj.shader && !seen.has(obj.shader)) {
+            seen.add(obj.shader)
+            applyTo(obj.shader)
+          }
+        }
+        return
+      }
+      const shaderAsset = project.assets.find((a) => a.type === 'shader' && (a.id === targetIdOrShader || a.name === targetIdOrShader))
+      if (shaderAsset) {
+        const compiled = customShadersByAsset.get(shaderAsset.id) || compileCustomShader(shaderAsset)
+        applyTo(compiled)
+      }
+    },
+    setShaderUniforms(targetIdOrShader: string, uniforms: Record<string, number | boolean | number[] | string>) {
+      if (!uniforms || typeof uniforms !== "object") return
+      for (const [k, v] of Object.entries(uniforms)) {
+        this.setShaderUniform(targetIdOrShader, k, v)
+      }
     },
     setGrid(enabled: boolean, height: number) {
       if (!enabled) {

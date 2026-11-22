@@ -588,7 +588,7 @@ export function buildRecipeToGlbDataUrl(recipe: MeshBuilderRecipe): string {
   }))
 
   const gltf: any = {
-    asset: { version: '2.0', generator: 'Miniforge Mesh Builder v2.3' },
+    asset: { version: '2.0', generator: 'Miniforge Mesh Builder v3.0' },
     scene: 0,
     scenes: [{ nodes: [0] }],
     nodes: [{ name: 'LowPolyMesh', mesh: 0 }],

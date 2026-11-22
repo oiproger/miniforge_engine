@@ -12,6 +12,7 @@ import {
   type NavZone,
   type Terrain,
   type TerrainTool,
+  getScene,
   type Transform,
   type Vec3,
 } from '../../project-schema/src'
@@ -25,11 +26,19 @@ export interface TerrainBrushConfig {
   hardness: number
   level: number
   activeLayer: number
-  scatterAssets?: string[]
-  scatterDensity?: number
-  scatterScaleMin?: number
-  scatterScaleMax?: number
-  scatterSpacing?: number
+}
+
+export interface ScatterBrushConfig {
+  enabled: boolean
+  erase: boolean
+  radius: number
+  density: number
+  spacing: number
+  scaleMin: number
+  scaleMax: number
+  randomYaw: boolean
+  staticBatch: boolean
+  assets: string[]
 }
 
 export interface ViewportProps {
@@ -49,7 +58,8 @@ export interface ViewportProps {
   terrainBrush?: TerrainBrushConfig
   onTerrainBrushChange?: (patch: Partial<TerrainBrushConfig>) => void
   onTerrainEdit?: (entityId: string, patch: Partial<Terrain>, commit: boolean) => void
-  onTerrainScatter?: (entityId: string, worldPos: Vec3, radiusMeters: number, erase: boolean) => void
+  scatterBrush?: ScatterBrushConfig
+  onScatter?: (worldPos: Vec3, radiusMeters: number, erase: boolean) => void
 }
 const axes = ['x', 'y', 'z'] as const,
   colors = ['#e68177', '#9acf85', '#80acdf']
@@ -137,6 +147,7 @@ export function SceneViewport(props: ViewportProps) {
       }
       return best
     }
+    let scatterHover: Vec3 | null = null
     let terrainHover: { worldPos: Vec3; gx: number; gz: number } | null = null
     let terrainStroke: {
       entityId: string
@@ -479,25 +490,89 @@ export function SceneViewport(props: ViewportProps) {
       },
       opts,
     )
+    function raycastScatterSurface(offsetX: number, offsetY: number): Vec3 | null {
+      const ray = world.screenToRay(offsetX, offsetY)
+      const sceneNow = (latest.current.sceneId ? latest.current.project.scenes.find((s) => s.id === latest.current.sceneId) : undefined) ?? getScene(latest.current.project)
+      let bestDist = Infinity
+      let bestPos: Vec3 | null = null
+      // 1. Check all Terrain entities in the scene
+      for (const ent of sceneNow.entities) {
+        const tc = ent.components.find((c: any) => c.type === "terrain" && c.enabled !== false) as Terrain | undefined
+        if (!tc) continue
+        const hit = raycastTerrain(tc, ray.origin, ray.direction, ent.transform)
+        if (hit) {
+          const d = Math.hypot(
+            hit.worldPos[0] - ray.origin[0],
+            hit.worldPos[1] - ray.origin[1],
+            hit.worldPos[2] - ray.origin[2],
+          )
+          if (d < bestDist) {
+            bestDist = d
+            bestPos = hit.worldPos
+          }
+        }
+      }
+      // 2. Check 3D meshes via world.pick
+      const picked = (world as any).pickPoint?.(offsetX, offsetY)
+      if (picked && Array.isArray(picked.point)) {
+        const d = Math.hypot(
+          picked.point[0] - ray.origin[0],
+          picked.point[1] - ray.origin[1],
+          picked.point[2] - ray.origin[2],
+        )
+        if (d < bestDist) {
+          bestDist = d
+          bestPos = picked.point as Vec3
+        }
+      } else {
+        const hitId = world.pick(offsetX, offsetY)
+        if (hitId) {
+          const obj = world.objects.get(hitId)
+          if (obj) {
+            const p = obj.position
+            const py = p.y + Math.abs(obj.scale.y) * 0.5
+            if (Math.abs(ray.direction[1]) > 1e-4) {
+              const t = (py - ray.origin[1]) / ray.direction[1]
+              if (t > 0 && t < bestDist) {
+                bestDist = t
+                bestPos = [ray.origin[0] + ray.direction[0] * t, py, ray.origin[2] + ray.direction[2] * t]
+              }
+            }
+          }
+        }
+      }
+      // 3. Fallback to ground plane y = 0
+      if (!bestPos && Math.abs(ray.direction[1]) > 1e-4) {
+        const t = -ray.origin[1] / ray.direction[1]
+        if (t > 0 && t < 500) {
+          bestPos = [ray.origin[0] + ray.direction[0] * t, 0, ray.origin[2] + ray.direction[2] * t]
+        }
+      }
+      return bestPos
+    }
     canvas.addEventListener(
       'pointerdown',
       (e) => {
         canvas.focus()
         canvas.setPointerCapture(e.pointerId)
         const h = e.button === 0 && !e.altKey ? pickGizmoHandle(e.offsetX, e.offsetY) : undefined
-        const tbNow = latest.current.terrainBrush
+        const sbNow = latest.current.scatterBrush
+        if (sbNow?.enabled && e.button === 0 && !e.altKey && !e.shiftKey && navModeRef.current !== 'fly') {
+          const hitPos = raycastScatterSurface(e.offsetX, e.offsetY)
+          if (hitPos) {
+            scatterHover = hitPos
+            latest.current.onScatter?.(hitPos, sbNow.radius, Boolean(sbNow.erase))
+            drag = { x: e.offsetX, y: e.offsetY, lastX: e.offsetX, lastY: e.offsetY, axis: -1, mode: 'scatter', amount: 0, dx: 0, dy: 0 }
+            return
+          }
+        }
+                const tbNow = latest.current.terrainBrush
         const selT = getSelectedTerrain()
         if (tbNow?.enabled && selT && e.button === 0 && !e.altKey && !e.shiftKey && navModeRef.current !== 'fly') {
           const ray = world.screenToRay(e.offsetX, e.offsetY)
           const hit = raycastTerrain(selT.terrain, ray.origin, ray.direction, selT.entity.transform)
           if (hit) {
             terrainHover = hit
-            if (tbNow.tool === 'Scatter' || tbNow.tool === 'Erase scatter') {
-              const cellW = (selT.terrain.size / selT.terrain.segments) * (selT.entity.transform.scale[0] || 1)
-              latest.current.onTerrainScatter?.(selT.entity.id, hit.worldPos, tbNow.radius * cellW, tbNow.tool === 'Erase scatter')
-              drag = { x: e.offsetX, y: e.offsetY, lastX: e.offsetX, lastY: e.offsetY, axis: -1, mode: 'scatter', amount: 0, dx: 0, dy: 0 }
-              return
-            }
             const data = structuredClone(selT.terrain)
             brushTerrain(data, tbNow.tool, hit.gx, hit.gz, tbNow.radius, tbNow.strength, tbNow.level, tbNow.falloff, tbNow.activeLayer, tbNow.hardness)
             terrainStroke = { entityId: selT.entity.id, data, lastGx: hit.gx, lastGz: hit.gz, lastPush: performance.now() }
@@ -532,22 +607,28 @@ export function SceneViewport(props: ViewportProps) {
     canvas.addEventListener(
       'pointermove',
       (e) => {
-        const tbMove = latest.current.terrainBrush
+        const sbMove = latest.current.scatterBrush
+        if (sbMove?.enabled) {
+          const hitPos = raycastScatterSurface(e.offsetX, e.offsetY)
+          scatterHover = hitPos
+          if (drag?.mode === 'scatter' && hitPos) {
+            if (Math.hypot(e.offsetX - drag.lastX, e.offsetY - drag.lastY) > 18) {
+              drag.lastX = e.offsetX
+              drag.lastY = e.offsetY
+              latest.current.onScatter?.(hitPos, sbMove.radius, Boolean(sbMove.erase))
+            }
+            return
+          }
+        } else {
+          scatterHover = null
+        }
+                const tbMove = latest.current.terrainBrush
         const selTMove = getSelectedTerrain()
         if (tbMove?.enabled && selTMove) {
           const ray = world.screenToRay(e.offsetX, e.offsetY)
           const activeT = terrainStroke?.entityId === selTMove.entity.id ? terrainStroke.data : selTMove.terrain
           const hit = raycastTerrain(activeT, ray.origin, ray.direction, selTMove.entity.transform)
           terrainHover = hit
-          if (drag?.mode === 'scatter' && hit) {
-            if (Math.hypot(e.offsetX - drag.lastX, e.offsetY - drag.lastY) > 18) {
-              drag.lastX = e.offsetX
-              drag.lastY = e.offsetY
-              const cellW = (selTMove.terrain.size / selTMove.terrain.segments) * (selTMove.entity.transform.scale[0] || 1)
-              latest.current.onTerrainScatter?.(selTMove.entity.id, hit.worldPos, tbMove.radius * cellW, tbMove.tool === 'Erase scatter')
-            }
-            return
-          }
           if (drag?.mode === 'terrain' && terrainStroke && hit) {
             const dist = Math.hypot(hit.gx - terrainStroke.lastGx, hit.gz - terrainStroke.lastGz)
             const steps = Math.max(1, Math.ceil(dist / Math.max(0.35, tbMove.radius * 0.35)))

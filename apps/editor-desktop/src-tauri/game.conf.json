@@ -1,11 +1,23 @@
 {
-  "mainBinaryName":"miniforge-game",
+  "mainBinaryName": "miniforge-game",
   "productName": "Miniforge Game",
   "identifier": "dev.miniforge.game",
-  "build": {"frontendDist": "../../../dist/games/web"},
+  "build": {
+    "frontendDist": "../../../dist/games/web"
+  },
   "app": {
-    "withGlobalTauri": false,
-    "windows":[{"label":"game","title":"Miniforge Game","width":1152,"height":768,"resizable":true}],
-    "security":{"capabilities":[]}
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "game",
+        "title": "Miniforge Game",
+        "width": 1152,
+        "height": 768,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "capabilities": []
+    }
   }
 }

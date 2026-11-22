@@ -1,6 +1,8 @@
 import { captureProjectThumbnail } from './ProjectHub'
 import { makeDefaultPlugin } from '../../../packages/project-schema/src'
-import { PluginEditor } from './PluginManager'
+import { PluginEditor, PluginManagerPanel } from './PluginManager'
+import { MaterialPreview } from './MaterialPreview'
+import { ShaderStudio } from './ShaderStudio'
 import { makeDefaultDialogueGraph, makeDefaultSequence } from '../../../packages/project-schema/src'
 import { MeshBuilder, defaultMeshBuilderRecipe, buildRecipeToGlbDataUrl } from './MeshBuilder'
 import { PaintEditor } from './PaintEditor'
@@ -25,7 +27,8 @@ import {
   Import,
   Download,
 } from 'lucide-react'
-import { getScene, uid, makeMaterial, makeParticleAsset, makeHtmlAsset, makeEntity, applyAutoStaticBatching, type Asset, type Project, type TouchControlConfig } from '../../../packages/project-schema/src'
+import { getScene, uid, makeMaterial, makeParticleAsset, makeHtmlAsset, makeEntity, applyAutoStaticBatching, type Asset, type Project,
+ } from '../../../packages/project-schema/src'
 import InterfaceForm from './HudEditor'
 import { Field, Numeric, Color } from './Fields'
 import { ParticleEditor } from './ParticleEditor'
@@ -35,7 +38,8 @@ import { ModelEditor } from './ModelEditor'
 import { EventGraphEditor } from './EventGraphEditor'
 import { downloadAssetFile } from './io'
 import { TextureGenerator, defaultProceduralTexture, renderProceduralTextureDataUrl } from './TextureGenerator'
-import { DEFAULT_TOUCH_CONTROLS } from '../../../packages/runtime/src/touch'
+import {
+ } from '../../../packages/runtime/src/touch'
 import { defaultScript, AssetSelect } from './Inspector'
 import { shaders, checkShader } from './shaderTemplates'
 import { materialPresets, generateProceduralTextures, type ProceduralPattern } from './materialTextures'
@@ -541,178 +545,6 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
         </div>
       </SettingsGroup>
 
-      <SettingsGroup title="Input & Touch Controls">
-        {(() => {
-          const touch = p.settings.touch || {}
-          const controls: TouchControlConfig[] =
-            Array.isArray(touch.controls) && touch.controls.length
-              ? touch.controls
-              : DEFAULT_TOUCH_CONTROLS
-          const patchTouch = (k: string, v: unknown) =>
-            edit((n) => {
-              n.settings.touch = { ...(n.settings.touch || {}), [k]: v }
-            })
-          const setControls = (next: TouchControlConfig[]) => patchTouch('controls', next)
-          return (
-            <>
-              <div className="mf-form-grid">
-                <Field label="Virtual controls">
-                  <select value={touch.mode || 'auto'} onChange={(e) => patchTouch('mode', e.target.value)}>
-                    <option value="auto">Auto (touch devices)</option>
-                    <option value="always">Always visible (PC debug)</option>
-                    <option value="never">Disabled</option>
-                  </select>
-                </Field>
-                <Field label="Emulate Touch from Mouse">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(touch.emulateTouchFromMouse)}
-                    onChange={(e) => patchTouch('emulateTouchFromMouse', e.target.checked)}
-                  />
-                </Field>
-                <Field label="Emulate Mouse from Touch">
-                  <input
-                    type="checkbox"
-                    checked={touch.emulateMouseFromTouch !== false}
-                    onChange={(e) => patchTouch('emulateMouseFromTouch', e.target.checked)}
-                  />
-                </Field>
-                <Field label="Look sensitivity">
-                  <Numeric
-                    label="Touch look sensitivity"
-                    value={touch.lookSensitivity ?? 0.0045}
-                    min={0.0005}
-                    max={0.03}
-                    step={0.0005}
-                    change={(v) => patchTouch('lookSensitivity', v)}
-                  />
-                </Field>
-                <Field label="Overlay opacity">
-                  <Numeric
-                    label="Touch opacity"
-                    value={touch.opacity ?? 0.65}
-                    min={0.1}
-                    max={1}
-                    step={0.05}
-                    change={(v) => patchTouch('opacity', v)}
-                  />
-                </Field>
-              </div>
-              <div className="mf-row" style={{ gap: 6, marginTop: 8, marginBottom: 6 }}>
-                <button
-                  type="button"
-                  className="mf-btn"
-                  onClick={() =>
-                    setControls([
-                      ...controls,
-                      {
-                        id: 'joy-' + (controls.length + 1),
-                        kind: 'joystick',
-                        label: 'STICK',
-                        action: 'move',
-                        x: 18,
-                        y: 76,
-                        size: 108,
-                        deadzone: 0.12,
-                        color: '#ffffff',
-                      },
-                    ])
-                  }
-                >
-                  <Plus size={12} /> Add Joystick
-                </button>
-                <button
-                  type="button"
-                  className="mf-btn"
-                  onClick={() =>
-                    setControls([
-                      ...controls,
-                      {
-                        id: 'btn-' + (controls.length + 1),
-                        kind: 'button',
-                        label: 'ACT',
-                        action: 'Interact',
-                        x: 82,
-                        y: 72,
-                        size: 56,
-                        color: '#ffb84d',
-                      },
-                    ])
-                  }
-                >
-                  <Plus size={12} /> Add Button
-                </button>
-                <button
-                  type="button"
-                  className="mf-btn"
-                  onClick={() => setControls(structuredClone(DEFAULT_TOUCH_CONTROLS))}
-                >
-                  Reset defaults
-                </button>
-              </div>
-              <div className="mf-touch-list">
-                {controls.map((ctrl, idx) => (
-                  <div className="mf-touch-row" key={ctrl.id + '-' + idx}>
-                    <span className="mf-comp-cat">{ctrl.kind}</span>
-                    <input
-                      aria-label="Control label"
-                      value={ctrl.label || ''}
-                      placeholder="Label"
-                      onChange={(e) => {
-                        const next = structuredClone(controls)
-                        next[idx].label = e.target.value
-                        setControls(next)
-                      }}
-                    />
-                    <input
-                      aria-label="Control action"
-                      value={ctrl.action || ''}
-                      placeholder="Action (Jump, E...)"
-                      onChange={(e) => {
-                        const next = structuredClone(controls)
-                        next[idx].action = e.target.value
-                        setControls(next)
-                      }}
-                    />
-                    <Numeric
-                      label="X%"
-                      value={ctrl.x}
-                      min={0}
-                      max={100}
-                      step={2}
-                      change={(v) => {
-                        const next = structuredClone(controls)
-                        next[idx].x = v
-                        setControls(next)
-                      }}
-                    />
-                    <Numeric
-                      label="Y%"
-                      value={ctrl.y}
-                      min={0}
-                      max={100}
-                      step={2}
-                      change={(v) => {
-                        const next = structuredClone(controls)
-                        next[idx].y = v
-                        setControls(next)
-                      }}
-                    />
-                    <button
-                      type="button"
-                      title="Remove control"
-                      onClick={() => setControls(controls.filter((_, j) => j !== idx))}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )
-        })()}
-      </SettingsGroup>
-
       <SettingsGroup title="Performance & Optimization">
         {(() => {
           const perf = p.settings.performance || {}
@@ -822,6 +654,36 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
     </>
   )
 }
+const DEFAULT_MATERIAL_PROPS: Record<string, any> = {
+  unlit: false,
+  color: '#ffffff',
+  emissive: '#000000',
+  emissiveIntensity: 0,
+  roughness: 0.8,
+  metalness: 0,
+  opacity: 1,
+  alphaTest: 0,
+  map: '',
+  normalMap: '',
+  emissiveMap: '',
+  shader: '',
+  doubleSided: false,
+  flatShading: false,
+  castShadow: true,
+  receiveShadow: true,
+  softShadow: 0,
+  roundLighting: false,
+  normalScale: 1,
+  pixelated: false,
+  additive: false,
+  depthWrite: true,
+  depthTest: true,
+  repeatX: 1,
+  repeatY: 1,
+  offsetX: 0,
+  offsetY: 0,
+}
+
 function MaterialForm({ a, p, patch, edit }: { a: Asset; p: Project; patch: (k: string, v: unknown) => void; edit: Edit }) {
   const [pattern, setPattern] = useState<ProceduralPattern>('concrete')
   const [accent, setAccent] = useState('#5b6166')
@@ -830,37 +692,45 @@ function MaterialForm({ a, p, patch, edit }: { a: Asset; p: Project; patch: (k: 
     baseCol: string,
     accentCol: string,
     extraProps?: Record<string, any>,
+    resetAll = false,
   ) {
     const { diffuse, normal } = generateProceduralTextures(kind, baseCol, accentCol, 256)
-    const diffId = uid('tex'),
-      normId = uid('tex')
     edit((n) => {
-      n.assets.push(
-        { id: diffId, name: `${a.name} (${kind})`, type: 'texture', data: diffuse, properties: {} },
-        { id: normId, name: `${a.name} (${kind} normal)`, type: 'texture', data: normal, properties: {} },
-      )
       const mat = n.assets.find((x) => x.id === a.id)
+      const prevDiffId = mat?.properties?._procDiffId as string | undefined
+      const prevNormId = mat?.properties?._procNormId as string | undefined
+      const existingDiff = prevDiffId ? n.assets.find((x) => x.id === prevDiffId) : undefined
+      const existingNorm = prevNormId ? n.assets.find((x) => x.id === prevNormId) : undefined
+      const diffId = existingDiff ? existingDiff.id : uid('tex')
+      const normId = existingNorm ? existingNorm.id : uid('tex')
+      if (existingDiff) {
+        existingDiff.name = `${a.name} (${kind})`
+        existingDiff.data = diffuse
+      } else {
+        n.assets.push({ id: diffId, name: `${a.name} (${kind})`, type: 'texture', data: diffuse, properties: {} })
+      }
+      if (existingNorm) {
+        existingNorm.name = `${a.name} (${kind} normal)`
+        existingNorm.data = normal
+      } else {
+        n.assets.push({ id: normId, name: `${a.name} (${kind} normal)`, type: 'texture', data: normal, properties: {} })
+      }
       if (mat) {
-        if (extraProps) Object.assign(mat.properties, extraProps)
+        if (resetAll) {
+          mat.properties = { ...DEFAULT_MATERIAL_PROPS, ...(extraProps || {}) }
+        } else if (extraProps) {
+          Object.assign(mat.properties, extraProps)
+        }
         mat.properties.map = diffId
         mat.properties.normalMap = normId
+        mat.properties._procDiffId = diffId
+        mat.properties._procNormId = normId
       }
     })
   }
   const m = a.properties
   return (
     <>
-      <div
-        className="mf-material-preview"
-        style={{
-          opacity: m.opacity ?? 1,
-          backgroundImage: p.assets.find((x) => x.id === m.map)?.data
-            ? `radial-gradient(circle at 38% 26%, rgba(255,255,255,${(1 - (m.roughness ?? 0.8)) * 0.65}), transparent 48%), url(${p.assets.find((x) => x.id === m.map)!.data})`
-            : `radial-gradient(circle at 40% 28%, rgba(255,255,255,${0.25 + (1 - (m.roughness ?? 0.8)) * 0.7}) -10%, ${m.color || '#ffffff'} 36%, #121319 96%)`,
-          backgroundSize: 'cover',
-          boxShadow: m.emissive && m.emissive !== '#000000' ? `0 0 22px ${m.emissive}` : undefined,
-        }}
-      />
       <h4>Material presets</h4>
       <div className="mf-presets">
         {materialPresets.map((preset) => (
@@ -876,11 +746,21 @@ function MaterialForm({ a, p, patch, edit }: { a: Asset; p: Project; patch: (k: 
                   preset.properties.color || '#9aa0a4',
                   preset.accent || '#5b6166',
                   preset.properties,
+                  true,
                 )
               } else {
                 edit((n) => {
                   const mat = n.assets.find((x) => x.id === a.id)
-                  if (mat) Object.assign(mat.properties, preset.properties)
+                  if (mat) {
+                    const prevDiffId = mat.properties?._procDiffId
+                    const prevNormId = mat.properties?._procNormId
+                    mat.properties = {
+                      ...DEFAULT_MATERIAL_PROPS,
+                      ...preset.properties,
+                      ...(prevDiffId ? { _procDiffId: prevDiffId } : {}),
+                      ...(prevNormId ? { _procNormId: prevNormId } : {}),
+                    }
+                  }
                 })
               }
             }}
@@ -888,6 +768,17 @@ function MaterialForm({ a, p, patch, edit }: { a: Asset; p: Project; patch: (k: 
             {preset.name}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() =>
+            edit((n) => {
+              const mat = n.assets.find((x) => x.id === a.id)
+              if (mat) mat.properties = { ...DEFAULT_MATERIAL_PROPS }
+            })
+          }
+        >
+          Reset defaults
+        </button>
       </div>
       <h4>Procedural surface generator (Albedo + Normal map)</h4>
       <div className="mf-form-grid">
@@ -1397,8 +1288,10 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                     ? 'Dialogue & Quest Graph Editor'
                   : a?.type === 'sequence'
                     ? 'Keyframe Sequencer'
+                  : target === 'plugins'
+                    ? 'Plugin Manager'
                   : a?.type === 'plugin'
-                    ? 'Plugin Editor & Examples'
+                    ? 'Plugin Editor & Manager'
                   : a?.type === 'audio'
                     ? 'Sound / SFX / Music Synth'
                   : a?.type === 'model' && a.properties?.meshBuilder
@@ -1440,7 +1333,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
       }}
     >
       <div
-        className={(activeTarget === 'ui' || a?.type === 'graph' || a?.type === 'dialogue' || a?.type === 'sequence' || a?.type === 'plugin' || (a?.type === 'model' && Boolean(a.properties?.meshBuilder))) ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' || a?.type === 'audio' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
+        className={(activeTarget === 'ui' || a?.type === 'graph' || a?.type === 'dialogue' || a?.type === 'sequence' || a?.type === 'plugin' || a?.type === 'material' || a?.type === 'shader' || (a?.type === 'model' && Boolean(a.properties?.meshBuilder))) ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' || a?.type === 'audio' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={name}
@@ -1455,6 +1348,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
           </button>
         </header>
         <div className="mf-dialog-body">
+          {target === 'plugins' && <PluginManagerPanel p={p} edit={edit} />}
           {target === 'settings' && <Settings p={p} edit={edit} />}{' '}
           {activeTarget === 'ui' && <InterfaceForm p={p} edit={edit} focusUiId={focusUiId} onEditAsset={(aid: string) => setSubAssetId(aid)} />}{' '}
           {target === 'locales' && <LocalesForm p={p} edit={edit} fail={fail} />}
@@ -1482,45 +1376,31 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                 </>
               )}
               {a.type === 'material' && (
-                <MaterialForm p={p} a={a} edit={edit} patch={(k, v) => changeA((a) => (a.properties[k] = v))} />
-              )}
-              {a.type === 'shader' && (
-                <div className="mf-row">
-                  <select
-                    aria-label="Shader stage"
-                    value={vertex ? 'vertex' : 'fragment'}
-                    onChange={(e) => setVertex(e.target.value === 'vertex')}
-                  >
-                    <option value="fragment">Fragment</option>
-                    <option value="vertex">Vertex</option>
-                  </select>
-                  <select
-                    value=""
-                    aria-label="Replace with shader template"
-                    onChange={(e) => {
-                      const s = shaders[e.target.value]
-                      changeA((a) => {
-                        a.data = s.fragment
-                        a.properties.vertex = s.vertex
-                      })
-                    }}
-                  >
-                    <option value="">Apply template…</option>
-                    {Object.keys(shaders).map((k) => (
-                      <option key={k}>{k}</option>
-                    ))}
-                  </select>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(320px, 380px) minmax(0, 1fr)',
+                    gap: 16,
+                    alignItems: 'start',
+                  }}
+                >
+                  <div style={{ position: 'sticky', top: 0 }}>
+                    <MaterialPreview p={p} a={a} height={360} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <MaterialForm p={p} a={a} edit={edit} patch={(k, v) => changeA((a) => (a.properties[k] = v))} />
+                  </div>
                 </div>
               )}
-              {(a.type === 'script' || a.type === 'shader') && (
+              {a.type === 'shader' && <ShaderStudio a={a} changeA={changeA} />}
+              {a.type === 'script' && (
                 <Suspense fallback={<p>Loading code editor…</p>}>
                   <CodeEditor
-                    language={a.type === 'script' ? 'typescript' : 'glsl'}
-                    value={vertex ? a.properties.vertex || shaders.Unlit.vertex : a.data}
-                    onChange={(s) =>
+                    language="typescript"
+                    value={a.data}
+                    onChange={(code) =>
                       changeA((a) => {
-                        if (vertex) a.properties.vertex = s
-                        else a.data = s
+                        a.data = code
                       })
                     }
                   />

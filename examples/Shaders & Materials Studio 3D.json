@@ -1,0 +1,843 @@
+{
+  "version": 1,
+  "id": "example-shaders-materials",
+  "name": "Shaders & Materials Studio 3D",
+  "description": "Showcase of LittleJS GLSL mainImage shaders (Water Waves, Sci-Fi Hologram, Toon Outline) with live api.materials.setShaderUniform control.",
+  "activeScene": "scene-main",
+  "scenes": [
+    {
+      "id": "scene-main",
+      "name": "FPS Explorer",
+      "environment": {
+        "background": "#151b24",
+        "ambient": 1.15,
+        "sunColor": "#fff3d9",
+        "sunIntensity": 1.1,
+        "shadows": true
+      },
+      "entities": [
+        {
+          "id": "floor",
+          "name": "Ground",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.2,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              14,
+              0.4,
+              14
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-granite"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                14,
+                0.4,
+                14
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "ground"
+            ]
+          }
+        },
+        {
+          "id": "sun",
+          "name": "Sun Light",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              6,
+              10,
+              6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "directional",
+              "color": "#fff3d9",
+              "intensity": 1.15,
+              "castShadow": true
+            }
+          ],
+          "properties": {
+            "tags": []
+          }
+        },
+        {
+          "id": "camera",
+          "name": "Main Camera",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              2.4,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "camera",
+              "fov": 58,
+              "active": true,
+              "projection": "perspective",
+              "target": [
+                0,
+                1,
+                -2
+              ]
+            }
+          ],
+          "properties": {
+            "tags": []
+          }
+        },
+        {
+          "id": "player",
+          "name": "Player",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.8,
+              3.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.6,
+              1.3,
+              0.6
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "capsule",
+              "material": "mat-sea"
+            },
+            {
+              "type": "behavior",
+              "kind": "first-person",
+              "params": {
+                "speed": 4.5
+              }
+            },
+            {
+              "type": "collider",
+              "shape": "capsule",
+              "size": [
+                0.6,
+                1.3,
+                0.6
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "player"
+            ]
+          }
+        },
+        {
+          "id": "pillar-1",
+          "name": "Stone Pillar",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -2.4,
+              1.2,
+              -1.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              2.4,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-shale"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                1,
+                2.4,
+                1
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "prop"
+            ]
+          }
+        },
+        {
+          "id": "pillar-2",
+          "name": "Stone Pillar 2",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              2.4,
+              1.2,
+              -1.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              2.4,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-shale"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                1,
+                2.4,
+                1
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "prop"
+            ]
+          }
+        },
+        {
+          "id": "crate-1",
+          "name": "Supply Crate",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -1.2,
+              0.45,
+              0.4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.9,
+              0.9,
+              0.9
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                0.9,
+                0.9,
+                0.9
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "tags": [
+              "prop"
+            ]
+          }
+        },
+        {
+          "id": "beacon",
+          "name": "Energy Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.8,
+              -2.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.75,
+              0.75,
+              0.75
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "sphere",
+              "material": "mat-gold"
+            },
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.9
+              }
+            }
+          ],
+          "properties": {
+            "tags": [
+              "beacon"
+            ]
+          }
+        },
+        {
+          "id": "water-orb-showcase",
+          "name": "Water Shader Sphere",
+          "parent": null,
+          "transform": {
+            "position": [
+              0,
+              1.8,
+              -3.5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1.6,
+              1.6,
+              1.6
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "sphere",
+              "material": "mat-water-demo"
+            },
+            {
+              "type": "script",
+              "asset": "script-shader-driver"
+            }
+          ],
+          "properties": {
+            "tags": [
+              "showcase"
+            ]
+          },
+          "active": true
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "default-material",
+      "name": "Porcelain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d9dfdf",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-turf",
+      "name": "Meadow",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#93c85c",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grass",
+      "name": "Grass",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#74ab51",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-moss",
+      "name": "Moss",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c0d76d",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-soil",
+      "name": "Soil",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#99714e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-shale",
+      "name": "Cliff stone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#716f72",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-granite",
+      "name": "Granite",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#989a96",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-slate",
+      "name": "Slate",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#626973",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-limestone",
+      "name": "Limestone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c7c5af",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pine",
+      "name": "Pine",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#38755a",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-needles",
+      "name": "Needles",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#53945f",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-tips",
+      "name": "Tips",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#75ac67",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-bark",
+      "name": "Bark",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#896544",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-timber",
+      "name": "Pine wood",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#bd884e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-planks",
+      "name": "Planks",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d4a360",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grain",
+      "name": "Grain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a27146",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-straw",
+      "name": "Straw",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e5b978",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-gold",
+      "name": "Coin gold",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffbd39",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-rim",
+      "name": "Rim",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffe779",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-amber",
+      "name": "Amber",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e28a23",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-sea",
+      "name": "Tunic",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#4096a2",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pond",
+      "name": "Pond",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#66bac1",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-ripple",
+      "name": "Ripple",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a6e3d5",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-blossom",
+      "name": "Blossom",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#fff1ca",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-petal",
+      "name": "Petal",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#efb873",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-scarf",
+      "name": "Scarf",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ef8041",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-leather",
+      "name": "Leather",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#6a473b",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-skin",
+      "name": "Skin",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e6b088",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-hair",
+      "name": "Hair",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#593d32",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "shader-water-demo",
+      "name": "Water Waves.glsl",
+      "type": "shader",
+      "properties": {
+        "vertex": "void mainVertex(inout vec3 position, inout vec3 normal) { position.y += sin(position.x * 3.0 + iTime * 2.0) * 0.08; }",
+        "uniforms": {
+          "u_speed": 1.2,
+          "u_scale": 1,
+          "u_color": "#38bdf8"
+        }
+      },
+      "data": "uniform float u_speed;\nuniform float u_scale;\nuniform vec3 u_color;\nvoid mainImage(out vec4 color, vec2 uv) {\n  float spd = u_speed > 0.001 ? u_speed : 1.0;\n  float scl = max(2.0, (u_scale > 0.001 ? u_scale : 1.0) * 8.0);\n  vec3 base = length(u_color) > 0.01 ? u_color : vec3(0.22, 0.74, 0.97);\n  float w = sin(uv.x * scl + iTime * spd * 2.2) * cos(uv.y * scl * 0.8 - iTime * spd * 1.7);\n  color = vec4(mix(base * 0.45, base * 1.2, w * 0.5 + 0.5), 1.0);\n}"
+    },
+    {
+      "id": "mat-water-demo",
+      "name": "Water Shader Material",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#38bdf8",
+        "roughness": 0.2,
+        "metalness": 0.1,
+        "shader": "shader-water-demo"
+      }
+    },
+    {
+      "id": "script-shader-driver",
+      "name": "ShaderUniformDriver.ts",
+      "type": "script",
+      "properties": {},
+      "data": "export default function createBehavior(api) {\n  let t = 0\n  return {\n    onUpdate(dt) {\n      t += dt\n      api.materials.setShaderUniform(\"shader-water-demo\", \"u_speed\", 1.0 + Math.sin(t) * 0.5)\n    },\n  }\n}"
+    }
+  ],
+  "ui": [
+    {
+      "id": "score",
+      "type": "counter",
+      "text": "hud.score",
+      "variable": "score",
+      "x": 5,
+      "y": 8
+    }
+  ],
+  "locales": {
+    "en": {
+      "menu.play": "Play",
+      "menu.resume": "Resume",
+      "menu.retry": "Try again",
+      "menu.pause": "Pause",
+      "menu.results": "Results",
+      "hud.score": "Coins",
+      "hud.time": "Time",
+      "hud.best": "Personal best",
+      "menu.reward": "Watch ad · +15 seconds",
+      "menu.controls": "Move with WASD, arrow keys or the touch stick."
+    },
+    "ru": {
+      "menu.play": "Играть",
+      "menu.resume": "Продолжить",
+      "menu.retry": "Ещё раз",
+      "menu.pause": "Пауза",
+      "menu.results": "Результаты",
+      "hud.score": "Монеты",
+      "hud.time": "Время",
+      "hud.best": "Рекорд",
+      "menu.reward": "Реклама · +15 секунд",
+      "menu.controls": "Управление — WASD, стрелки или экранный джойстик."
+    }
+  },
+  "settings": {
+    "duration": 60,
+    "language": "en",
+    "mode": "first-person",
+    "bounds": [
+      -5.5,
+      5.5,
+      -5.5,
+      5.5
+    ]
+  }
+}

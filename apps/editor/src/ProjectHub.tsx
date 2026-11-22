@@ -237,7 +237,7 @@ export function ProjectHub({
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '0.02em' }}>
-              Miniforge Engine <span style={{ fontSize: 11, color: '#f59e0b', marginLeft: 4 }}>v2.3</span>
+              Miniforge Engine <span style={{ fontSize: 11, color: '#f59e0b', marginLeft: 4 }}>v3.0.0</span>
             </div>
             <div style={{ fontSize: 12, color: '#8b9bb0' }}>Project Hub · Select, create or explore an example</div>
           </div>

@@ -14,6 +14,8 @@ import { TweenManager } from './tween'
 import { SaveManager } from './saveSystem'
 import { TouchController } from './touch'
 import { Input } from './input'
+import { NetManager, type NetEntitySnapshot } from './net'
+import { SteamManager } from './steam'
 import { Events, Lifecycle, type ScriptLifecycle } from './lifecycle'
 import { Overlay, translate, type Phase } from './overlay'
 import type {
@@ -128,7 +130,308 @@ export async function startGame(
   }
   let language = project.settings.language,
     best = 0
-  const input = new Input(
+  const steam = new SteamManager()
+  const steamCfg = (project.settings as any).steam
+  if (steamCfg?.enabled || (project.settings as any).multiplayer?.mode === "steam-p2p") {
+    void steam.init(Number(steamCfg?.appId || 480)).then(() => {
+      if (steamCfg?.richPresence) void steam.setRichPresence("status", String(steamCfg.richPresence))
+    })
+  }
+  const steamAPI = {
+    init: (appId?: number) => steam.init(appId ?? Number(steamCfg?.appId || 480)),
+    isAvailable: () => steam.isAvailable(),
+    isNative: () => steam.isNative(),
+    getUser: () => steam.getUser(),
+    unlockAchievement: (id: string) => steam.unlockAchievement(id),
+    clearAchievement: (id: string) => steam.clearAchievement(id),
+    hasAchievement: (id: string) => steam.hasAchievement(id),
+    listAchievements: () => steam.listAchievements(),
+    setRichPresence: (key: string, value: string) => steam.setRichPresence(key, value),
+    clearRichPresence: () => steam.clearRichPresence(),
+    cloudWrite: (filename: string, content: string) => steam.cloudWrite(filename, content),
+    cloudRead: (filename: string) => steam.cloudRead(filename),
+    cloudDelete: (filename: string) => steam.cloudDelete(filename),
+    cloudList: () => steam.cloudList(),
+    createLobby: (opts?: any) => steam.createLobby(opts),
+    listLobbies: () => steam.listLobbies(),
+    joinLobby: (lobbyId: string) => steam.joinLobby(lobbyId),
+    leaveLobby: () => steam.leaveLobby(),
+    setLobbyData: (key: string, value: string) => steam.setLobbyData(key, value),
+    getLobby: () => steam.getLobby(),
+    getLogs: () => steam.getLogs(),
+  }
+  const net = new NetManager()
+  net.attachSteam(steam)
+  const mpCfg = (project.settings as any).multiplayer || { mode: "singleplayer" }
+  const remoteNetTargets = new Map<string, { pos: Vec3; rot: Vec3; scale?: Vec3 }>()
+  const remoteLocalProxies = new Map<string, string>()
+  const peerProxies = new Map<string, Set<string>>()
+  const trackedEntityVarKeys = new Map<string, Set<string>>()
+  const lastSentEntityVars = new Map<string, Record<string, string>>()
+  const entityVarListeners = new Map<string, Set<(value: any, prevValue: any) => void>>()
+  let netSyncAccum = 0
+  const REMOTE_AVATAR_COLORS = ["#f59e0b", "#22c55e", "#ec4899", "#a855f7", "#06b6d4"]
+
+  function ensureRemoteProxy(templateEnt: Entity, fromPeerId: string, snap: NetEntitySnapshot): Entity | null {
+    const key = fromPeerId + ":" + templateEnt.id
+    const existingId = remoteLocalProxies.get(key)
+    if (existingId) {
+      const found = scene.entities.find((e) => e.id === existingId)
+      if (found && world.objects.has(existingId)) return found
+    }
+    const proxyId = templateEnt.id + "__net_" + fromPeerId.replace(/[^a-zA-Z0-9_-]/g, "")
+    let hash = 0
+    for (let i = 0; i < fromPeerId.length; i++) hash = (hash * 31 + fromPeerId.charCodeAt(i)) | 0
+    const colorHex = REMOTE_AVATAR_COLORS[Math.abs(hash) % REMOTE_AVATAR_COLORS.length]
+    const proxyMatId = "mat-net-proxy-" + Math.abs(hash) % REMOTE_AVATAR_COLORS.length
+    if (!project.assets.some((a) => a.id === proxyMatId)) {
+      project.assets.push({
+        id: proxyMatId,
+        name: "Remote Player Material",
+        type: "material",
+        data: "",
+        properties: { color: colorHex, roughness: 0.45, metalness: 0.1 },
+      })
+    }
+    const visualComps = templateEnt.components
+      .filter((c) => c.type === "mesh" || c.type === "model" || c.type === "light")
+      .map((c) => {
+        const clone = structuredClone(c)
+        if (clone.type === "mesh") {
+          clone.material = proxyMatId
+          clone.color = colorHex
+        }
+        return clone
+      })
+    visualComps.push({
+      type: "networkSync",
+      owner: fromPeerId,
+      syncTransform: true,
+      syncAnimation: true,
+      syncVariables: false,
+      interpolate: true,
+    })
+    const proxy: Entity = {
+      id: proxyId,
+      name: templateEnt.name + " (" + fromPeerId.slice(-4) + ")",
+      parent: null,
+      active: true,
+      transform: {
+        position: [...snap.pos] as Vec3,
+        rotation: [...snap.rot] as Vec3,
+        scale: (snap.scale ? [...snap.scale] : [...templateEnt.transform.scale]) as Vec3,
+      },
+      components: visualComps,
+      properties: { ...(templateEnt.properties || {}), netOwner: fromPeerId, isRemoteProxy: true },
+    }
+    scene.entities.push(proxy)
+    try {
+      world.addEntities([proxy])
+    } catch {}
+    remoteLocalProxies.set(key, proxyId)
+    let set = peerProxies.get(fromPeerId)
+    if (!set) {
+      set = new Set()
+      peerProxies.set(fromPeerId, set)
+    }
+    set.add(proxyId)
+    return proxy
+  }
+
+  net.onSnapshot((snaps, fromPeerId) => {
+    for (const s of snaps) {
+      let ent = scene.entities.find((e) => e.id === s.id)
+      const nsc = ent?.components.find((c) => c.type === "networkSync" && c.enabled !== false)
+      if (!ent || !nsc) continue
+      if (nsc.owner === "local") {
+        // Each peer owns its own local instance; spawn/update a dedicated remote proxy avatar for other peers
+        if (!fromPeerId || fromPeerId === net.peerId) continue
+        const proxy = ensureRemoteProxy(ent, fromPeerId, s)
+        if (!proxy) continue
+        ent = proxy
+      } else {
+        const isLocalOwned = (nsc.owner === "host" && net.isHost) || nsc.owner === net.peerId
+        if (isLocalOwned) continue
+      }
+      if (nsc.syncTransform !== false) {
+        if (nsc.interpolate !== false) {
+          remoteNetTargets.set(ent.id, { pos: s.pos, rot: s.rot, scale: s.scale })
+        } else {
+          const obj = world.objects.get(ent.id)
+          if (obj) {
+            obj.position.set(s.pos[0], s.pos[1], s.pos[2])
+            obj.rotation.set(s.rot[0], s.rot[1], s.rot[2])
+            if (s.scale) obj.scale.set(s.scale[0], s.scale[1], s.scale[2])
+          }
+        }
+      }
+      if (nsc.syncAnimation) {
+        const st = s.animState ? animMachines.get(ent.id) : undefined
+        if (st && st.currentState !== s.animState) {
+          const nextSt = (st.machine.states || []).find((x: any) => x.name === s.animState)
+          if (nextSt) {
+            st.currentState = nextSt.name
+            if (nextSt.clip) world.crossfadeAnimation(ent.id, nextSt.clip, 0.15, nextSt.loop !== false, nextSt.speed ?? 1)
+          }
+        } else if (s.animClip) {
+          const cur = world.getAnimationState(ent.id)
+          if (!cur || cur.clip !== s.animClip) world.crossfadeAnimation(ent.id, s.animClip, 0.15, true, 1)
+        }
+      }
+      if (s.vars && typeof s.vars === "object") {
+        ent.properties = ent.properties || {}
+        for (const [k, v] of Object.entries(s.vars)) {
+          const prev = ent.properties[k]
+          if (JSON.stringify(prev) !== JSON.stringify(v)) {
+            ent.properties[k] = v
+            const listeners = entityVarListeners.get(ent.id + ":" + k)
+            if (listeners) for (const fn of listeners) fn(v, prev)
+            emit("net.entityVarChanged", { source: ent.id, templateId: s.id, peerId: fromPeerId, key: k, value: v, prevValue: prev })
+          }
+        }
+      }
+    }
+  })
+  net.onWorldState((incomingVars) => {
+    for (const [k, v] of Object.entries(incomingVars)) {
+      if (vars[k] !== v) vars[k] = v
+    }
+  })
+  net.onPeerJoin((pid) => {
+    lastSentEntityVars.clear()
+    netSyncAccum = 999
+    emit("net.peerJoin", { source: "net", peerId: pid })
+  })
+  net.onPeerLeave((pid) => {
+    const proxies = peerProxies.get(pid)
+    if (proxies) {
+      for (const proxyId of proxies) {
+        remoteNetTargets.delete(proxyId)
+        try { destroy(proxyId) } catch {}
+      }
+      peerProxies.delete(pid)
+      for (const [k, v] of [...remoteLocalProxies.entries()]) {
+        if (k.startsWith(pid + ":")) remoteLocalProxies.delete(k)
+      }
+    }
+    emit("net.peerLeave", { source: "net", peerId: pid })
+  })
+  net.onRpc("*", (ev, sender) => emit("net.rpc", { source: sender, name: ev?.name, payload: ev?.payload, sender }))
+  net.onRpc("net:spawn", (data) => {
+    if (!data?.prefabId) return
+    try {
+      const id = spawnPrefab(String(data.prefabId), Array.isArray(data.pos) ? data.pos : undefined)
+      const ent = scene.entities.find((e) => e.id === id)
+      if (ent && !ent.components.some((c) => c.type === "networkSync")) {
+        ent.components.push({ type: "networkSync", owner: String(data.owner || "host"), syncTransform: true, syncAnimation: true, interpolate: true })
+      }
+    } catch {}
+  })
+
+  const netAPI = {
+    connect: (opts?: any) => net.connect(opts),
+    disconnect: () => net.disconnect(),
+    rpc: (name: string, payload?: any, target: any = "all") => net.rpc(name, payload, target),
+    onRpc: (name: string, handler: (payload: any, senderPeerId: string) => void) => net.onRpc(name, handler),
+    onPeerJoin: (handler: (peerId: string) => void) => net.onPeerJoin(handler),
+    onPeerLeave: (handler: (peerId: string) => void) => net.onPeerLeave(handler),
+    getPeers: () => net.getPeers(),
+    getStats: () => net.getStats(),
+    isHost: () => net.isHost,
+    peerId: () => net.peerId,
+    room: () => net.room,
+    mode: () => net.mode,
+    setSimulation: (latencyMs: number, packetLossPct: number) => net.setSimulation(latencyMs, packetLossPct),
+    getLocalPlayerMove: (playerIndex: number) => input.getPlayerMove(playerIndex),
+    getLocalPlayerAction: (playerIndex: number, action: "jump" | "interact" | "attack") => input.getPlayerAction(playerIndex, action),
+    setEntityVar: (entityId: string, key: string, value: any) => {
+      if (!entityId || !key) return
+      const ent = scene.entities.find((e) => e.id === entityId)
+      if (!ent) return
+      ent.properties = ent.properties || {}
+      const prev = ent.properties[key]
+      ent.properties[key] = value
+      let keySet = trackedEntityVarKeys.get(entityId)
+      if (!keySet) {
+        keySet = new Set()
+        trackedEntityVarKeys.set(entityId, keySet)
+      }
+      keySet.add(key)
+      if (JSON.stringify(prev) !== JSON.stringify(value)) {
+        const listeners = entityVarListeners.get(entityId + ":" + key)
+        if (listeners) for (const fn of listeners) fn(value, prev)
+      }
+    },
+    getEntityVar: <T = any>(entityId: string, key: string, fallback?: T): T => {
+      const ent = scene.entities.find((e) => e.id === entityId)
+      if (!ent || !ent.properties || !(key in ent.properties)) return fallback as T
+      return ent.properties[key] as T
+    },
+    onEntityVarChange: (entityId: string, key: string, handler: (value: any, prevValue: any) => void) => {
+      const mapKey = entityId + ":" + key
+      let set = entityVarListeners.get(mapKey)
+      if (!set) {
+        set = new Set()
+        entityVarListeners.set(mapKey, set)
+      }
+      set.add(handler)
+      return () => set!.delete(handler)
+    },
+    hostLan: (opts?: any) => net.hostLan({ gameName: project.name, ...opts }),
+    stopLan: () => net.stopLan(),
+    discoverLan: (timeoutMs?: number) => net.discoverLan(timeoutMs),
+    sendChat: (text: string) => net.sendChat(text),
+    onChat: (handler: any) => net.onChat(handler),
+    spawnNetworkPlayer: (prefabId: string, ownerPeerId?: string, pos?: Vec3) => {
+      const owner = ownerPeerId || net.peerId
+      const id = spawnPrefab(prefabId, pos)
+      const ent = scene.entities.find((e) => e.id === id)
+      if (ent) {
+        let nsc = ent.components.find((c) => c.type === "networkSync")
+        if (!nsc) {
+          nsc = { type: "networkSync", owner, syncTransform: true, syncAnimation: true, syncVariables: false, interpolate: true }
+          ent.components.push(nsc)
+        } else {
+          nsc.owner = owner
+        }
+      }
+      net.rpc("net:spawn", { prefabId, owner, pos }, "others")
+      return id
+    },
+  }
+
+  // Pre-assign deterministic role peerId before scripts start; connect after scene load
+  const qpInitial = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search || "") : null
+  const qpInitialRole = qpInitial?.get("mpRole") || mpCfg.preferredRole
+  if (qpInitialRole === "host") net.peerId = "0-host-" + Math.random().toString(36).slice(2, 6)
+  if (qpInitialRole === "client") net.peerId = "1-client-" + Math.random().toString(36).slice(2, 6)
+
+  function autoConnectMultiplayer() {
+    try {
+      const qp = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search || "") : null
+      const qpRoom = qp?.get("mpRoom")
+      if (qpRoom || (mpCfg.mode && mpCfg.mode !== "singleplayer")) {
+        if (!qpRoom && mpCfg.autoStartLanServer) {
+          void net.hostLan({
+            port: Number(mpCfg.lanPort || 8765),
+            room: mpCfg.roomCode || "lobby-1",
+            gameName: project.name,
+            mode: mpCfg.mode,
+          })
+        } else {
+          void net.connect({
+            mode: qpRoom ? "client-server-ws" : mpCfg.mode,
+            room: qpRoom || mpCfg.roomCode || "lobby-1",
+            url: qpRoom ? "local" : mpCfg.serverUrl || "local",
+            simulatedLatencyMs: Number(mpCfg.simulatedLatencyMs || 0),
+            simulatedPacketLoss: Number(mpCfg.simulatedPacketLoss || 0),
+          })
+        }
+      }
+    } catch {}
+  }
+
+    const input = new Input(
     signal.signal,
     () => {
       if (!overlay.back()) {
@@ -140,6 +443,7 @@ export async function startGame(
   )
   for (const [action, keys] of Object.entries(project.settings.bindings || {}))
     if (Array.isArray(keys)) input.bind(action, keys)
+  if (Number.isFinite((project.settings as any).gamepadDeadzone)) input.setDeadzone((project.settings as any).gamepadDeadzone)
   const t = (key: string, p?: Record<string, unknown>) => translate(project, language, key, p)
   const overlay = new Overlay(
     project,
@@ -344,6 +648,8 @@ export async function startGame(
     setColor: (entityId, hex, opacity) => world.setEntityColor(entityId, hex, opacity),
     setEmissive: (entityId, hex, intensity) => world.setEntityEmissive(entityId, hex, intensity),
     setShader: (entityId, shaderAssetId) => world.setEntityShader(entityId, shaderAssetId),
+    setShaderUniform: (target, name, value) => world.setShaderUniform(target, name, value),
+    setShaderUniforms: (target, uniforms) => world.setShaderUniforms(target, uniforms),
     getSurfaceAt: (position, direction = [0, -1, 0], maxDist = 4) => {
       const orig = Array.isArray(position) ? new Vector3().fromArray(position) : position
       const dir = new Vector3().fromArray(direction)
@@ -549,6 +855,69 @@ export async function startGame(
     sessionStarted = false,
     startingScene = false,
     queuedScene: string | undefined
+  const animMachines = new Map<
+    string,
+    {
+      machine: any
+      currentState: string
+      stateTime: number
+      params: Record<string, number | boolean>
+      triggers: Set<string>
+    }
+  >()
+  function initAnimMachineFor(entId: string) {
+    const ent = scene.entities.find((e) => e.id === entId)
+    if (!ent) return
+    const ac = ent.components.find((c) => c.type === "animation" && c.enabled !== false)
+    const sm = ac?.stateMachine
+    if (!sm || !Array.isArray(sm.states) || !sm.states.length) return
+    const params: Record<string, number | boolean> = {}
+    for (const pr of sm.params || []) params[pr.name] = pr.defaultValue ?? (pr.type === "float" ? 0 : false)
+    const entry = sm.states.find((s: any) => s.name === sm.entryState) || sm.states[0]
+    animMachines.set(ent.id, { machine: sm, currentState: entry.name, stateTime: 0, params, triggers: new Set() })
+    if (entry.clip) world.playAnimation(ent.id, entry.clip, entry.loop !== false, entry.speed ?? 1, 0)
+  }
+  function evalAnimCondition(cond: any, st: { params: Record<string, number | boolean>; triggers: Set<string> }): boolean {
+    if (cond.op === "trigger") return st.triggers.has(cond.param)
+    const cur = st.params[cond.param]
+    if (cur === undefined) return false
+    const val = cond.value
+    if (cond.op === ">") return Number(cur) > Number(val)
+    if (cond.op === "<") return Number(cur) < Number(val)
+    if (cond.op === ">=") return Number(cur) >= Number(val)
+    if (cond.op === "<=") return Number(cur) <= Number(val)
+    if (cond.op === "==") return cur === val || String(cur) === String(val)
+    if (cond.op === "!=") return cur !== val && String(cur) !== String(val)
+    return false
+  }
+  function stepAnimMachines(dt: number) {
+    for (const [entId, st] of animMachines.entries()) {
+      st.stateTime += dt
+      const animInfo = world.getAnimationState(entId)
+      const normTime = animInfo && animInfo.duration > 0 ? animInfo.time / animInfo.duration : st.stateTime
+      const transitions = (st.machine.transitions || []).filter((t: any) => t.from === st.currentState || t.from === "Any")
+      for (const tr of transitions) {
+        if (tr.to === st.currentState) continue
+        if (tr.hasExitTime && normTime < (tr.exitTime ?? 0.85)) continue
+        const conds = Array.isArray(tr.conditions) ? tr.conditions : []
+        if (conds.length === 0 && !tr.hasExitTime) continue
+        if (conds.every((c: any) => evalAnimCondition(c, st))) {
+          const nextState = (st.machine.states || []).find((s: any) => s.name === tr.to)
+          if (!nextState) continue
+          for (const c of conds) if (c.op === "trigger") st.triggers.delete(c.param)
+          const prev = st.currentState
+          st.currentState = nextState.name
+          st.stateTime = 0
+          if (nextState.clip) {
+            world.crossfadeAnimation(entId, nextState.clip, tr.duration ?? 0.2, nextState.loop !== false, nextState.speed ?? 1)
+          }
+          emit("animation.stateChanged", { source: entId, from: prev, to: nextState.name })
+          break
+        }
+      }
+      st.triggers.clear()
+    }
+  }
   function active(id: string) {
     const object = world.objects.get(id)
     return !!object && visible(object) && !destroying.has(id)
@@ -564,7 +933,7 @@ export async function startGame(
     }
   }
   function startEntities(ids: Iterable<string>) {
-    for (const id of [...ids]) if (active(id) && toStart.delete(id)) lifecycle.call('onStart', id)
+    for (const id of [...ids]) if (active(id) && toStart.delete(id)) { initAnimMachineFor(id); lifecycle.call('onStart', id) }
   }
   function spawnPrefab(assetId: string, position?: Vec3, parent: string | null = null): string {
     if (disposed || unloading) throw Error('Scene is unloading')
@@ -838,6 +1207,8 @@ export async function startGame(
       transform: object,
       params: c.params || {},
       input,
+      net: netAPI,
+      steam: steamAPI,
       events: scopedEvents,
       vars,
       platform,
@@ -966,6 +1337,28 @@ export async function startGame(
         bones: (id) => world.animationBones(id),
         getState: (id) => world.getAnimationState(id),
         getBonePosition: (id, boneName) => world.getBoneWorldPosition(id, boneName),
+        setParam: (id, name, value) => {
+          const st = animMachines.get(id)
+          if (st) st.params[name] = value
+        },
+        getParam: (id, name) => animMachines.get(id)?.params[name],
+        setTrigger: (id, name) => {
+          const st = animMachines.get(id)
+          if (st) st.triggers.add(name)
+        },
+        playState: (id, stateName, blendTime = 0.2) => {
+          const st = animMachines.get(id)
+          if (!st) return false
+          const nextState = (st.machine.states || []).find((s: any) => s.name === stateName)
+          if (!nextState) return false
+          const prev = st.currentState
+          st.currentState = nextState.name
+          st.stateTime = 0
+          if (nextState.clip) world.crossfadeAnimation(id, nextState.clip, blendTime, nextState.loop !== false, nextState.speed ?? 1)
+          emit("animation.stateChanged", { source: id, from: prev, to: nextState.name })
+          return true
+        },
+        getCurrentState: (id) => animMachines.get(id)?.currentState,
       },
       terrain: terrainAPI,
       nav: navAPI,
@@ -1092,7 +1485,10 @@ export async function startGame(
         currentEyeHeight = eyeHeight
       } else if (c.kind === 'collectible') coins.push(actor)
       else if (c.kind === 'damage') hazards.push(actor)
-      else lifecycle.add(entity.id, () => behavior(c.kind, api))
+      else {
+        const pluginBeh = pluginHost.getBehaviorFactory(c.kind)
+        lifecycle.add(entity.id, () => (pluginBeh ? pluginBeh(api, api.params) : behavior(c.kind, api)))
+      }
     }
     if (
       c.type === 'collider' &&
@@ -1135,6 +1531,9 @@ export async function startGame(
       solids = []
       audioEngine.stopAll()
       tweens.clear()
+      remoteLocalProxies.clear()
+      peerProxies.clear()
+      remoteNetTargets.clear()
       if (last || id !== sceneId || reset) world.load(project, id)
       sceneId = id
       scene = structuredClone(target)
@@ -1160,6 +1559,19 @@ export async function startGame(
         physics = result
       }
       for (const entity of [...scene.entities]) install(entity)
+      if (!lastApi) {
+        const hostEnt: Entity = scene.entities[0] ?? {
+          id: '__plugin_host__',
+          name: 'PluginHost',
+          active: true,
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+          properties: {},
+        }
+        const hostObj = world.objects.get(hostEnt.id) ?? world.camera
+        registered.add(hostEnt.id)
+        register(hostEnt, hostObj, { type: '__plugin_bootstrap__', enabled: true } as any)
+      }
       grounded = true
       verticalSpeed = 0
       jumpTime = 0
@@ -1429,6 +1841,7 @@ export async function startGame(
         for (const [id, others] of activeTriggers) {
           for (const other of others) lifecycle.call('onTriggerStay', id, other, 1 / 60)
         }
+        if (lastApi) { pluginHost.start(lastApi); pluginHost.fixedUpdate(1 / 60, lastApi) }
         lifecycle.call('onFixedUpdate', undefined, 1 / 60)
       }
       if (phase === 'playing' && !busy) {
@@ -1437,6 +1850,87 @@ export async function startGame(
         tweens.update(dt)
         sequencerPlayer.update(dt)
       if (lastApi) { pluginHost.start(lastApi); pluginHost.update(dt, lastApi) }
+      input.pollGamepads()
+      // Smoothly interpolate remote NetworkSync entities
+      const interpAlpha = Math.min(1, dt * 14)
+      for (const [eid, tgt] of remoteNetTargets.entries()) {
+        const obj = world.objects.get(eid)
+        if (!obj) continue
+        obj.position.x += (tgt.pos[0] - obj.position.x) * interpAlpha
+        obj.position.y += (tgt.pos[1] - obj.position.y) * interpAlpha
+        obj.position.z += (tgt.pos[2] - obj.position.z) * interpAlpha
+        const lerpAng = (a: number, b: number, t: number) => a + ((((b - a) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * t
+        obj.rotation.x = lerpAng(obj.rotation.x, tgt.rot[0], interpAlpha)
+        obj.rotation.y = lerpAng(obj.rotation.y, tgt.rot[1], interpAlpha)
+        obj.rotation.z = lerpAng(obj.rotation.z, tgt.rot[2], interpAlpha)
+        if (tgt.scale) {
+          obj.scale.x += (tgt.scale[0] - obj.scale.x) * interpAlpha
+          obj.scale.y += (tgt.scale[1] - obj.scale.y) * interpAlpha
+          obj.scale.z += (tgt.scale[2] - obj.scale.z) * interpAlpha
+        }
+      }
+      if (net.connected && (net.mode === "client-server-ws" || net.mode === "p2p-webrtc" || net.mode === "steam-p2p")) {
+        const tickInterval = 1 / Math.max(5, Math.min(60, Number(mpCfg.tickRate || 20)))
+        netSyncAccum += dt
+        if (netSyncAccum >= tickInterval) {
+          netSyncAccum = 0
+          const snaps: NetEntitySnapshot[] = []
+          let syncVars = false
+          for (const ent of scene.entities) {
+            const nsc = ent.components.find((c) => c.type === "networkSync" && c.enabled !== false)
+            if (!nsc) continue
+            const owned = (nsc.owner === "host" && net.isHost) || nsc.owner === "local" || nsc.owner === net.peerId
+            if (!owned) continue
+            const obj = world.objects.get(ent.id)
+            if (!obj || !Number.isFinite(obj.position.x) || !Number.isFinite(obj.position.y) || !Number.isFinite(obj.position.z)) continue
+            const snap: NetEntitySnapshot = {
+              id: ent.id,
+              pos: [obj.position.x, obj.position.y, obj.position.z],
+              rot: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+              scale: [obj.scale.x, obj.scale.y, obj.scale.z],
+            }
+            if (nsc.syncAnimation) {
+              const sm = animMachines.get(ent.id)
+              if (sm) snap.animState = sm.currentState
+              const curClip = world.getAnimationState(ent.id)?.clip
+              if (curClip) snap.animClip = curClip
+            }
+            if (nsc.syncVariables && net.isHost) syncVars = true
+            const keyList = new Set<string>(
+              String(nsc.syncKeys || "")
+                .split(",")
+                .map((x: string) => x.trim())
+                .filter(Boolean),
+            )
+            const dynKeys = trackedEntityVarKeys.get(ent.id)
+            if (dynKeys) for (const dk of dynKeys) keyList.add(dk)
+            if (keyList.size > 0 && ent.properties) {
+              let sentCache = lastSentEntityVars.get(ent.id)
+              if (!sentCache) {
+                sentCache = {}
+                lastSentEntityVars.set(ent.id, sentCache)
+              }
+              const delta: Record<string, any> = {}
+              let hasDelta = false
+              for (const k of keyList) {
+                if (!(k in ent.properties)) continue
+                const val = ent.properties[k]
+                const ser = JSON.stringify(val)
+                if (sentCache[k] !== ser) {
+                  sentCache[k] = ser
+                  delta[k] = val
+                  hasDelta = true
+                }
+              }
+              if (hasDelta) snap.vars = delta
+            }
+            snaps.push(snap)
+          }
+          if (snaps.length) net.sendSnapshot(snaps)
+          if (syncVars) net.sendWorldState(vars)
+        }
+      }
+      stepAnimMachines(dt)
       lifecycle.call('onUpdate', undefined, dt)
         world.updateAnimations(dt)
         stepNavAgents(dt)
@@ -1503,10 +1997,12 @@ export async function startGame(
     quiet()
     tweens.clear()
     audioEngine.dispose()
+    pluginHost.dispose(lastApi)
     lifecycle.clear()
     events.clear()
     physics?.dispose()
     touchCtrl.dispose()
+    net.disconnect()
     overlay.dispose?.()
     world.dispose()
   }
@@ -1525,6 +2021,7 @@ export async function startGame(
     stats.readyMs = performance.now() - started
     frame = requestAnimationFrame(loop)
     if (!mode && !project.screens?.some((s) => s.phase === 'menu')) resume()
+    autoConnectMultiplayer()
     return {
       pause,
       resume,

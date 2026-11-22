@@ -9,8 +9,6 @@ export const terrainTools = [
   'Terrace',
   'Paint',
   'Erase paint',
-  'Scatter',
-  'Erase scatter',
 ] as const
 export type TerrainTool = (typeof terrainTools)[number]
 export type TerrainPreset = 'flat' | 'hills' | 'valley' | 'crater' | 'ridge'

@@ -51,12 +51,12 @@ function usedAssets(project: Project) {
   }
   visit({ ...project, assets: [] })
   // User scripts can look up arbitrary resources by ID at runtime.
-  const dynamic = project.assets.some((a) => used.has(a.id) && a.type === 'script')
+  const dynamic = project.assets.some((a) => (used.has(a.id) && a.type === 'script') || a.type === 'plugin')
   if(dynamic)for(const a of project.assets)if(a.type==='prefab')visit(a.id)
   if (dynamic) {
     for (const asset of project.assets) if (asset.type === 'prefab') visit(asset.id)
   }
-  return project.assets.filter((a) => used.has(a.id) || (dynamic && a.type !== 'script'))
+  return project.assets.filter((a) => used.has(a.id) || a.type === 'plugin' || (dynamic && a.type !== 'script'))
 }
 
 async function compileScript(name: string, source: string) {
@@ -198,7 +198,7 @@ export async function previewGame(project: Project, frame: HTMLIFrameElement) {
   frame.setAttribute('title', project.name + ' preview')
   frame.srcdoc =
     head +
-    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' data: blob:; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; connect-src data: blob:; worker-src blob:\"><style>" +
+    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' data: blob:; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; connect-src data: blob: ws: wss: http: https:; worker-src blob:\"><style>" +
     css +
     '</style></head><body><main id="game"></main><script id="preview-data" type="application/json">' +
     jsonText({ ...config, progress }) +

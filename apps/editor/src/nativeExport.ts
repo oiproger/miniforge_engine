@@ -131,6 +131,9 @@ export async function desktopSources(
         const exeName = 'miniforge-player'
         files[`${appRoot}/Contents/MacOS/${exeName}`] = [playerBin, execOpts]
         files[`${appRoot}/Contents/Info.plist`] = strToU8(buildMacInfoPlist(cfg, exeName))
+        if (project.settings.steam?.enabled || project.settings.multiplayer?.mode === 'steam-p2p') {
+          files[`${appRoot}/Contents/MacOS/steam_appid.txt`] = strToU8(`${project.settings.steam?.appId || 480}\n`)
+        }
         if (resolvedIconBytes) {
           files[`${appRoot}/Contents/Resources/icon.png`] = resolvedIconBytes
           files[`${appRoot}/Contents/Resources/game/icon.png`] = resolvedIconBytes

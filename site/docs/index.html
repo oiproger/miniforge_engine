@@ -604,7 +604,8 @@ api.ui.mount('mini_toast', '&lt;div class="toast"&gt;Welcome!&lt;/div&gt;', '.to
   <ul>
     <li><strong>Volumetric Fog Glow &amp; Post-FX:</strong> <code>api.lights.setGlow(id, glow, falloff)</code>, AO, Bloom, DoF, ACES Filmic, Vignette, and Chromatic Aberration.</li>
     <li><strong>Optimization:</strong> automatic Static Mesh Batching, <code>setResolutionScale(0.4..1.0)</code>, distance culling, light/particle culling, and glTF animation throttling for distant NPCs.</li>
-  </ul>
+    <li><strong>v2.8 Live 3D Material Preview, GLSL Shader Studio &amp; Scene Profiler:</strong> inspect materials in real time on Sphere/Cube/Torus/Plane with Studio/Sunset/Night lighting, author GLSL ES 3.00 shaders with live WebGL2 preview, auto-generated uniform sliders, inline compile errors, and 5 presets (Water, Toon, Hologram, Foliage Wind, PS1 Dither), and monitor live FPS, draw calls, triangles, and asset memory via the Scene Profiler overlay.</li>
+</ul>
 </section>
 
 <section class="doc-section" id="en-sec-cookbook" data-cat="Recipes">
@@ -966,7 +967,8 @@ exports.registerRuntime = function(ctx) {
     <li><strong>Иконка по умолчанию:</strong> если в <strong>Export Settings</strong> не загружена своя иконка, редактор автоматически показывает и вкладывает фирменную иконку Miniforge в Web/Desktop сборки и <code>Contents/Resources/icon.png</code>.</li>
     <li><strong>Динамическая версия сборок:</strong> <code>apps/editor-desktop/build.mjs</code> подхватывает версию из переменной <code>APP_VERSION</code> (тег GitHub Release или поле <code>version</code> при ручном запуске workflow) либо из <code>package.json</code> — больше никакого зашитого <code>0.2.0</code>.</li>
     <li><strong>macOS Universal + <code>+x</code> + <code>codesign</code>:</strong> архивы macOS и Linux сразу проставляют Unix-права <code>0755</code> внутри ZIP, а <code>miniforge-player-macos</code> собирается как Universal Binary (Intel + Apple Silicon) с ad-hoc подписью.</li>
-  </ul>
+    <li><strong>v2.8 — Материалы, Шейдеры и Профайлер:</strong> живое 3D-превью материалов (Sphere/Cube/Torus/Plane, свет Studio/Sunset/Night), студия GLSL-шейдеров с живым WebGL2-превью, авто-слайдерами uniform, подсветкой ошибок компиляции и 5 пресетами (Water, Toon, Hologram, Foliage Wind, PS1 Dither), а также оверлей <strong>Scene Profiler</strong> (FPS, draw calls, треугольники, память ассетов).</li>
+</ul>
 </section>
 </div>
 
@@ -974,7 +976,28 @@ exports.registerRuntime = function(ctx) {
         <p id="emptyText">No matching sections found.</p>
         <button type="button" id="emptyResetBtn" class="btn">Show all chapters</button>
       </div>
-    </main>
+    
+  <section id="v30-multiplayer-steam" class="doc-section" style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.12)">
+    <h2>
+      <span class="lang-en">v3.0.0 — Materials, Shaders, Animation SM, Scatter Brush, Gamepad, Multiplayer, Embedded LAN &amp; Steamworks</span>
+      <span class="lang-ru">v3.0.0 — Материалы, Шейдеры, Animation SM, Кисть пропов, Геймпад, Мультиплеер, Встроенный LAN-сервер и Steamworks</span>
+    </h2>
+    <ul>
+      <li><strong>Shader Uniforms API</strong>: <code>api.materials.setShaderUniform(target, name, value)</code>, <code>api.materials.setShaderUniforms(target, { u_speed: 1.5, u_color: "#38bdf8" })</code> · Event Graph: <code>fx.setShader</code>, <code>fx.setShaderUniform</code>, <code>fx.setShaderColor</code>.</li>
+      <li><strong>Animation State Machine API</strong>: <code>api.animation.setParam(id, name, val)</code>, <code>getParam</code>, <code>setTrigger(id, name)</code>, <code>playState(id, state, blend)</code>, <code>getCurrentState(id)</code> · Event Graph: <code>anim.setParam</code>, <code>anim.setTrigger</code>, <code>anim.playState</code>, <code>anim.getState</code>.</li>
+      <li><strong>Gamepad &amp; Local Multi-Player Input</strong>: <code>api.input.gamepadAxis(axis, pad)</code>, <code>gamepadButton(btn, pad)</code>, <code>isGamepadConnected(pad)</code>, <code>api.net.getLocalPlayerMove(0..3)</code>, <code>getLocalPlayerAction(0..3, action)</code> · Event Graph: <code>input.gamepadAxis</code>, <code>input.gamepadButton</code>, <code>input.gamepadConnected</code>.</li>
+      <li><strong>Multiplayer, Embedded LAN Server &amp; NetworkSync API</strong>:
+        <code>api.net.connect({ mode, room, url })</code>, <code>disconnect()</code>, <code>rpc(name, payload, target)</code>, <code>onRpc(name, fn)</code>,
+        <code>setEntityVar(id, key, val)</code>, <code>getEntityVar(id, key, def)</code>, <code>onEntityVarChange(id, key, fn)</code>,
+        <code>hostLan({ port, room, gameName })</code>, <code>stopLan()</code>, <code>discoverLan(timeoutMs)</code> (zero-dependency Rust WebSocket + UDP beacon on port <code>41234</code> in Desktop builds),
+        <code>spawnNetworkPlayer(prefabId, ownerPeerId, pos)</code>, <code>sendChat(text)</code>, <code>onChat(fn)</code>, <code>setSimulation(latencyMs, lossPct)</code>.
+        Features shortest-arc angle interpolation, automatic WebSocket reconnect, and instant offline LAN WebRTC (skips external STUN on local IPs).
+        Event Graph: <code>event.netRpc</code>, <code>event.peerJoin</code>, <code>event.peerLeave</code>, <code>event.netChat</code>, <code>net.sendRpc</code>, <code>net.sendChat</code>, <code>net.hostLan</code>, <code>net.connect</code>, <code>net.disconnect</code>, <code>net.setEntityVar</code>, <code>net.getEntityVar</code>, <code>net.isHost</code>, <code>net.peerId</code>, <code>net.playerCount</code>.
+      </li>
+      <li><strong>Steamworks SDK API</strong>: <code>api.steam.init(480)</code>, <code>createLobby(opts)</code>, <code>listLobbies()</code>, <code>joinLobby(id)</code>, <code>leaveLobby()</code>, <code>setLobbyData(k, v)</code>, <code>unlockAchievement(id)</code>, <code>setRichPresence(k, v)</code>, <code>cloudWrite(file, data)</code>, <code>cloudRead(file)</code> · Event Graph: <code>steam.createLobby</code>, <code>steam.joinLobby</code>, <code>steam.leaveLobby</code>, <code>steam.unlockAchievement</code>, <code>steam.setRichPresence</code>, <code>steam.cloudSave</code>, <code>steam.getUserName</code>.</li>
+    </ul>
+  </section>
+</main>
   </div>
 
 <script>
