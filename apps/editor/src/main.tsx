@@ -345,6 +345,7 @@ function App() {
       const d = e.data
       if (d?.stats) setStats(d.stats)
       if (d?.error) note(String(d.error))
+      if (d?.log) setLogs((l) => [...l.slice(-150), String(d.log)])
     }
     window.addEventListener('message', receive)
     return () => {

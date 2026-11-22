@@ -27,7 +27,7 @@ import {
   Import,
   Download,
 } from 'lucide-react'
-import { getScene, uid, makeMaterial, makeParticleAsset, makeHtmlAsset, makeEntity, applyAutoStaticBatching, type Asset, type Project,
+import { DEFAULT_DIALOGUE_SCREEN_ID, makeDialogueControls, makeDialogueScreen, getScene, uid, makeMaterial, makeParticleAsset, makeHtmlAsset, makeEntity, applyAutoStaticBatching, type Asset, type Project,
  } from '../../../packages/project-schema/src'
 import InterfaceForm from './HudEditor'
 import { Field, Numeric, Color } from './Fields'
@@ -249,6 +249,35 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
               {Object.keys(p.locales).map((k) => (
                 <option key={k}>{k}</option>
               ))}
+            </select>
+          </Field>
+          <Field label="Dialogue UI screen">
+            <select
+              value={p.settings.dialogueScreen || ''}
+              onChange={(e) => {
+                const val = e.target.value
+                edit((n) => {
+                  n.settings.dialogueScreen = val || undefined
+                  if (val === DEFAULT_DIALOGUE_SCREEN_ID) {
+                    n.screens ??= []
+                    if (!n.screens.some((sc) => sc.id === DEFAULT_DIALOGUE_SCREEN_ID)) {
+                      n.screens.push(makeDialogueScreen())
+                      n.ui.push(...makeDialogueControls(DEFAULT_DIALOGUE_SCREEN_ID))
+                    }
+                  }
+                })
+              }}
+            >
+              <option value="">Auto (Dialogue screen or built-in)</option>
+              <option value="builtin">Built-in Overlay (default)</option>
+              <option value={DEFAULT_DIALOGUE_SCREEN_ID}>Dialogue (UI Editor screen)</option>
+              {(p.screens || [])
+                .filter((sc) => sc.phase === 'window' && sc.id !== DEFAULT_DIALOGUE_SCREEN_ID)
+                .map((sc) => (
+                  <option key={sc.id} value={sc.id}>
+                    {sc.name} ({sc.id})
+                  </option>
+                ))}
             </select>
           </Field>
         </div>

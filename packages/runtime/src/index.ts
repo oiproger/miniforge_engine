@@ -938,7 +938,7 @@ export async function startGame(
   function spawnPrefab(assetId: string, position?: Vec3, parent: string | null = null): string {
     if (disposed || unloading) throw Error('Scene is unloading')
     const asset =
-      project.assets.find((a) => a.id === assetId && a.type === 'prefab') ?? makePrefab(scene, assetId)
+      project.assets.find((a) => a.type === 'prefab' && (a.id === assetId || a.name === assetId)) ?? makePrefab(scene, assetId)
     const offset = scene.entities.length
     const root = instantiatePrefab(scene, asset, parent)
     if (position) root.transform.position = [...position]

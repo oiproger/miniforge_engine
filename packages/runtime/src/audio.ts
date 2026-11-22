@@ -112,7 +112,8 @@ export class AudioEngine {
     if (this.muted || this.project.settings.sound === false) return ''
     const ctx = this.ensureContext()
     const handle = 'snd-' + ++this.seq
-    const asset = assetId && this.project.assets.find((a) => a.id === assetId && a.type === 'audio')
+    const key = assetId ? String(assetId).trim() : ''
+    const asset = key && this.project.assets.find((a) => a.type === 'audio' && (a.id === key || a.name === key))
     if (!asset) {
       if (!ctx || ctx.state !== 'running') return ''
       const osc = ctx.createOscillator()

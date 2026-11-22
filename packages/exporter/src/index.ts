@@ -45,14 +45,35 @@ function usedAssets(project: Project) {
       used.add(value)
       const asset = remaining.get(value)!
       visit(asset.properties)
-      if (asset.type === 'prefab') visit(JSON.parse(asset.data))
+      if (
+        asset.type === 'prefab' ||
+        asset.type === 'skybox' ||
+        asset.type === 'particle' ||
+        asset.type === 'sequence' ||
+        asset.type === 'graph' ||
+        asset.type === 'dialogue'
+      ) {
+        try {
+          visit(JSON.parse(asset.data))
+        } catch {
+          /* non-JSON asset data */
+        }
+      }
     } else if (Array.isArray(value)) value.forEach(visit)
     else if (value && typeof value === 'object') Object.values(value).forEach(visit)
   }
   visit({ ...project, assets: [] })
-  // User scripts can look up arbitrary resources by ID at runtime.
-  const dynamic = project.assets.some((a) => (used.has(a.id) && a.type === 'script') || a.type === 'plugin')
-  if(dynamic)for(const a of project.assets)if(a.type==='prefab')visit(a.id)
+  // Scripts, Event Graphs, interactive HTML UI, plugins, and Rule components can look up arbitrary resources by ID or name at runtime.
+  const hasRules = project.scenes.some((sc) =>
+    sc.entities.some((e) => e.components.some((c) => c.type === 'rule')),
+  )
+  const dynamic =
+    hasRules ||
+    project.assets.some(
+      (a) =>
+        (used.has(a.id) && (a.type === 'script' || a.type === 'graph' || a.type === 'html')) ||
+        a.type === 'plugin',
+    )
   if (dynamic) {
     for (const asset of project.assets) if (asset.type === 'prefab') visit(asset.id)
   }

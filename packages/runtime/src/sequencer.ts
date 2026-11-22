@@ -55,7 +55,8 @@ export class SequencerPlayer {
   constructor(private project: Project, private getApi: () => GameAPI) {}
 
   play(assetId: string, opts?: { loop?: boolean; speed?: number }): boolean {
-    const asset = this.project.assets.find((a) => a.id === assetId && a.type === 'sequence')
+    const key = String(assetId || '').trim()
+    const asset = this.project.assets.find((a) => a.type === 'sequence' && (a.id === key || a.name === key))
     if (!asset) return false
     const data = parseSequence(asset.data)
     this.active.set(assetId, {

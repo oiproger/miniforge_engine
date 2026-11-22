@@ -19,6 +19,9 @@ import {
   anchors,
   buttonActions,
   inputActions,
+  DEFAULT_DIALOGUE_SCREEN_ID,
+  makeDialogueControls,
+  makeDialogueScreen,
   makeScreen,
   makeScreenControls,
   removeScreen,
@@ -66,6 +69,7 @@ const translation = (p: Project, key: string) =>
 const round = (n: number) => Math.round(n * 100) / 100
 
 function starter(screen: UIScreen): UIElement[] {
+  if (screen.id === DEFAULT_DIALOGUE_SCREEN_ID) return makeDialogueControls(screen.id)
   return makeScreenControls(screen).map((el, i) => ({ ...el, id: screen.id + '-control-' + i }))
 }
 function createElement(screen: string, type: string, index: number): UIElement {
@@ -146,6 +150,23 @@ function ElementProperties({
   return (
     <div className="hud-props">
       <h4>Content</h4>
+      <Field label="Element ID">
+        <input
+          key={el.id}
+          defaultValue={el.id}
+          onBlur={(e) => {
+            const nextId = e.target.value.trim()
+            if (nextId && nextId !== el.id && !p.ui.some((u) => u.id === nextId)) {
+              patch({ id: nextId })
+            } else {
+              e.target.value = el.id
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+          }}
+        />
+      </Field>
       <Field label="Text / locale key">
         <input value={el.text} onChange={(e) => patch({ text: e.target.value })} />
       </Field>
@@ -587,9 +608,11 @@ export default function InterfaceForm({
   onEditAsset?: (id: string) => void
 }) {
   const [defaults] = useState(() => phases.map((phase) => makeScreen(phase, names[phase])))
+  const [defaultDialogue] = useState(() => makeDialogueScreen())
   const screens = [
     ...defaults.map((d) => p.screens?.find((s) => s.phase === d.phase) || d),
-    ...(p.screens || []).filter((s) => s.phase === 'window'),
+    p.screens?.find((s) => s.id === DEFAULT_DIALOGUE_SCREEN_ID) || defaultDialogue,
+    ...(p.screens || []).filter((s) => s.phase === 'window' && s.id !== DEFAULT_DIALOGUE_SCREEN_ID),
   ]
   const focused = p.ui.find((item) => item.id === focusUiId)
   const [screenId, setScreenId] = useState(focused?.screen || screens[0].id)
@@ -616,8 +639,15 @@ export default function InterfaceForm({
     edit((n) => {
       ensureScreen(n, screen)
       const el = n.ui.find((item) => item.id === id)
-      if (el) Object.assign(el, changes)
+      if (el) {
+        const prevId = el.id
+        Object.assign(el, changes)
+        if (changes.id && changes.id !== prevId) {
+          for (const child of n.ui) if (child.parentId === prevId) child.parentId = changes.id
+        }
+      }
     })
+    if (changes.id && changes.id !== id) select(changes.id)
   }
   function patchScreen(changes: Partial<UIScreen>) {
     edit((n) => {
