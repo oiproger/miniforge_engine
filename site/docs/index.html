@@ -640,6 +640,178 @@ api.ui.mount('mini_toast', '&lt;div class="toast"&gt;Welcome!&lt;/div&gt;', '.to
   <p class="sec-lead">Extend both Editor menus/tools and Runtime behaviors/services with single-file JSON plugins.</p>
   <p>Manage plugins in <strong>Plugins → Plugin Manager</strong> with built-in syntax validation, live reload, 4 progressive examples (from simple HUD to RPG Inventory), and <code>.mfplugin.json</code> import/export.</p>
 </section>
+
+<section class="doc-section" id="en-sec-v28-v29" data-cat="v2.8–v3.0">
+  <div class="sec-meta"><span class="sec-badge">Chapter 14</span><span class="sec-cat">v2.8–v3.0</span></div>
+  <h2>Shaders, Live 3D Materials, Animation SM, Scatter Brush &amp; Gamepad (v2.8–v2.9)</h2>
+  <p class="sec-lead">Real-time 3D PBR Material Preview, GLSL ES 3.00 Shader Studio, Scene Profiler, visual Animation State Machine, standalone 3D Scatter Brush, and unified Keyboard/Mouse/Gamepad/Touch Manager.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Feature</th><th>Where to Open</th><th>Runtime API &amp; Event Graph</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Live 3D Material Preview</strong></td><td>Material Editor (sticky side-by-side) &amp; Inspector</td><td>Sphere/Cube/Torus/Plane meshes, Studio/Sunset/Night lighting, <code>unlit</code>, auto <code>emissiveIntensity</code>, clean preset replacement &amp; <em>Reset defaults</em>.</td></tr>
+      <tr><td><strong>GLSL Shader Studio</strong></td><td>Assets → New Shader / double-click shader</td><td>LittleJS 3D <code>void mainImage(out vec4 color, vec2 uv)</code> &amp; <code>void mainVertex(inout vec3 position, inout vec3 normal)</code>, 5 presets (Water, Toon, Hologram, Foliage Wind, PS1 Dither), auto uniform sliders, <code>api.materials.setShaderUniform(target, name, val)</code>, <code>setShaderUniforms</code> · Nodes: <code>fx.setShader</code>, <code>fx.setShaderUniform</code>, <code>fx.setShaderColor</code>.</td></tr>
+      <tr><td><strong>Scene Profiler</strong></td><td>Bottom panel → <strong>Performance</strong> tab</td><td>Live FPS/frame-time sparkline, draw calls with static-batching savings, triangles, entities, and texture/asset memory breakdown.</td></tr>
+      <tr><td><strong>Animation State Machine</strong></td><td>Assets → New Anim State Machine</td><td>Pan/zoom state graph (<code>Idle → Walk → Run → Jump</code>), <code>float</code>/<code>bool</code>/<code>trigger</code> params, <code>api.animation.setParam / getParam / setTrigger / playState / getCurrentState</code> · Nodes: <code>anim.setParam</code>, <code>anim.setTrigger</code>, <code>anim.playState</code>, <code>anim.getState</code>.</td></tr>
+      <tr><td><strong>3D Scatter Brush</strong></td><td>Viewport toolstrip (right sidebar)</td><td>Paints &amp; erases Prefabs/Models across <strong>Terrain</strong> and <strong>any 3D Mesh</strong> with normal alignment, random scale/yaw, and automatic <code>staticBatch</code>.</td></tr>
+      <tr><td><strong>Input &amp; Gamepad Manager</strong></td><td>Project → Input &amp; Gamepad Manager</td><td>Unified Keyboard, Mouse, W3C Gamepad API (<code>GP0..GP15</code>, sticks + deadzone), 2–4 player local profiles (<code>api.net.getLocalPlayerMove(0..3)</code>) &amp; Touch controls · Nodes: <code>input.gamepadAxis</code>, <code>input.gamepadButton</code>, <code>input.gamepadConnected</code>.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="doc-section" id="en-sec-multiplayer" data-cat="Multiplayer">
+  <div class="sec-meta"><span class="sec-badge">Chapter 15</span><span class="sec-cat">Multiplayer</span></div>
+  <h2>Multiplayer, Rooms, Embedded Rust LAN Server &amp; Split-Screen (v3.0)</h2>
+  <p class="sec-lead">Unified NetManager across 5 modes, zero-dependency Rust LAN server with UDP discovery, automatic remote player avatars, delta Sync Keys, RPCs, lobby chat, and 1-click Host + Client Dual Preview.</p>
+  <h3>1. Five Multiplayer Modes</h3>
+  <ul>
+    <li><code>singleplayer</code> — local single-player game (zero network overhead).</li>
+    <li><code>local-splitscreen</code> — 2–4 local players on one screen (shared keyboard WASD / Arrows / IJKL / Numpad + Gamepads 0–3 via <code>api.net.getLocalPlayerMove(0..3)</code> and <code>getLocalPlayerAction(0..3, action)</code>).</li>
+    <li><code>client-server-ws</code> — room-isolated WebSocket relay (uses embedded Rust LAN server on Desktop, <code>node server/relay-server.mjs 8765</code> on VPS/Web, or instant <code>local</code> Dual Preview bridge in the editor).</li>
+    <li><code>p2p-webrtc</code> — direct peer-to-peer WebRTC DataChannels (automatically skips external STUN servers on LAN IPs like <code>192.168.x.x</code> / <code>10.x.x.x</code> / <code>localhost</code> for true offline LAN play).</li>
+    <li><code>steam-p2p</code> — Steamworks P2P networking routed through Steam Lobbies (no port forwarding or dedicated server required).</li>
+  </ul>
+  <h3>2. Embedded Rust LAN Server &amp; UDP Room Discovery (Desktop)</h3>
+  <p>Both the Desktop Editor and exported Desktop games (<code>player.conf.json</code> with <code>withGlobalTauri: true</code>) embed a zero-dependency Rust RFC 6455 WebSocket server and UDP LAN discovery beacon (port <code>41234</code>, <code>src-tauri/src/lan.rs</code>). Enable <em>Auto-start embedded LAN server</em> in <strong>Multiplayer Studio</strong> or call <code>api.net.hostLan()</code> — clients on the same Wi-Fi/LAN discover active rooms via <code>api.net.discoverLan(1400)</code>.</p>
+  <h3>3. NetworkSync Component &amp; Automatic Remote Avatars</h3>
+  <ul>
+    <li><strong><code>owner: "local"</code> (Players):</strong> Each peer controls its own local entity; the runtime automatically spawns a distinct colored remote proxy avatar for every other peer and destroys it on disconnect (<code>leave</code> packet / <code>onPeerLeave</code>).</li>
+    <li><strong><code>owner: "host"</code> (Shared World Objects):</strong> Only the Host simulates NPCs, doors, pickups, or moving platforms and replicates them to clients. Host election is timestamp-ordered so the first player always stays Host until leaving.</li>
+    <li><strong>Transform, Animation &amp; Delta <code>Sync Keys</code>:</strong> Replicates position/rotation/scale (shortest-arc angle lerp), <code>animState</code> + <code>animClip</code> crossfading, global <code>WorldState</code> (<code>vars</code>), and per-entity <code>Sync Keys</code> (e.g. <code>hp, ammo, score</code>) via <code>api.net.setEntityVar()</code>. Late-joining players automatically receive all current entity variables on <code>onPeerJoin</code>.</li>
+  </ul>
+  <h3>4. Complete <code>api.net</code> &amp; Event Graph Reference</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Method (<code>api.net.*</code>)</th><th>Event Graph Node</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>connect({ mode, room, url })</code> / <code>disconnect()</code></td><td><code>net.connect</code> / <code>net.disconnect</code></td><td>Connect to a room (use <code>url: "local"</code> for in-editor Dual Preview / multi-tab testing). Auto-reconnects on WebSocket drop.</td></tr>
+      <tr><td><code>hostLan({ port, room, gameName })</code> / <code>stopLan()</code></td><td><code>net.hostLan</code></td><td>Start/stop embedded Rust LAN WebSocket + UDP beacon server on Desktop (falls back to local mode in browser).</td></tr>
+      <tr><td><code>discoverLan(timeoutMs)</code></td><td>—</td><td>Scans local Wi-Fi/LAN on UDP port <code>41234</code> and returns <code>[{ hostIp, port, url, room, gameName, players }]</code>.</td></tr>
+      <tr><td><code>setEntityVar(id, key, val)</code> / <code>getEntityVar</code> / <code>onEntityVarChange</code></td><td><code>net.setEntityVar</code> / <code>net.getEntityVar</code></td><td>Delta-synced custom entity properties (HP, stamina, ammo, team). Emits <code>net.entityVarChanged</code> with <code>{ source, templateId, peerId, key, value }</code>.</td></tr>
+      <tr><td><code>rpc(name, payload, target)</code> / <code>onRpc(name, fn)</code></td><td><code>net.sendRpc</code> / <code>event.netRpc</code></td><td>Send reliable RPC events to <code>"all"</code>, <code>"others"</code>, <code>"host"</code>, or a specific <code>peerId</code>.</td></tr>
+      <tr><td><code>sendChat(text)</code> / <code>onChat(fn)</code></td><td><code>net.sendChat</code> / <code>event.netChat</code></td><td>Built-in room/lobby chat messaging.</td></tr>
+      <tr><td><code>spawnNetworkPlayer(prefabId, ownerPeerId, pos)</code></td><td>—</td><td>Spawns a networked prefab across all peers with <code>NetworkSync</code> ownership assigned.</td></tr>
+      <tr><td><code>isHost()</code>, <code>peerId()</code>, <code>getPeers()</code>, <code>getStats()</code></td><td><code>net.isHost</code>, <code>net.peerId</code>, <code>net.playerCount</code></td><td>Inspect connection state, role, RTT ping (ms), packet counts, and peer list.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="doc-section" id="en-sec-steam" data-cat="Multiplayer">
+  <div class="sec-meta"><span class="sec-badge">Chapter 16</span><span class="sec-cat">Multiplayer</span></div>
+  <h2>Steamworks SDK &amp; Steam Lobbies (v3.0)</h2>
+  <p class="sec-lead">Built-in Steam Studio, Steam Lobbies, Steam P2P transport, Achievements, Cloud Saves, Rich Presence, and AppID 480 (Spacewar) testing.</p>
+  <p>Configure Steam in <strong>Project → Steamworks SDK</strong> (<code>SteamStudio</code>). In browser/editor mode, <code>api.steam</code> runs a full local debug mock with <strong>AppID 480 (Spacewar)</strong> so you can test lobbies, achievements, and cloud saves immediately. When exporting a Desktop game, <code>steam_appid.txt</code> is bundled automatically alongside the executable.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Method (<code>api.steam.*</code>)</th><th>Event Graph Node</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>init(appId?)</code> / <code>getUser()</code></td><td><code>steam.getUserName</code></td><td>Initializes Steamworks (default AppID <code>480</code>) and returns Steam ID &amp; persona name.</td></tr>
+      <tr><td><code>createLobby({ name, maxMembers, type })</code></td><td><code>steam.createLobby</code></td><td>Creates a Steam Lobby and binds it as the active room for <code>steam-p2p</code>.</td></tr>
+      <tr><td><code>listLobbies()</code> / <code>joinLobby(id)</code> / <code>leaveLobby()</code></td><td><code>steam.joinLobby</code> / <code>steam.leaveLobby</code></td><td>Discover open lobbies, join by lobby ID/name, or leave the current lobby.</td></tr>
+      <tr><td><code>setLobbyData(key, value)</code> / <code>getLobby()</code></td><td>—</td><td>Attach metadata (map, mode, version) to a lobby and inspect current lobby members.</td></tr>
+      <tr><td><code>unlockAchievement(id)</code> / <code>hasAchievement(id)</code></td><td><code>steam.unlockAchievement</code></td><td>Unlock, inspect, or clear Steam achievements.</td></tr>
+      <tr><td><code>setRichPresence(key, value)</code></td><td><code>steam.setRichPresence</code></td><td>Display match status in the Steam Friends list.</td></tr>
+      <tr><td><code>cloudWrite(file, data)</code> / <code>cloudRead(file)</code></td><td><code>steam.cloudSave</code></td><td>Read, write, list, and delete Steam Cloud save files.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="doc-section" id="en-sec-quicktips" data-cat="Recipes">
+  <div class="sec-meta"><span class="sec-badge">Chapter 17</span><span class="sec-cat">Recipes</span></div>
+  <h2>Quick Tips, Tutorials &amp; v3.0 Cookbook</h2>
+  <p class="sec-lead">Essential practical tips for rooms, lobbies, entity sync, Vector3 scripting, shaders, and copy-ready code recipes.</p>
+  <h3>Quick Tips (New &amp; Core Features)</h3>
+  <ul>
+    <li><strong>Rooms &amp; Lobbies (LAN, WebSocket, Steam):</strong> All network transports isolate matches by <code>roomCode</code>. On Desktop LAN, call <code>hostLan()</code> on the host and <code>discoverLan(1400)</code> on clients to populate a server list automatically (UDP port <code>41234</code>). On Steam, use <code>createLobby()</code> + <code>setLobbyData()</code> + <code>listLobbies()</code> with AppID <code>480</code> for free testing.</li>
+    <li><strong><code>owner: "local"</code> vs <code>owner: "host"</code>:</strong> Always set <code>owner: "local"</code> on the player entity (Miniforge auto-spawns a colored remote avatar for every other player). Set <code>owner: "host"</code> on shared enemies, doors, crates, and switches so only the Host drives their logic.</li>
+    <li><strong>Syncing Health, Score &amp; Script State:</strong> List keys in <code>Sync Keys</code> (e.g. <code>hp, score</code>) and call <code>api.net.setEntityVar(api.entity.id, "hp", hp)</code>. Only changed values are sent, and late-joining players automatically receive all current values on <code>onPeerJoin</code>.</li>
+    <li><strong><code>Vector3</code> Transform API in Scripts:</strong> <code>api.transform.position</code> and <code>api.transform.rotation</code> are <code>Vector3</code> instances — always update them via <code>.set(x, y, z)</code> or <code>.x/.y/.z</code> (never assign an array <code>[x, y, z]</code>!). Store shared HUD/match variables in <code>api.vars</code> and match action casing (<code>api.input.pressed("Jump")</code>, <code>"Interact"</code>).</li>
+    <li><strong>Dual Preview &amp; Split-Screen:</strong> In <strong>Multiplayer Studio → Launch Host + Client</strong>, click inside the <code>HOST</code> or <code>CLIENT</code> iframe to focus keyboard input. For local co-op, use <code>api.net.getLocalPlayerMove(0..3)</code> (P1: WASD, P2: Arrows, P3: IJKL, P4: Numpad + Gamepads 0–3).</li>
+    <li><strong>GLSL Shaders &amp; Scatter Brush:</strong> In Shader Studio, implement <code>void mainImage(out vec4 color, vec2 uv)</code> and/or <code>void mainVertex(inout vec3 position, inout vec3 normal)</code> (never write <code>void main()</code>). Keep <code>staticBatch</code> enabled on scattered props and monitor draw calls in the <strong>Performance</strong> tab.</li>
+    <li><strong>Export &amp; Runtime Rebuilds:</strong> Enable AOT Event Graph Nativization in Export Settings for CSP-safe native JS speed. After editing engine source locally, run <code>pnpm prepare:runtime</code> (or <code>pnpm dev</code>) to rebuild <code>apps/editor/public/engine/web.js</code>.</li>
+  </ul>
+
+  <h3>Cookbook Recipe 1: Auto-Host LAN &amp; Discover LAN Rooms</h3>
+  <div class="code-block"><div class="code-head"><span>lanLobby.ts</span><button type="button" class="copy-btn" data-copy>Copy</button></div><pre>export default function createBehavior(api) {
+  return {
+    async onStart() {
+      // Scan Wi-Fi / LAN for running games (UDP beacon on port 41234)
+      const rooms = await api.net.discoverLan(1400)
+      if (rooms.length > 0) {
+        await api.net.connect({ mode: "client-server-ws", url: rooms[0].url, room: rooms[0].room })
+      } else {
+        // No game found — start embedded Rust LAN server automatically
+        await api.net.hostLan({ port: 8765, room: "arena-1", gameName: "Miniforge LAN" })
+      }
+    },
+  }
+}</pre></div>
+
+  <h3>Cookbook Recipe 2: Steam Lobby Matchmaking (AppID 480)</h3>
+  <div class="code-block"><div class="code-head"><span>steamMatchmaking.ts</span><button type="button" class="copy-btn" data-copy>Copy</button></div><pre>export default function createBehavior(api) {
+  return {
+    async onStart() {
+      await api.steam.init(480)
+      const lobbies = await api.steam.listLobbies()
+      if (lobbies.length > 0) {
+        await api.steam.joinLobby(lobbies[0].id)
+      } else {
+        await api.steam.createLobby({ name: "Arena Match", maxMembers: 4 })
+        await api.steam.setLobbyData("map", "arena_01")
+      }
+      await api.net.connect({ mode: "steam-p2p", room: "Arena Match" })
+      await api.steam.setRichPresence("status", "Playing Arena")
+    },
+  }
+}</pre></div>
+
+  <h3>Cookbook Recipe 3: Dealing Damage to Another Player (RPC + Sync Keys)</h3>
+  <div class="code-block"><div class="code-head"><span>combatSync.ts</span><button type="button" class="copy-btn" data-copy>Copy</button></div><pre>export default function createBehavior(api) {
+  let hp = 100
+  let attackHeld = false
+  return {
+    onStart() {
+      api.net.setEntityVar(api.entity.id, "hp", hp)
+      // Receive damage RPC sent by another player
+      api.net.onRpc("combat:hit", (data) => {
+        hp = Math.max(0, hp - Number(data?.damage || 10))
+        api.net.setEntityVar(api.entity.id, "hp", hp)
+        if (hp === 0) api.transform.position.set(0, 0.8, 0) // Respawn using Vector3.set()
+      })
+    },
+    onUpdate() {
+      const down = api.input.pressed("Attack")
+      if (down && !attackHeld) api.net.rpc("combat:hit", { damage: 15 }, "others")
+      attackHeld = down
+    },
+  }
+}</pre></div>
+
+  <h3>Cookbook Recipe 4: 2-Player Local Split-Screen Controller (Vector3)</h3>
+  <div class="code-block"><div class="code-head"><span>localCoop.ts</span><button type="button" class="copy-btn" data-copy>Copy</button></div><pre>export default function createBehavior(api) {
+  const idx = Number(api.entity.properties?.playerIndex || 0)
+  return {
+    onUpdate(dt) {
+      const [mx, mz] = api.net.getLocalPlayerMove(idx)
+      if (mx !== 0 || mz !== 0) {
+        const p = api.transform.position
+        p.set(p.x + mx * 5.5 * dt, p.y, p.z + mz * 5.5 * dt)
+        api.transform.rotation.set(0, Math.atan2(mx, mz), 0)
+      }
+    },
+  }
+}</pre></div>
+</section>
+
+<section class="doc-section" id="en-sec-roadmap" data-cat="Release">
+  <div class="sec-meta"><span class="sec-badge">Chapter 18</span><span class="sec-cat">Release</span></div>
+  <h2>Templates (12), Examples (11) &amp; Roadmap (v3.1 – v3.3)</h2>
+  <p class="sec-lead">Starter templates, auto-loaded examples in Project Hub, and upcoming QoL-focused milestones.</p>
+  <ul>
+    <li><strong>12 Starter Templates &amp; 11 Examples:</strong> Includes new <code>Multiplayer Arena 3D</code>, <code>Split-Screen Co-op 3D</code>, and <code>Shaders &amp; Materials Studio 3D</code> alongside Coin Rush 3D, Endless Runner 3D, FPS Explorer, TPS Adventure, RPG Quest &amp; Loot, Arena Shooter 3D, Key Vault, and Mobile Touch Starter.</li>
+    <li><strong>v3.1 (Next) — Editor QoL &amp; Level Design:</strong> box/multi-selection (<code>Shift+Click</code>), Snap to Ground, Command Palette (<code>Ctrl+K</code>), Asset folders/tags, Drag-and-Drop to viewport, Copy/Paste Component, Undo/Redo stack, <code>Play from Here</code>, and integrated Console.</li>
+    <li><strong>v3.2 — Lightweight Visual &amp; Gameplay Accelerators:</strong> visual HUD anchor layout editor, 1-click Atmosphere/Lighting presets, 3D audio radius &amp; collider/trigger gizmos, ready-made Lobby UI widget, and relay room limits/passwords.</li>
+    <li><strong>v3.3 — Community Showcase &amp; Publishing:</strong> community plugins &amp; games catalog with 1-click URL install, Pre-Export Audit, and interactive Project Hub onboarding.</li>
+  </ul>
+</section>
+
 </div>
       <div id="docsRu" class="hidden"><section class="doc-section" id="sec-start" data-cat="Основы"><div class="sec-meta"><span class="sec-badge">Глава 1</span><span class="sec-cat">Основы</span></div><h2>Архитектура и быстрый старт</h2><p class="sec-lead">Стек Miniforge Engine v3.0, структура репозитория, требования к окружению и все основные команды сборки.</p><p>Miniforge Engine v3.0 — модульный 3D-движок и визуальный редактор на базе <strong>LittleJS 1.30.1</strong> (WebGL2 3D), <strong>Rapier3D</strong> (WASM-физика), <strong>React 19 + TypeScript 5.9</strong> и <strong>Tauri v2</strong> для десктопных сборок. Все проекты хранятся в открытом JSON-формате (<code>Project v1</code>) или архивах <code>.miniforge</code>.</p>
 <div class="table-wrap"><table><thead><tr><th>Слой / пакет</th><th>Назначение</th><th>Ключевые технологии</th></tr></thead><tbody><tr><td><code>packages/graphics</code></td><td>WebGL2-рендерер, тени, свет, постпроцессинг, glTF-анимации, батчинг, террейн</td><td>LittleJS 1.30.1, GLSL ES 3.00</td></tr><tr><td><code>packages/runtime</code></td><td>Игровой цикл, физика, скрипты, NavGrid, Audio, Tween, Touch, SaveSystem</td><td>Rapier3D WASM, Web Audio API</td></tr><tr><td><code>packages/project-schema</code></td><td>Схема JSON-проекта, живые префабы, террейн, NavGrid, экраны HUD</td><td>TypeScript 5.9 (zero-runtime deps)</td></tr><tr><td><code>packages/platform-sdk</code></td><td>Единый адаптер для Web/HTML5, Яндекс Игр и Poki (реклама, облако, язык)</td><td>Yandex SDK, Poki SDK, localStorage</td></tr><tr><td><code>packages/exporter</code></td><td>Сборка автономных игр и копирование <code>assimpjs.wasm</code> для редактора</td><td>esbuild, fflate</td></tr><tr><td><code>apps/editor</code> &amp; <code>editor-desktop</code></td><td>Визуальный редактор с 13 встроенными студиями и десктопная оболочка</td><td>React 19, Vite 7, Monaco, Tauri v2</td></tr></tbody></table></div>
@@ -970,6 +1142,178 @@ exports.registerRuntime = function(ctx) {
     <li><strong>v2.8 — Материалы, Шейдеры и Профайлер:</strong> живое 3D-превью материалов (Sphere/Cube/Torus/Plane, свет Studio/Sunset/Night), студия GLSL-шейдеров с живым WebGL2-превью, авто-слайдерами uniform, подсветкой ошибок компиляции и 5 пресетами (Water, Toon, Hologram, Foliage Wind, PS1 Dither), а также оверлей <strong>Scene Profiler</strong> (FPS, draw calls, треугольники, память ассетов).</li>
 </ul>
 </section>
+
+<section class="doc-section" id="ru-sec-v28-v29" data-cat="Новое в v2.8–v3.0">
+  <div class="sec-meta"><span class="sec-badge">Глава 16</span><span class="sec-cat">Новое в v2.8–v3.0</span></div>
+  <h2>Шейдеры, 3D-превью материалов, Animation SM, Scatter Brush и Геймпад (v2.8–v2.9)</h2>
+  <p class="sec-lead">Живое 3D-превью PBR-материалов, GLSL ES 3.00 Shader Studio, Scene Profiler, визуальная Animation State Machine, отдельная кисть Scatter Brush и единый Input &amp; Gamepad Manager.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Инструмент</th><th>Где открыть</th><th>Рантайм API и Event Graph</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Live 3D Material Preview</strong></td><td>Material Editor (сбоку) и Inspector</td><td>Меши Sphere/Cube/Torus/Plane, свет Studio/Sunset/Night, <code>unlit</code>, авто <code>emissiveIntensity</code>, чистая смена пресетов и кнопка <em>Reset defaults</em>.</td></tr>
+      <tr><td><strong>GLSL Shader Studio</strong></td><td>Assets → New Shader / двойной клик</td><td>LittleJS 3D сигнатуры <code>void mainImage(out vec4 color, vec2 uv)</code> и <code>void mainVertex(inout vec3 position, inout vec3 normal)</code>, 5 пресетов (Water, Toon, Hologram, Foliage Wind, PS1 Dither), авто-слайдеры uniform, <code>api.materials.setShaderUniform(target, name, val)</code>, <code>setShaderUniforms</code> · Ноды: <code>fx.setShader</code>, <code>fx.setShaderUniform</code>, <code>fx.setShaderColor</code>.</td></tr>
+      <tr><td><strong>Scene Profiler</strong></td><td>Нижняя панель → вкладка <strong>Performance</strong></td><td>Живой график FPS/frame-time, draw calls с экономией от static batching, треугольники, сущности и память текстур/ассетов.</td></tr>
+      <tr><td><strong>Animation State Machine</strong></td><td>Assets → New Anim State Machine</td><td>Граф состояний с панорамированием/зумом (<code>Idle → Walk → Run → Jump</code>), параметры <code>float</code>/<code>bool</code>/<code>trigger</code>, <code>api.animation.setParam / getParam / setTrigger / playState / getCurrentState</code> · Ноды: <code>anim.setParam</code>, <code>anim.setTrigger</code>, <code>anim.playState</code>, <code>anim.getState</code>.</td></tr>
+      <tr><td><strong>3D Scatter Brush</strong></td><td>Панель инструментов вьюпорта (правая панель)</td><td>Расставляет и стирает префабы/модели по <strong>Terrain</strong> и по <strong>любым 3D-мешам</strong> с выравниванием по нормали, случайным масштабом/поворотом и автоматическим <code>staticBatch</code>.</td></tr>
+      <tr><td><strong>Input &amp; Gamepad Manager</strong></td><td>Project → Input &amp; Gamepad Manager</td><td>Единое окно для клавиатуры, мыши, W3C Gamepad API (<code>GP0..GP15</code>, стики + deadzone), профилей 2–4 игроков (<code>api.net.getLocalPlayerMove(0..3)</code>) и Touch-контролов · Ноды: <code>input.gamepadAxis</code>, <code>input.gamepadButton</code>, <code>input.gamepadConnected</code>.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="doc-section" id="ru-sec-multiplayer" data-cat="Мультиплеер">
+  <div class="sec-meta"><span class="sec-badge">Глава 17</span><span class="sec-cat">Мультиплеер</span></div>
+  <h2>Мультиплеер, комнаты, встроенный Rust LAN-сервер и Split-Screen (v3.0)</h2>
+  <p class="sec-lead">Единый NetManager на 5 режимов, встроенный Rust LAN-сервер с UDP-поиском, авто-спавн аватаров игроков, дельта-переменные Sync Keys, RPC, чат лобби и Dual Preview (Host + Client).</p>
+  <h3>1. Пять режимов мультиплеера</h3>
+  <ul>
+    <li><code>singleplayer</code> — одиночная игра без сетевых накладных расходов.</li>
+    <li><code>local-splitscreen</code> — 2–4 игрока на одном экране (общая клавиатура WASD / Стрелки / IJKL / Numpad + геймпады 0–3 через <code>api.net.getLocalPlayerMove(0..3)</code> и <code>getLocalPlayerAction(0..3, action)</code>).</li>
+    <li><code>client-server-ws</code> — комнаты через WebSocket-релей (встроенный Rust LAN-сервер в Desktop, <code>node server/relay-server.mjs 8765</code> для VPS/Web или мгновенный локальный тест <code>url: "local"</code> в редакторе).</li>
+    <li><code>p2p-webrtc</code> — прямое P2P-соединение WebRTC DataChannel (автоматически пропускает внешний STUN для локальных IP <code>192.168.x.x</code> / <code>10.x.x.x</code> / <code>localhost</code> — работает в локалке вообще без интернета).</li>
+    <li><code>steam-p2p</code> — P2P-мультиплеер через Steamworks и Steam Lobbies (без проброса портов и аренды серверов).</li>
+  </ul>
+  <h3>2. Встроенный Rust LAN-сервер и UDP-поиск комнат (Desktop)</h3>
+  <p>И в редактор, и в экспортируемые Desktop-игры (<code>player.conf.json</code> с <code>withGlobalTauri: true</code>) встроен легковесный Rust WebSocket-сервер и UDP-маяк обнаружения (порт <code>41234</code>, <code>src-tauri/src/lan.rs</code>, 0 лишних зависимостей). Включите галочку <em>Auto-start embedded LAN server</em> в <strong>Multiplayer Studio</strong> или вызовите <code>api.net.hostLan()</code> — игроки в одной Wi-Fi/LAN сети автоматически найдут комнату через <code>api.net.discoverLan(1400)</code>.</p>
+  <h3>3. Компонент NetworkSync и автоматические аватары</h3>
+  <ul>
+    <li><strong><code>owner: "local"</code> (Игроки):</strong> Каждый клиент управляет своей капсулой/персонажем, а рантайм сам создаёт цветной прокси-аватар для каждого подключившегося соперника и удаляет его при выходе (<code>leave</code> / <code>onPeerLeave</code>).</li>
+    <li><strong><code>owner: "host"</code> (Общие объекты):</strong> Враги, двери, платформы и лут симулируются только на Хосте и синхронизируются клиентам. Выбор Хоста упорядочен по времени подключения, поэтому первый вошедший игрок всегда остаётся Хостом до выхода.</li>
+    <li><strong>Transform, Анимации и дельта <code>Sync Keys</code>:</strong> Синхронизируются позиция/поворот/масштаб (интерполяция углов по кратчайшей дуге), <code>animState</code> + <code>animClip</code> кроссфейд, глобальный <code>WorldState</code> (<code>vars</code>) и произвольные поля сущности (<code>hp, ammo, score</code>) через <code>api.net.setEntityVar()</code>. Поздно вошедшие игроки автоматически получают актуальные значения при <code>onPeerJoin</code>.</li>
+  </ul>
+  <h3>4. Полный справочник <code>api.net</code> и Event Graph</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Метод (<code>api.net.*</code>)</th><th>Нода Event Graph</th><th>Назначение</th></tr></thead>
+    <tbody>
+      <tr><td><code>connect({ mode, room, url })</code> / <code>disconnect()</code></td><td><code>net.connect</code> / <code>net.disconnect</code></td><td>Подключение к комнате (<code>url: "local"</code> для Dual Preview / тестов во вкладках). Авто-переподключение при обрыве WebSocket.</td></tr>
+      <tr><td><code>hostLan({ port, room, gameName })</code> / <code>stopLan()</code></td><td><code>net.hostLan</code></td><td>Запуск/остановка встроенного Rust LAN-сервера + UDP-маяка на Desktop (в браузере откат на локальный режим).</td></tr>
+      <tr><td><code>discoverLan(timeoutMs)</code></td><td>—</td><td>Поиск активных LAN-комнат по UDP <code>41234</code>, возвращает <code>[{ hostIp, port, url, room, gameName, players }]</code>.</td></tr>
+      <tr><td><code>setEntityVar(id, key, val)</code> / <code>getEntityVar</code> / <code>onEntityVarChange</code></td><td><code>net.setEntityVar</code> / <code>net.getEntityVar</code></td><td>Дельта-синхронизация полей сущности (HP, патроны, счёт). Генерирует событие <code>net.entityVarChanged</code> с <code>{ source, templateId, peerId, key, value }</code>.</td></tr>
+      <tr><td><code>rpc(name, payload, target)</code> / <code>onRpc(name, fn)</code></td><td><code>net.sendRpc</code> / <code>event.netRpc</code></td><td>Отправка RPC-событий всем (<code>"all"</code>), остальным (<code>"others"</code>), хосту (<code>"host"</code>) или конкретному <code>peerId</code>.</td></tr>
+      <tr><td><code>sendChat(text)</code> / <code>onChat(fn)</code></td><td><code>net.sendChat</code> / <code>event.netChat</code></td><td>Встроенный чат комнаты/лобби.</td></tr>
+      <tr><td><code>spawnNetworkPlayer(prefabId, ownerPeerId, pos)</code></td><td>—</td><td>Сетевой спавн префаба у всех участников с назначением владельца.</td></tr>
+      <tr><td><code>isHost()</code>, <code>peerId()</code>, <code>getPeers()</code>, <code>getStats()</code></td><td><code>net.isHost</code>, <code>net.peerId</code>, <code>net.playerCount</code></td><td>Статус подключения, роль, пинг (RTT мс), счётчики пакетов и список игроков.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="doc-section" id="ru-sec-steam" data-cat="Мультиплеер">
+  <div class="sec-meta"><span class="sec-badge">Глава 18</span><span class="sec-cat">Мультиплеер</span></div>
+  <h2>Интеграция Steamworks SDK и Steam-лобби (v3.0)</h2>
+  <p class="sec-lead">Встроенная Steam Studio, Steam Lobbies, Steam P2P, достижения, Cloud Saves, Rich Presence и тестирование через AppID 480 (Spacewar).</p>
+  <p>Настройки Steam находятся в <strong>Project → Steamworks SDK</strong> (<code>SteamStudio</code>). В браузере и редакторе <code>api.steam</code> работает в отладочном режиме с <strong>AppID 480 (Spacewar)</strong>, позволяя тестировать лобби, достижения и облачные сохранения без покупки слота в Steam. При экспорте под Desktop файл <code>steam_appid.txt</code> автоматически вкладывается рядом с бинарником.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Метод (<code>api.steam.*</code>)</th><th>Нода Event Graph</th><th>Назначение</th></tr></thead>
+    <tbody>
+      <tr><td><code>init(appId?)</code> / <code>getUser()</code></td><td><code>steam.getUserName</code></td><td>Инициализация Steamworks (по умолчанию AppID <code>480</code>) и получение Steam ID / имени игрока.</td></tr>
+      <tr><td><code>createLobby({ name, maxMembers, type })</code></td><td><code>steam.createLobby</code></td><td>Создаёт Steam-лобби и привязывает его к транспорту <code>steam-p2p</code>.</td></tr>
+      <tr><td><code>listLobbies()</code> / <code>joinLobby(id)</code> / <code>leaveLobby()</code></td><td><code>steam.joinLobby</code> / <code>steam.leaveLobby</code></td><td>Поиск открытых лобби, вход по ID/имени или выход из текущего лобби.</td></tr>
+      <tr><td><code>setLobbyData(key, value)</code> / <code>getLobby()</code></td><td>—</td><td>Запись метаданных лобби (карта, режим, версия) и чтение списка участников.</td></tr>
+      <tr><td><code>unlockAchievement(id)</code> / <code>hasAchievement(id)</code></td><td><code>steam.unlockAchievement</code></td><td>Разблокировка, проверка и сброс достижений Steam.</td></tr>
+      <tr><td><code>setRichPresence(key, value)</code></td><td><code>steam.setRichPresence</code></td><td>Отображение статуса матча в списке друзей Steam.</td></tr>
+      <tr><td><code>cloudWrite(file, data)</code> / <code>cloudRead(file)</code></td><td><code>steam.cloudSave</code></td><td>Чтение, запись и удаление файлов сохранений в Steam Cloud.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="doc-section" id="ru-sec-quicktips" data-cat="Рецепты">
+  <div class="sec-meta"><span class="sec-badge">Глава 19</span><span class="sec-cat">Рецепты</span></div>
+  <h2>Quick Tips, туториалы и Cookbook (v3.0.0)</h2>
+  <p class="sec-lead">Практические советы по комнатам, лобби, синхронизации, Vector3 API, шейдерам и готовые рецепты кода.</p>
+  <h3>Quick Tips (новые и базовые фичи)</h3>
+  <ul>
+    <li><strong>Комнаты и лобби (LAN, WebSocket, Steam):</strong> Все режимы разделяют матчи по <code>roomCode</code>. В Desktop LAN вызывайте <code>hostLan()</code> на хосте и <code>discoverLan(1400)</code> на клиентах для автопоиска комнат (UDP-порт <code>41234</code>). В Steam используйте <code>createLobby()</code> + <code>setLobbyData()</code> + <code>listLobbies()</code> с AppID <code>480</code> для бесплатных тестов.</li>
+    <li><strong><code>owner: "local"</code> vs <code>owner: "host"</code>:</strong> На сущности игрока всегда ставьте <code>owner: "local"</code> — движок сам создаст цветной прокси-аватар для каждого соперника. На общих врагах, дверях, ящиках и переключателях ставьте <code>owner: "host"</code>, чтобы их симулировал только Хост.</li>
+    <li><strong>Синхронизация HP, счёта и параметров скриптов:</strong> Пропишите ключи в <code>Sync Keys</code> (например <code>hp, score</code>) и обновляйте их через <code>api.net.setEntityVar(api.entity.id, "hp", hp)</code>. Отправляются только изменения (дельта), а поздно вошедшие игроки автоматически получают весь срез при <code>onPeerJoin</code>.</li>
+    <li><strong><code>Vector3</code> Transform API в скриптах:</strong> <code>api.transform.position</code> и <code>api.transform.rotation</code> — это объекты <code>Vector3</code>: всегда меняйте их через <code>.set(x, y, z)</code> или <code>.x/.y/.z</code> (никогда не присваивайте массив <code>[x, y, z]</code>!). Глобальные переменные матча храните в <code>api.vars</code>, а имена биндингов пишите с учётом регистра (<code>api.input.pressed("Jump")</code>, <code>"Interact"</code>).</li>
+    <li><strong>Dual Preview и Split-Screen:</strong> В <strong>Multiplayer Studio → Launch Host + Client</strong> кликните внутрь окна <code>HOST</code> или <code>CLIENT</code>, чтобы передать фокус клавиатуры. Для локального коопа используйте <code>api.net.getLocalPlayerMove(0..3)</code> (P1: WASD, P2: Стрелки, P3: IJKL, P4: Numpad + геймпады 0–3).</li>
+    <li><strong>GLSL-шейдеры и Scatter Brush:</strong> В Shader Studio пишите <code>void mainImage(out vec4 color, vec2 uv)</code> и/или <code>void mainVertex(inout vec3 position, inout vec3 normal)</code> (не пишите <code>void main()</code>). Держите <code>staticBatch</code> включённым на пропах из Scatter Brush и проверяйте draw calls во вкладке <strong>Performance</strong>.</li>
+    <li><strong>Экспорт и пересборка рантайма:</strong> Включайте AOT Nativization для Event Graph в Export Settings. После правок исходников движка локально запускайте <code>pnpm prepare:runtime</code> (или <code>pnpm dev</code>), чтобы пересобрать <code>apps/editor/public/engine/web.js</code>.</li>
+  </ul>
+
+  <h3>Рецепт 1: Авто-хост LAN и поиск комнат в локальной сети</h3>
+  <div class="code-block"><div class="code-head"><span>lanLobby.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
+  return {
+    async onStart() {
+      // Поиск игр в локальной сети (UDP-маяк на порту 41234)
+      const rooms = await api.net.discoverLan(1400)
+      if (rooms.length > 0) {
+        await api.net.connect({ mode: "client-server-ws", url: rooms[0].url, room: rooms[0].room })
+      } else {
+        // Комнат нет — автоматически поднимаем встроенный Rust LAN-сервер
+        await api.net.hostLan({ port: 8765, room: "arena-1", gameName: "Miniforge LAN" })
+      }
+    },
+  }
+}</pre></div>
+
+  <h3>Рецепт 2: Создание и поиск Steam-лобби (AppID 480)</h3>
+  <div class="code-block"><div class="code-head"><span>steamMatchmaking.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
+  return {
+    async onStart() {
+      await api.steam.init(480)
+      const lobbies = await api.steam.listLobbies()
+      if (lobbies.length > 0) {
+        await api.steam.joinLobby(lobbies[0].id)
+      } else {
+        await api.steam.createLobby({ name: "Arena Match", maxMembers: 4 })
+        await api.steam.setLobbyData("map", "arena_01")
+      }
+      await api.net.connect({ mode: "steam-p2p", room: "Arena Match" })
+      await api.steam.setRichPresence("status", "В бою на арене")
+    },
+  }
+}</pre></div>
+
+  <h3>Рецепт 3: Нанесение урона другому игроку (RPC + Sync Keys)</h3>
+  <div class="code-block"><div class="code-head"><span>combatSync.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
+  let hp = 100
+  let attackHeld = false
+  return {
+    onStart() {
+      api.net.setEntityVar(api.entity.id, "hp", hp)
+      // Получаем урон по RPC от другого игрока
+      api.net.onRpc("combat:hit", (data) => {
+        hp = Math.max(0, hp - Number(data?.damage || 10))
+        api.net.setEntityVar(api.entity.id, "hp", hp)
+        if (hp === 0) api.transform.position.set(0, 0.8, 0) // Респавн через Vector3.set()
+      })
+    },
+    onUpdate() {
+      const down = api.input.pressed("Attack")
+      if (down && !attackHeld) api.net.rpc("combat:hit", { damage: 15 }, "others")
+      attackHeld = down
+    },
+  }
+}</pre></div>
+
+  <h3>Рецепт 4: Локальный Split-Screen на 2 игроков (Vector3)</h3>
+  <div class="code-block"><div class="code-head"><span>localCoop.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
+  const idx = Number(api.entity.properties?.playerIndex || 0)
+  return {
+    onUpdate(dt) {
+      const [mx, mz] = api.net.getLocalPlayerMove(idx)
+      if (mx !== 0 || mz !== 0) {
+        const p = api.transform.position
+        p.set(p.x + mx * 5.5 * dt, p.y, p.z + mz * 5.5 * dt)
+        api.transform.rotation.set(0, Math.atan2(mx, mz), 0)
+      }
+    },
+  }
+}</pre></div>
+</section>
+
+<section class="doc-section" id="ru-sec-roadmap" data-cat="Релиз">
+  <div class="sec-meta"><span class="sec-badge">Глава 20</span><span class="sec-cat">Релиз</span></div>
+  <h2>Шаблоны (12), Примеры (11) и Roadmap (v3.1 – v3.3)</h2>
+  <p class="sec-lead">Стартовые шаблоны, автоподгружаемые 3D-примеры в Project Hub и план развития с фокусом на Editor QoL.</p>
+  <ul>
+    <li><strong>12 шаблонов и 11 примеров:</strong> Новые <code>Multiplayer Arena 3D</code>, <code>Split-Screen Co-op 3D</code> и <code>Shaders &amp; Materials Studio 3D</code>, а также Coin Rush 3D, Endless Runner 3D, FPS Explorer, TPS Adventure, RPG Quest &amp; Loot, Arena Shooter 3D, Key Vault и Mobile Touch Starter.</li>
+    <li><strong>v3.1 (Next) — Editor QoL и левел-дизайн:</strong> мультивыделение (рамка / <code>Shift+Click</code>), Snap to Ground, Command Palette (<code>Ctrl+K</code>), папки/теги ассетов, Drag-and-Drop во вьюпорт, Copy/Paste Component, стек Undo/Redo, <code>Play from Here</code> и встроенная консоль логов.</li>
+    <li><strong>v3.2 — Лёгкие визуальные и геймплейные ускорители:</strong> визуальный редактор HUD с якорями, пресеты атмосферы и света в 1 клик, 3D-аудио радиусы и гизмо коллайдеров/триггеров, готовый UI-виджет лобби + пароль и лимит <code>maxPlayers</code> на релее.</li>
+    <li><strong>v3.3 — Витрина сообщества и публикация:</strong> каталог игр и <code>.mfplugin.json</code> плагинов на сайте с установкой по ссылке, Pre-Export Audit и интерактивные подсказки в Project Hub.</li>
+  </ul>
+</section>
+
 </div>
 
       <div id="emptyState" class="empty-state">
@@ -977,78 +1321,6 @@ exports.registerRuntime = function(ctx) {
         <button type="button" id="emptyResetBtn" class="btn">Show all chapters</button>
       </div>
     
-  <section id="v30-multiplayer-steam" class="doc-section" style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.12)">
-    <h2>
-      <span class="lang-en">v3.0.0 — Materials, Shaders, Animation SM, Scatter Brush, Gamepad, Multiplayer, Embedded LAN &amp; Steamworks</span>
-      <span class="lang-ru">v3.0.0 — Материалы, Шейдеры, Animation SM, Кисть пропов, Геймпад, Мультиплеер, Встроенный LAN-сервер и Steamworks</span>
-    </h2>
-    <ul>
-      <li><strong>Shader Uniforms API</strong>: <code>api.materials.setShaderUniform(target, name, value)</code>, <code>api.materials.setShaderUniforms(target, { u_speed: 1.5, u_color: "#38bdf8" })</code> · Event Graph: <code>fx.setShader</code>, <code>fx.setShaderUniform</code>, <code>fx.setShaderColor</code>.</li>
-      <li><strong>Animation State Machine API</strong>: <code>api.animation.setParam(id, name, val)</code>, <code>getParam</code>, <code>setTrigger(id, name)</code>, <code>playState(id, state, blend)</code>, <code>getCurrentState(id)</code> · Event Graph: <code>anim.setParam</code>, <code>anim.setTrigger</code>, <code>anim.playState</code>, <code>anim.getState</code>.</li>
-      <li><strong>Gamepad &amp; Local Multi-Player Input</strong>: <code>api.input.gamepadAxis(axis, pad)</code>, <code>gamepadButton(btn, pad)</code>, <code>isGamepadConnected(pad)</code>, <code>api.net.getLocalPlayerMove(0..3)</code>, <code>getLocalPlayerAction(0..3, action)</code> · Event Graph: <code>input.gamepadAxis</code>, <code>input.gamepadButton</code>, <code>input.gamepadConnected</code>.</li>
-      <li><strong>Multiplayer, Rooms, Embedded Rust LAN &amp; NetworkSync API</strong>:
-        <code>api.net.connect({ mode, room, url })</code>, <code>disconnect()</code>, <code>rpc(name, payload, target)</code>, <code>onRpc(name, fn)</code>,
-        <code>setEntityVar(id, key, val)</code>, <code>getEntityVar(id, key, def)</code>, <code>onEntityVarChange(id, key, fn)</code>,
-        <code>hostLan({ port, room, gameName })</code>, <code>stopLan()</code>, <code>discoverLan(timeoutMs)</code> (zero-dependency Rust WebSocket + UDP beacon on port <code>41234</code> in Desktop builds),
-        <code>spawnNetworkPlayer(prefabId, ownerPeerId, pos)</code>, <code>sendChat(text)</code>, <code>onChat(fn)</code>, <code>setSimulation(latencyMs, lossPct)</code>.
-        Features automatic colored remote proxy avatars for <code>owner: "local"</code> entities, late-join <code>Sync Keys</code> refresh on <code>onPeerJoin</code>, <code>animState + animClip</code> crossfade replication, shortest-arc angle lerp, automatic WebSocket reconnect, offline LAN WebRTC (skips STUN on local IPs), and Dual Preview <code>postMessage</code> bridging.
-        Event Graph: <code>event.netRpc</code>, <code>event.peerJoin</code>, <code>event.peerLeave</code>, <code>event.netChat</code>, <code>net.sendRpc</code>, <code>net.sendChat</code>, <code>net.hostLan</code>, <code>net.connect</code>, <code>net.disconnect</code>, <code>net.setEntityVar</code>, <code>net.getEntityVar</code>, <code>net.isHost</code>, <code>net.peerId</code>, <code>net.playerCount</code>.
-      </li>
-      <li><strong>Steamworks SDK &amp; Lobbies API</strong>: <code>api.steam.init(480)</code>, <code>createLobby(opts)</code>, <code>listLobbies()</code>, <code>joinLobby(id)</code>, <code>leaveLobby()</code>, <code>setLobbyData(k, v)</code>, <code>getLobby()</code>, <code>unlockAchievement(id)</code>, <code>setRichPresence(k, v)</code>, <code>cloudWrite(file, data)</code>, <code>cloudRead(file)</code> · Event Graph: <code>steam.createLobby</code>, <code>steam.joinLobby</code>, <code>steam.leaveLobby</code>, <code>steam.unlockAchievement</code>, <code>steam.setRichPresence</code>, <code>steam.cloudSave</code>, <code>steam.getUserName</code>.</li>
-    </ul>
-  </section>
-
-  <section id="v30-quick-tips" class="doc-section" style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.12)">
-    <h2>
-      <span class="lang-en">Quick Tips &amp; Practical Recipes (v3.0.0)</span>
-      <span class="lang-ru">Quick Tips — практические советы по новым и базовым фичам (v3.0.0)</span>
-    </h2>
-    <div class="lang-en">
-      <ul>
-        <li><strong>Rooms &amp; Lobbies (WebSocket, LAN &amp; Steam):</strong> Every network transport isolates matches by <code>roomCode</code>. In Desktop builds, call <code>await api.net.hostLan({ port: 8765, room: "arena-1", gameName: "My Game" })</code> to start the embedded Rust server with UDP discovery, and call <code>await api.net.discoverLan(1400)</code> on clients to list LAN rooms. For Steam, use <code>api.steam.createLobby({ name, maxMembers })</code>, tag it via <code>setLobbyData("map", "arena")</code>, and discover rooms via <code>api.steam.listLobbies()</code> (AppID <code>480</code> works out of the box for testing).</li>
-        <li><strong>Player Avatars (<code>owner: "local"</code>) vs Shared World Objects (<code>owner: "host"</code>):</strong> Put <code>NetworkSync</code> with <code>owner: "local"</code> on the player entity — Miniforge automatically spawns a colored remote proxy avatar for each connected peer and removes it on disconnect. Use <code>owner: "host"</code> for shared NPCs, doors, pickups, or moving platforms so only the Host simulates them.</li>
-        <li><strong>Syncing Health, Score &amp; Custom Script State:</strong> List comma-separated keys in <code>Sync Keys</code> (e.g. <code>hp, ammo, score</code>) and update them with <code>api.net.setEntityVar(api.entity.id, "hp", 80)</code>. Only changed values are sent (delta sync), and late-joining players automatically receive the full current state on <code>onPeerJoin</code>.</li>
-        <li><strong>Scripts &amp; <code>Vector3</code> Transform API:</strong> <code>api.transform.position</code> and <code>api.transform.rotation</code> are <code>Vector3</code> objects — always mutate them via <code>.set(x, y, z)</code> or <code>.x/.y/.z</code> (never assign a raw array <code>[x, y, z]</code>). Store global match variables in <code>api.vars</code> and match binding casing for actions (e.g. <code>api.input.pressed("Jump")</code>, <code>"Interact"</code>).</li>
-        <li><strong>Dual Preview (Host + Client) &amp; Split-Screen:</strong> In <strong>Multiplayer &amp; Net Debugger → Launch Host + Client</strong>, click inside either the <code>HOST</code> or <code>CLIENT</code> frame to focus keyboard input. For local 2–4 player games, use <code>api.net.getLocalPlayerMove(0..3)</code> and <code>getLocalPlayerAction(0..3, "jump" | "interact" | "attack")</code> (P1: WASD+Space, P2: Arrows+Enter, plus Gamepads 0–3).</li>
-        <li><strong>GLSL Shaders &amp; Materials:</strong> LittleJS 3D injects its own <code>main()</code> — always write <code>void mainImage(out vec4 color, vec2 uv)</code> and/or <code>void mainVertex(inout vec3 position, inout vec3 normal)</code>. Drive uniforms at runtime via <code>api.materials.setShaderUniform()</code> without recompiling shaders.</li>
-        <li><strong>Scatter Brush, Terrain &amp; Performance:</strong> Use the right-sidebar <strong>Scatter Brush</strong> to paint prefabs across Terrain or any 3D Mesh; keep <code>staticBatch</code> enabled to merge scattered props into minimal draw calls and verify draw calls in the bottom <strong>Performance</strong> tab (Scene Profiler).</li>
-        <li><strong>Export &amp; Runtime Bundle:</strong> Enable <em>Compile Event Graphs to native JavaScript</em> in Export Settings for CSP-safe AOT speed. After modifying engine source locally, run <code>pnpm prepare:runtime</code> (or <code>pnpm dev</code>) to rebuild <code>apps/editor/public/engine/web.js</code>. Desktop player builds use <code>player.conf.json</code> with <code>withGlobalTauri: true</code> so embedded LAN and Steam IPC work automatically.</li>
-      </ul>
-    </div>
-    <div class="lang-ru">
-      <ul>
-        <li><strong>Комнаты и лобби (WebSocket, LAN и Steam):</strong> Все сетевые режимы разделяют матчи по <code>roomCode</code>. В Desktop-сборках вызовите <code>await api.net.hostLan({ port: 8765, room: "arena-1", gameName: "My Game" })</code>, чтобы поднять встроенный Rust LAN-сервер с UDP-маячком (порт <code>41234</code>), а на клиентах — <code>await api.net.discoverLan(1400)</code> для списка комнат в локалке. В Steam используйте <code>api.steam.createLobby({ name, maxMembers })</code>, метаданные <code>setLobbyData("map", "arena")</code> и поиск <code>api.steam.listLobbies()</code> (AppID <code>480</code> подходит для тестов без покупки слота в Steam).</li>
-        <li><strong>Игроки (<code>owner: "local"</code>) vs общие объекты (<code>owner: "host"</code>):</strong> На сущности игрока ставьте <code>NetworkSync</code> с <code>owner: "local"</code> — движок сам создаст цветной прокси-аватар для каждого подключившегося игрока и удалит его при выходе. Для общих врагов, дверей, платформ и лута ставьте <code>owner: "host"</code>, чтобы их симулировал только Хост.</li>
-        <li><strong>Синхронизация HP, счёта и параметров скриптов:</strong> Пропишите нужные ключи в <code>Sync Keys</code> (например <code>hp, ammo, score</code>) и обновляйте их через <code>api.net.setEntityVar(api.entity.id, "hp", 80)</code>. По сети уходят только изменения (дельта), а поздно подключившиеся игроки автоматически получают актуальный срез при <code>onPeerJoin</code>.</li>
-        <li><strong>Скрипты и <code>Vector3</code> Transform API:</strong> <code>api.transform.position</code> и <code>api.transform.rotation</code> — это объекты <code>Vector3</code>: всегда меняйте их через <code>.set(x, y, z)</code> или <code>.x/.y/.z</code> (не присваивайте массив <code>[x, y, z]</code>!). Глобальные переменные матча храните в <code>api.vars</code>, а имена действий ввода проверяйте с учётом регистра (<code>api.input.pressed("Jump")</code>, <code>"Interact"</code>).</li>
-        <li><strong>Dual Preview (Host + Client) и Split-Screen:</strong> В <strong>Multiplayer &amp; Net Debugger → Launch Host + Client</strong> кликните внутрь окна <code>HOST</code> или <code>CLIENT</code> для фокуса клавиатуры. Для локального коопа (2–4 игрока) используйте <code>api.net.getLocalPlayerMove(0..3)</code> и <code>getLocalPlayerAction(0..3, "jump" | "interact" | "attack")</code> (P1: WASD+Space, P2: Стрелки+Enter, плюс геймпады 0–3).</li>
-        <li><strong>GLSL-шейдеры и материалы:</strong> LittleJS 3D сам генерирует <code>main()</code> — в Shader Studio пишите только <code>void mainImage(out vec4 color, vec2 uv)</code> и/или <code>void mainVertex(inout vec3 position, inout vec3 normal)</code>. Меняйте параметры в игре через <code>api.materials.setShaderUniform()</code> без перекомпиляции шейдера.</li>
-        <li><strong>Кисть Scatter Brush, террейн и FPS:</strong> Расставляйте пропы и растительность через отдельную кисть <strong>Scatter Brush</strong> (работает и по террейну, и по любым 3D-мешам); держите включённым <code>staticBatch</code> для склейки draw calls и контролируйте нагрузку во вкладке <strong>Performance</strong> (Scene Profiler).</li>
-        <li><strong>Экспорт и сборка:</strong> Включайте <em>Compile Event Graphs to native JavaScript</em> в Export Settings для максимальной скорости и совместимости с CSP. После правок исходников движка запускайте <code>pnpm prepare:runtime</code> (или <code>pnpm dev</code>), чтобы пересобрать <code>apps/editor/public/engine/web.js</code>. Экспорт Desktop Player собирается по <code>player.conf.json</code> (с <code>withGlobalTauri: true</code>), без лишнего окна редактора.</li>
-      </ul>
-    </div>
-  </section>
-
-  <section id="v31-roadmap" class="doc-section" style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.12)">
-    <h2>
-      <span class="lang-en">Roadmap (v3.1 – v3.3)</span>
-      <span class="lang-ru">Roadmap (v3.1 – v3.3)</span>
-    </h2>
-    <div class="lang-en">
-      <ul>
-        <li><strong>v3.1 — Editor QoL &amp; Level Design Polish:</strong> multi-selection (box/Shift+Click), Snap to Ground, Command Palette (<code>Ctrl+K</code>), Asset folders/tags, Drag-and-Drop to viewport, Copy/Paste Component, Undo/Redo stack, <code>Play from Here</code>, and integrated Console.</li>
-        <li><strong>v3.2 — Lightweight Visual &amp; Gameplay Accelerators:</strong> visual HUD anchor layout editor, 1-click Atmosphere/Lighting presets, 3D audio radius &amp; collider/trigger gizmos, ready-made Lobby UI widget, and relay room limits/passwords.</li>
-        <li><strong>v3.3 — Community Showcase &amp; Publishing:</strong> community plugins &amp; games catalog with 1-click URL install, Pre-Export Audit, and interactive Project Hub onboarding.</li>
-      </ul>
-    </div>
-    <div class="lang-ru">
-      <ul>
-        <li><strong>v3.1 — Editor QoL и левел-дизайн:</strong> мультивыделение (рамка/Shift+Click), Snap to Ground, Command Palette (<code>Ctrl+K</code>), папки/теги ассетов, Drag-and-Drop во вьюпорт, Copy/Paste Component, стек Undo/Redo, <code>Play from Here</code> и встроенная консоль логов.</li>
-        <li><strong>v3.2 — Лёгкие визуальные и геймплейные ускорители:</strong> визуальный редактор HUD с якорями, пресеты атмосферы и света в 1 клик, 3D-аудио радиусы и гизмо коллайдеров/триггеров, готовый UI-виджет лобби + пароль и лимит слотов на релее.</li>
-        <li><strong>v3.3 — Витрина сообщества и публикация:</strong> каталог игр и <code>.mfplugin.json</code> плагинов с установкой по ссылке, Pre-Export Audit и интерактивные подсказки в Project Hub.</li>
-      </ul>
-    </div>
-  </section>
 </main>
   </div>
 
@@ -1081,7 +1353,7 @@ exports.registerRuntime = function(ctx) {
     en: {
       title: 'Miniforge Engine — Complete Documentation',
       menu: 'Menu',
-      searchPh: 'Search API, components, Event Graph (e.g. createWidget, mount, crossfade)...',
+      searchPh: 'Search API, Multiplayer, Steam, Shaders, Quick Tips (e.g. hostLan, createLobby, setEntityVar)...',
       light: 'Light Theme',
       dark: 'Dark Theme',
       filterTitle: 'Filter by category',
