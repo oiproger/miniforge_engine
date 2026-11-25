@@ -369,7 +369,7 @@ export function MaterialPreview({ p, a, compact = false, height }: { p: Project;
   }, [shape, lightPreset, autoRotate, albedoHex, roughness, metalness, emissiveHex, emissiveInt, opacity, wireframe, unlit, texAsset?.data])
 
   return (
-    <div style={{ border: '1px solid #2b323b', borderRadius: 10, overflow: 'hidden', background: '#0d1117', marginBottom: compact ? 8 : 0, flexShrink: 0 }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: '#0d1117', marginBottom: compact ? 8 : 0, flexShrink: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderBottom: '1px solid #242c37', background: '#141a22', flexWrap: 'wrap', gap: 6 }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {(['sphere', 'cube', 'torus', 'plane'] as ShapeKind[]).map((k) => (

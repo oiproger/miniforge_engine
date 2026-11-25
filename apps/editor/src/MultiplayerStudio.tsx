@@ -153,7 +153,7 @@ export function MultiplayerStudio({
           {tab === 'settings' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: '#94a3b8' }}>Multiplayer Mode</span>
+                <span style={{ color: 'var(--muted)' }}>Multiplayer Mode</span>
                 <select value={cfg.mode} onChange={(e) => patchCfg({ mode: e.target.value as MultiplayerMode })}>
                   <option value="singleplayer">Singleplayer (Offline)</option>
                   <option value="local-splitscreen">Local Split-Screen (2–4 Players)</option>
@@ -164,7 +164,7 @@ export function MultiplayerStudio({
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: '#94a3b8' }}>Max Players</span>
+                <span style={{ color: 'var(--muted)' }}>Max Players</span>
                 <input
                   type="number"
                   min={2}
@@ -175,12 +175,12 @@ export function MultiplayerStudio({
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: '#94a3b8' }}>Default Room / Lobby Code</span>
+                <span style={{ color: 'var(--muted)' }}>Default Room / Lobby Code</span>
                 <input value={cfg.roomCode ?? 'lobby-1'} onChange={(e) => patchCfg({ roomCode: e.target.value })} />
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: '#94a3b8' }}>Relay / Signaling Server URL</span>
+                <span style={{ color: 'var(--muted)' }}>Relay / Signaling Server URL</span>
                 <input
                   value={cfg.serverUrl ?? 'ws://localhost:8765'}
                   placeholder="ws://localhost:8765 or local"
@@ -189,7 +189,7 @@ export function MultiplayerStudio({
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: '#94a3b8' }}>Embedded LAN Server Port (Desktop)</span>
+                <span style={{ color: 'var(--muted)' }}>Embedded LAN Server Port (Desktop)</span>
                 <input
                   type="number"
                   min={1024}
@@ -199,7 +199,7 @@ export function MultiplayerStudio({
                 />
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid #2b323b' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid var(--border)' }}>
                 <input
                   type="checkbox"
                   checked={Boolean(cfg.autoStartLanServer)}
@@ -209,7 +209,7 @@ export function MultiplayerStudio({
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: '#94a3b8' }}>Network Tick Rate ({cfg.tickRate ?? 20} Hz)</span>
+                <span style={{ color: 'var(--muted)' }}>Network Tick Rate ({cfg.tickRate ?? 20} Hz)</span>
                 <input
                   type="range"
                   min={10}
@@ -221,7 +221,7 @@ export function MultiplayerStudio({
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: '#94a3b8' }}>Interpolation Buffer ({cfg.interpolationDelayMs ?? 60} ms)</span>
+                <span style={{ color: 'var(--muted)' }}>Interpolation Buffer ({cfg.interpolationDelayMs ?? 60} ms)</span>
                 <input
                   type="range"
                   min={0}
@@ -235,7 +235,7 @@ export function MultiplayerStudio({
               {cfg.mode === 'local-splitscreen' && (
                 <>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                    <span style={{ color: '#94a3b8' }}>Local Players (2–4)</span>
+                    <span style={{ color: 'var(--muted)' }}>Local Players (2–4)</span>
                     <select
                       value={cfg.splitScreenPlayers ?? 2}
                       onChange={(e) => patchCfg({ splitScreenPlayers: Number(e.target.value) })}
@@ -246,7 +246,7 @@ export function MultiplayerStudio({
                     </select>
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                    <span style={{ color: '#94a3b8' }}>Split-Screen Layout</span>
+                    <span style={{ color: 'var(--muted)' }}>Split-Screen Layout</span>
                     <select
                       value={cfg.splitScreenLayout ?? 'horizontal'}
                       onChange={(e) => patchCfg({ splitScreenLayout: e.target.value as any })}
@@ -272,7 +272,7 @@ export function MultiplayerStudio({
                   padding: '10px 12px',
                   borderRadius: 8,
                   background: '#141a22',
-                  border: '1px solid #2b323b',
+                  border: '1px solid var(--border)',
                   fontSize: 12,
                 }}
               >
@@ -320,7 +320,7 @@ export function MultiplayerStudio({
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: 20, borderRadius: 8, background: '#11161d', border: '1px dashed #2e3846', textAlign: 'center', color: '#94a3b8', fontSize: 12.5 }}>
+                <div style={{ padding: 20, borderRadius: 8, background: '#11161d', border: '1px dashed #2e3846', textAlign: 'center', color: 'var(--muted)', fontSize: 12.5 }}>
                   Click <strong>Launch Host + Client</strong> above to spawn two live synchronized game instances side-by-side over local <code>BroadcastChannel</code> (no external server required). Add a <strong>Network Sync</strong> component to any entity to test transform/animation sync and RPCs!
                 </div>
               )}
@@ -329,10 +329,10 @@ export function MultiplayerStudio({
 
           {tab === 'server' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12.5, color: '#cbd5e1' }}>
-              <p style={{ margin: 0, color: '#94a3b8' }}>
+              <p style={{ margin: 0, color: 'var(--muted)' }}>
                 Miniforge v3.0 includes a zero-dependency Node.js WebSocket room relay &amp; WebRTC signaling server at <code>server/relay-server.mjs</code>.
               </p>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#0d1117', border: '1px solid #2b323b', borderRadius: 8, padding: '8px 12px', fontFamily: 'ui-monospace, monospace' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#0d1117', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontFamily: 'ui-monospace, monospace' }}>
                 <span style={{ flex: 1, color: '#7ee787' }}>node server/relay-server.mjs 8765</span>
                 <button
                   type="button"
@@ -353,9 +353,9 @@ export function MultiplayerStudio({
                   padding: 12,
                   borderRadius: 8,
                   background: '#0d1117',
-                  border: '1px solid #2b323b',
+                  border: '1px solid var(--border)',
                   fontSize: 11.5,
-                  color: '#e6edf3',
+                  color: 'var(--text)',
                   overflowX: 'auto',
                 }}
               >{`// Scripting API example:

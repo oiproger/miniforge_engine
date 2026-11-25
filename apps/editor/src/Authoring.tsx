@@ -1484,7 +1484,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                 a.properties?.meshBuilder ? (
                   <MeshBuilder a={a} p={p} changeA={changeA} />
                 ) : (
-                  <ModelEditor
+                  <ModelEditor key={a.id}
                     a={a}
                     p={p}
                     changeA={changeA}

@@ -404,7 +404,9 @@ function App() {
   async function open(file?: File) {
     if (!file) return
     try {
-      replace(await importProject(file))
+      const project = await importProject(file)
+      clearLinkedDiskPath()
+      replace(project)
       note('Project opened')
     } catch (e) {
       note(String(e))
@@ -792,7 +794,6 @@ function App() {
     [
       'New project',
       () => {
-        clearLinkedDiskPath()
         setNewName('')
         modal('new')
       },
@@ -1365,7 +1366,7 @@ function App() {
           <Workflow size={12} />
           {scene.name}
           <i />
-          Miniforge Engine <b>v3.0.0</b>
+          Miniforge Engine <b>v3.0.3</b>
         </span>
       </footer>
       <input
@@ -1507,6 +1508,7 @@ function App() {
                   e.preventDefault()
                   const n = freshTemplate(template)
                   if (newName.trim()) n.name = newName.trim()
+                  clearLinkedDiskPath()
                   replace(n)
                 }}
               >
@@ -1614,10 +1616,8 @@ function App() {
       )}
       {notice && (
         <div className="toast" role="status">
-          {notice}
-          <button onClick={() => { modal(''); void saveProjectToDisk(p).then((s) => note(s ? 'Saved to disk: ' + s : 'Disk save cancelled')).catch((e) => note(String(e))) }}>Save to disk (Ctrl+S){getLinkedDiskPath() ? ' · ' + getLinkedDiskPath()!.split(/[\\/]/).pop() : ''}</button>
-                <button onClick={() => { modal(''); void openProjectFromDisk().then((res) => { if (res) { change(res.project); note('Opened from disk: ' + res.label) } }).catch((e) => note(String(e))) }}>Open from disk (.json)</button>
-                <button className="icon" onClick={() => say('')}>
+          <span>{notice}</span>
+          <button className="icon" aria-label="Dismiss notification" onClick={() => say('')}>
             <X />
           </button>
         </div>

@@ -376,7 +376,7 @@ export function PaintEditor({
         </div>
 
         {/* Right: Color, Brush & Layers */}
-        <div style={{ padding: 10, borderLeft: '1px solid #2b323b', background: '#161b23', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+        <div style={{ padding: 10, borderLeft: '1px solid var(--border)', background: '#161b23', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ width: 38, height: 28, border: 'none', background: 'none' }} />
             <input value={color} onChange={(e) => setColor(e.target.value)} style={{ flex: 1, fontSize: 12 }} />
@@ -391,17 +391,17 @@ export function PaintEditor({
               />
             ))}
           </div>
-          <label style={{ fontSize: 11.5, color: '#9aa7b8' }}>
+          <label style={{ fontSize: 11.5, color: 'var(--muted)' }}>
             Brush Size: <b>{brushSize}px</b>
             <input type="range" min={1} max={32} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} style={{ width: '100%' }} />
           </label>
-          <label style={{ fontSize: 11.5, color: '#9aa7b8' }}>
+          <label style={{ fontSize: 11.5, color: 'var(--muted)' }}>
             Opacity: <b>{Math.round(opacity * 100)}%</b>
             <input type="range" min={0.05} max={1} step={0.05} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} style={{ width: '100%' }} />
           </label>
 
           {/* Layers Panel */}
-          <div style={{ borderTop: '1px solid #2b323b', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700 }}>
               <span>Layers ({layers.length})</span>
               <button
@@ -439,7 +439,7 @@ export function PaintEditor({
                 </button>
                 <button
                   type="button"
-                  style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', color: '#e6edf3', cursor: 'pointer' }}
+                  style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer' }}
                   onClick={() => setActiveLayerId(l.id)}
                 >
                   {l.name}

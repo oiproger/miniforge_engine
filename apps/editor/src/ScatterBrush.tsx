@@ -47,7 +47,7 @@ export function ScatterBrushPanel({
         height: '100%',
         overflowY: 'auto',
         background: '#11161d',
-        color: '#e6edf3',
+        color: 'var(--text)',
         fontSize: 12,
       }}
     >
@@ -91,7 +91,7 @@ export function ScatterBrushPanel({
           </button>
         </div>
 
-        <div style={{ fontSize: 10.5, color: '#94a3b8', background: '#111720', padding: '5px 8px', borderRadius: 6, border: '1px solid #222b38' }}>
+        <div style={{ fontSize: 10.5, color: 'var(--muted)', background: '#111720', padding: '5px 8px', borderRadius: 6, border: '1px solid #222b38' }}>
           Click &amp; drag in the 3D viewport to paint on <strong>Terrain</strong> heightmaps or <strong>any 3D Mesh</strong>.
         </div>
 
@@ -137,7 +137,7 @@ export function ScatterBrushPanel({
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
-            <span style={{ color: '#94a3b8' }}>Scale Min</span>
+            <span style={{ color: 'var(--muted)' }}>Scale Min</span>
             <input
               type="number"
               min={0.1}
@@ -148,7 +148,7 @@ export function ScatterBrushPanel({
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
-            <span style={{ color: '#94a3b8' }}>Scale Max</span>
+            <span style={{ color: 'var(--muted)' }}>Scale Max</span>
             <input
               type="number"
               min={0.1}
@@ -172,11 +172,11 @@ export function ScatterBrushPanel({
 
         {/* Asset picker */}
         <div style={{ borderTop: '1px solid #242c37', paddingTop: 8 }}>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 5 }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 5 }}>
             Prefabs &amp; 3D Models to scatter ({brush.assets.length} selected):
           </div>
           {candidates.length === 0 ? (
-            <div style={{ fontSize: 11, color: '#94a3b8', padding: '6px 8px', background: '#111720', borderRadius: 6 }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', padding: '6px 8px', background: '#111720', borderRadius: 6 }}>
               No Prefabs or 3D Models yet — painting will scatter stylized primitive foliage/rocks automatically, or add a Prefab/Model to select it here.
             </div>
           ) : (
@@ -200,7 +200,7 @@ export function ScatterBrushPanel({
                   >
                     <input type="checkbox" checked={picked} onChange={() => toggleAsset(a.id)} />
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                    <span style={{ fontSize: 9.5, color: '#94a3b8', textTransform: 'uppercase' }}>{a.type}</span>
+                    <span style={{ fontSize: 9.5, color: 'var(--muted)', textTransform: 'uppercase' }}>{a.type}</span>
                   </label>
                 )
               })}
@@ -210,7 +210,7 @@ export function ScatterBrushPanel({
 
         {/* Footer stats + Clear */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #242c37', paddingTop: 8 }}>
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>Scattered in scene: <b style={{ color: '#e6edf3' }}>{scatteredCount}</b></span>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>Scattered in scene: <b style={{ color: 'var(--text)' }}>{scatteredCount}</b></span>
           <button
             type="button"
             className="mf-btn"

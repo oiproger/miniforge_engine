@@ -8,6 +8,8 @@ export interface PlatformAdapter {
   showRewarded(): Promise<boolean>
   getLanguage(): string
   saveData(key: string, value: unknown): Promise<void>
+  /** Write only to the platform cloud, when supported. */
+  saveCloud?(key: string, value: unknown): Promise<void>
   loadData(key: string): Promise<any>
   isAvailable(): boolean
 }
@@ -115,6 +117,7 @@ export function adapter(projectId: string, service: Services): PlatformAdapter {
         return 'en'
       }
     },
+    saveCloud: service.save,
     async saveData(key, value) {
       memory.set(key, value)
       try {

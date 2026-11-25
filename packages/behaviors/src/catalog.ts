@@ -81,6 +81,7 @@ export const eventNames = [
   'game.save.export',
   'save.before',
   'save.completed',
+  'save.failed',
   'save.loaded',
   'timer.done',
   'coin.collected',

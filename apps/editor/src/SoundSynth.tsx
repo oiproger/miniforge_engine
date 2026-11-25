@@ -280,7 +280,7 @@ export function SoundSynth({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {SCALE_NOTES.map((note, rIdx) => (
                 <div key={note.name} style={{ display: 'grid', gridTemplateColumns: '34px repeat(16, 1fr)', gap: 3, alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: '#9aa7b8', fontFamily: 'monospace' }}>{note.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'monospace' }}>{note.name}</span>
                   {grid[rIdx].map((on, cIdx) => (
                     <button
                       key={cIdx}
@@ -305,7 +305,7 @@ export function SoundSynth({
           </>
         )}
         {a.data && a.data.startsWith('data:audio') && (
-          <div style={{ borderTop: '1px solid #2b323b', paddingTop: 10 }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
             <audio controls src={a.data} style={{ width: '100%' }} />
           </div>
         )}

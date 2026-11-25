@@ -8,7 +8,7 @@ import type { LanDiscoveredGame, LanServerInfo, MultiplayerMode, NetChatMessage,
 import type { SteamLobby, SteamLogEntry, SteamUserInfo } from './steam'
 import type { AudioBus, AudioPlayOptions } from './audio'
 import type { Tween } from './tween'
-import type { SaveSnapshot, SaveOptions, LoadOptions } from './saveSystem'
+import type { SaveSnapshot, SaveResult, SaveOptions, LoadOptions } from './saveSystem'
 import type { TouchAPI, TouchPointerState, TouchEmulationOptions } from './touch'
 import type { DialogueAPI } from './dialogue'
 import type { SequencerAPI } from './sequencer'
@@ -17,7 +17,7 @@ export type { SequencerAPI } from './sequencer'
 export type { TouchAPI, TouchPointerState, TouchEmulationOptions } from './touch'
 
 export type { Tween, PropertyTweener, TweenTrans, TweenEase } from './tween'
-export type { SaveSnapshot, SaveOptions, LoadOptions } from './saveSystem'
+export type { SaveSnapshot, SaveResult, SaveOptions, LoadOptions } from './saveSystem'
 
 export type { PostProcessOptions, ProceduralSkyOptions, SkyboxFaces } from '../../graphics/src'
 
@@ -295,7 +295,7 @@ export interface WorldStateAPI {
 
 export interface SaveSystemAPI {
   /** Capture and save full game state (scene, player, vars, worldState, entities) locally and optionally to platform cloud. */
-  save(slot?: string, options?: SaveOptions): Promise<SaveSnapshot>
+  save(slot?: string, options?: SaveOptions): Promise<SaveResult>
   /** Load full game state from slot (merging/picking newest between local and platform cloud). */
   load(slot?: string, options?: LoadOptions): Promise<boolean>
   /** Capture a snapshot object without writing to storage. */

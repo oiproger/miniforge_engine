@@ -122,6 +122,14 @@ export function DialogueEditor({
           </span>
         </div>
         <div className="mf-bp-actions">
+          <select aria-label="Jump to dialogue node" value={selectedId} onChange={(event) => {
+            const node = data.nodes.find((item) => item.id === event.target.value)
+            if (!node) return
+            setSelectedId(node.id)
+            setPan({ x: 24 - node.x * zoom, y: 24 - node.y * zoom })
+          }}>
+            {data.nodes.map((node) => <option key={node.id} value={node.id}>{node.speaker || node.type} · {node.text || node.id}</option>)}
+          </select>
           <button type="button" className="mf-btn" onClick={() => addNode('line')}><Plus size={12} /> Line</button>
           <button type="button" className="mf-btn" onClick={() => addNode('condition')}><GitBranch size={12} /> Condition</button>
           <button type="button" className="mf-btn" onClick={() => addNode('action')}><Zap size={12} /> Quest / Action</button>
@@ -265,7 +273,7 @@ export function DialogueEditor({
         </div>
 
         {/* Right: Selected Node Inspector */}
-        <aside className="mf-bp-sidebar" style={{ borderRight: 'none', borderLeft: '1px solid #2b323b' }}>
+        <aside className="mf-bp-sidebar" style={{ borderRight: 'none', borderLeft: '1px solid var(--border)' }}>
           {!cur ? (
             <div className="mf-bp-empty">Select a node</div>
           ) : (

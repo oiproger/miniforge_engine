@@ -39,7 +39,7 @@ export function ExportSettingsPanel({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '72vh', overflowY: 'auto', paddingRight: 4 }}>
       {/* App Identity */}
-      <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 12, background: '#161b22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <strong style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#f3a05d' }}>
           <Settings2 size={13} /> Application Identity
         </strong>
@@ -124,7 +124,7 @@ export function ExportSettingsPanel({
       </div>
 
       {/* Window Configuration */}
-      <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 12, background: '#161b22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <strong style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#58b8ff' }}>
           <Monitor size={13} /> Desktop Window Settings
         </strong>
@@ -153,7 +153,7 @@ export function ExportSettingsPanel({
       </div>
 
       {/* Desktop Export Mode & Export Templates */}
-      <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 12, background: '#161b22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <strong style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#7ee787' }}>
           <Package size={13} /> Desktop Packaging Mode (Export Templates)
         </strong>
@@ -187,7 +187,7 @@ export function ExportSettingsPanel({
                 onChange={(e) => patchCfg({ templateBaseUrl: e.target.value })}
               />
             </Field>
-            <div style={{ fontSize: 11, color: '#9aa7b8' }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
               Or load a local prebuilt player binary for offline instant export:
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
@@ -226,7 +226,7 @@ export function ExportSettingsPanel({
       </div>
 
       {/* Performance: Event Graph Nativization */}
-      <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 12, background: '#161b22', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <strong style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fbbf24' }}>
           Event Graph Nativization (AOT JS Compiler)
         </strong>
@@ -238,13 +238,13 @@ export function ExportSettingsPanel({
           />
           <span><strong>Compile Event Graphs to native JavaScript on export</strong></span>
         </label>
-        <div style={{ fontSize: 11, color: '#9aa7b8', lineHeight: 1.45 }}>
+        <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.45 }}>
           Replaces the runtime graph interpreter with ahead-of-time compiled ES modules during export (Web, Yandex Games, Poki, Desktop). Faster loop execution, zero <code>eval()</code>, 100% CSP-safe. Editor Play preview continues using the live interpreter for instant iteration.
         </div>
       </div>
 
       {/* Web Meta */}
-      <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 12, background: '#161b22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <strong style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#cbd5e1' }}>
           <Globe size={13} /> Web / HTML5 Settings
         </strong>

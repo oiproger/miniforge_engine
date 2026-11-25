@@ -202,7 +202,7 @@ export function InputManager({
                   padding: '8px 12px',
                   borderRadius: 8,
                   background: '#141a22',
-                  border: '1px solid #2b323b',
+                  border: '1px solid var(--border)',
                   fontSize: 12,
                 }}
               >
@@ -214,7 +214,7 @@ export function InputManager({
                       {connectedPads.length > 1 ? ` (+${connectedPads.length - 1})` : ''}
                     </span>
                   ) : (
-                    <span style={{ color: '#94a3b8' }}>No gamepad detected — connect a controller and press any button to wake Gamepad API.</span>
+                    <span style={{ color: 'var(--muted)' }}>No gamepad detected — connect a controller and press any button to wake Gamepad API.</span>
                   )}
                 </div>
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#cbd5e1' }}>
@@ -294,7 +294,7 @@ export function InputManager({
                       border: '1px solid ' + (listeningAction === action ? '#f59e0b' : '#242c37'),
                     }}
                   >
-                    <strong style={{ fontSize: 12.5, color: '#e6edf3' }}>{action}</strong>
+                    <strong style={{ fontSize: 12.5, color: 'var(--text)' }}>{action}</strong>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {codes.length === 0 ? (
                         <span style={{ fontSize: 11, color: '#64748b' }}>Unbound</span>
@@ -352,7 +352,7 @@ export function InputManager({
               {/* Touch & Virtual Controls */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  <span style={{ color: '#94a3b8' }}>Virtual controls</span>
+                  <span style={{ color: 'var(--muted)' }}>Virtual controls</span>
                   <select value={touch.mode || 'auto'} onChange={(e) => patchTouch('mode', e.target.value)}>
                     <option value="auto">Auto (touch devices)</option>
                     <option value="always">Always visible (PC debug)</option>
@@ -360,7 +360,7 @@ export function InputManager({
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  <span style={{ color: '#94a3b8' }}>Look sensitivity</span>
+                  <span style={{ color: 'var(--muted)' }}>Look sensitivity</span>
                   <input
                     type="number"
                     min={0.0005}
@@ -371,7 +371,7 @@ export function InputManager({
                   />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  <span style={{ color: '#94a3b8' }}>Overlay opacity</span>
+                  <span style={{ color: 'var(--muted)' }}>Overlay opacity</span>
                   <input
                     type="number"
                     min={0.1}

@@ -149,7 +149,7 @@ export function PluginManagerPanel({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '76vh', overflowY: 'auto', padding: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 12, color: '#9aa7b8' }}>
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
           Installed: <strong style={{ color: '#7ee787' }}>{installedAssets.length}</strong> · Available:{' '}
           <strong style={{ color: '#7cc7ff' }}>{availableExamples.length}</strong>
         </div>
@@ -182,7 +182,7 @@ export function PluginManagerPanel({
             fontSize: 12,
             background: statusMsg.ok ? 'rgba(87,209,99,0.12)' : 'rgba(229,83,75,0.16)',
             color: statusMsg.ok ? '#7ee787' : '#ff7b72',
-            border: '1px solid #2b323b',
+            border: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -199,7 +199,7 @@ export function PluginManagerPanel({
           <CheckCircle2 size={14} /> Installed Plugins ({installedAssets.length})
         </div>
         {installedAssets.length === 0 ? (
-          <div style={{ border: '1px dashed #2b323b', borderRadius: 8, padding: 14, fontSize: 12, color: '#8b9bb0' }}>
+          <div style={{ border: '1px dashed var(--border)', borderRadius: 8, padding: 14, fontSize: 12, color: '#8b9bb0' }}>
             No plugins installed in this project yet. Install one from the catalog below or create a custom plugin.
           </div>
         ) : (
@@ -234,7 +234,7 @@ export function PluginManagerPanel({
                     {manifest.enabled ? 'Active' : 'Disabled'}
                   </span>
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: '#9aa7b8', lineHeight: 1.45 }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)', lineHeight: 1.45 }}>
                   {manifest.description || 'Custom Miniforge plugin'}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 'auto' }}>
@@ -285,7 +285,7 @@ export function PluginManagerPanel({
           <Sparkles size={14} /> Available / Not Installed ({availableExamples.length})
         </div>
         {availableExamples.length === 0 ? (
-          <div style={{ border: '1px dashed #2b323b', borderRadius: 8, padding: 14, fontSize: 12, color: '#8b9bb0' }}>
+          <div style={{ border: '1px dashed var(--border)', borderRadius: 8, padding: 14, fontSize: 12, color: '#8b9bb0' }}>
             All built-in example plugins are already installed in this project.
           </div>
         ) : (
@@ -294,7 +294,7 @@ export function PluginManagerPanel({
               <div
                 key={ex.id}
                 style={{
-                  border: '1px solid #2b323b',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: 12,
                   background: '#171d26',
@@ -309,7 +309,7 @@ export function PluginManagerPanel({
                     {ex.category}
                   </span>
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: '#9aa7b8', lineHeight: 1.45 }}>{ex.description}</p>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)', lineHeight: 1.45 }}>{ex.description}</p>
                 <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
                   <button
                     type="button"
@@ -435,7 +435,7 @@ export function PluginEditor({
             fontSize: 12,
             background: checkMsg.ok ? 'rgba(87,209,99,0.12)' : 'rgba(229,83,75,0.16)',
             color: checkMsg.ok ? '#7ee787' : '#ff7b72',
-            borderBottom: '1px solid #2b323b',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -502,7 +502,7 @@ export function PluginEditor({
                 outline: 'none',
                 padding: 14,
                 background: '#0d1117',
-                color: '#e6edf3',
+                color: 'var(--text)',
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
                 fontSize: 12.5,
                 lineHeight: 1.55,

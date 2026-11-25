@@ -250,7 +250,7 @@ export function AnimStateMachineEditor({
           {/* 3-Column Studio: Parameters | Graph Canvas | Inspector */}
           <div style={{ display: 'grid', gridTemplateColumns: '215px minmax(0, 1fr) 280px', gap: 10, minHeight: 420 }}>
             {/* Left: Parameters */}
-            <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <strong style={{ fontSize: 11.5, color: '#cbd5e1', textTransform: 'uppercase' }}>
                 Parameters ({machine.params.length})
               </strong>
@@ -288,7 +288,7 @@ export function AnimStateMachineEditor({
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, color: '#e6edf3', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.name}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.name}</div>
                       <div style={{ fontSize: 10, color: '#7ee787' }}>{pr.type}</div>
                     </div>
                     <button type="button" className="mf-btn" style={{ padding: '2px 5px' }} onClick={() => removeParam(pr.name)}>
@@ -304,9 +304,9 @@ export function AnimStateMachineEditor({
               ref={canvasRef}
               style={{
                 position: 'relative',
-                border: '1px solid #2b323b',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
-                backgroundColor: '#0e131a',
+                backgroundColor: 'var(--bg)',
                 backgroundImage: 'radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)',
                 backgroundPosition: `${pan.x}px ${pan.y}px`,
                 backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
@@ -476,7 +476,7 @@ export function AnimStateMachineEditor({
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Play size={10} /> {st.clip || '(none)'} · {st.speed}x
                       </div>
                     </div>
@@ -495,7 +495,7 @@ export function AnimStateMachineEditor({
                   alignItems: 'center',
                   gap: 4,
                   background: 'rgba(15, 20, 27, 0.88)',
-                  border: '1px solid #2b323b',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   padding: '3px 5px',
                   fontSize: 11,
@@ -541,7 +541,7 @@ export function AnimStateMachineEditor({
             </div>
 
             {/* Right: Inspector for selected State or Transition */}
-            <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
               {selState ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -593,7 +593,7 @@ export function AnimStateMachineEditor({
                     Set as Entry State
                   </button>
                   <div style={{ marginTop: 6, borderTop: '1px solid #242c37', paddingTop: 8 }}>
-                    <strong style={{ fontSize: 11, color: '#94a3b8' }}>Outgoing Transitions</strong>
+                    <strong style={{ fontSize: 11, color: 'var(--muted)' }}>Outgoing Transitions</strong>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
                       {machine.transitions
                         .filter((t) => t.from === selState.name)
@@ -609,7 +609,7 @@ export function AnimStateMachineEditor({
                             }}
                           >
                             <span>→ {t.to}</span>
-                            <span style={{ color: '#94a3b8' }}>{t.duration}s</span>
+                            <span style={{ color: 'var(--muted)' }}>{t.duration}s</span>
                           </button>
                         ))}
                     </div>
@@ -664,7 +664,7 @@ export function AnimStateMachineEditor({
                   </label>
                   <div style={{ marginTop: 4, borderTop: '1px solid #242c37', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong style={{ fontSize: 11, color: '#94a3b8' }}>Conditions ({selTrans.conditions.length})</strong>
+                      <strong style={{ fontSize: 11, color: 'var(--muted)' }}>Conditions ({selTrans.conditions.length})</strong>
                       <button
                         type="button"
                         className="mf-btn"

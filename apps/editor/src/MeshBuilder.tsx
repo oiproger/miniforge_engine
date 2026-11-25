@@ -1019,7 +1019,7 @@ export function MeshBuilder({
           <button type="button" className={'mf-bp-tab' + (toolMode === 'paint' ? ' active' : '')} onClick={() => setToolMode('paint')}>
             <Paintbrush size={13} /> 3D Material Brush
           </button>
-          <span style={{ fontSize: 11, color: '#9aa7b8', marginLeft: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 8 }}>
             {tris.length} tris · {recipe.slots.length} materials
           </span>
         </div>
@@ -1042,7 +1042,7 @@ export function MeshBuilder({
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1.05fr) minmax(420px, 1.15fr)', flex: 1, minHeight: 0 }}>
         {/* Left: Live 3D Viewport */}
-        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #2b323b', background: '#141920', position: 'relative' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', background: '#141920', position: 'relative' }}>
           {dragHud && (
             <div
               style={{
@@ -1168,7 +1168,7 @@ export function MeshBuilder({
               orbitRef.current.dist = Math.max(1.2, Math.min(25, orbitRef.current.dist * (1 + e.deltaY * 0.0012)))
             }}
           />
-          <div style={{ padding: '7px 10px', borderTop: '1px solid #2b323b', fontSize: 11, color: '#9aa7b8' }}>
+          <div style={{ padding: '7px 10px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--muted)' }}>
             {toolMode === 'paint'
               ? `Instant 3D Brush (${paintMode === 'material' ? `Material: ${activeSlot?.name}` : paintMode === 'faceSlot' ? `Face Slot #${brushSlot}` : 'Color'}) · Left-drag to paint · Right-drag to orbit`
               : toolMode === 'face'
@@ -1182,7 +1182,7 @@ export function MeshBuilder({
         {/* Right: Modeling Tools, Brushes, UV, Material Paint & Unlimited Materials */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, overflowY: 'auto' }}>
           {/* Face Modeling Tools (Interactive Drag + Numeric) */}
-          <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 9, background: '#192028', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 9, background: '#192028', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <Sparkles size={12} color="#f3a05d" /> Face Modeling Tools
@@ -1281,7 +1281,7 @@ export function MeshBuilder({
           </div>
 
           {/* 3D Material & Texture Paint Brush Settings */}
-          <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 9, background: '#192028', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 9, background: '#192028', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <Paintbrush size={12} color="#58b8ff" /> 3D Material &amp; Texture Brush
@@ -1357,7 +1357,7 @@ export function MeshBuilder({
           </div>
 
           {/* CSG Brushes List */}
-          <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 9, background: '#161b22', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 9, background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
               <strong style={{ fontSize: 12 }}>CSG Brushes ({recipe.nodes.length})</strong>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -1407,7 +1407,7 @@ export function MeshBuilder({
                 >
                   <button
                     type="button"
-                    style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', color: '#e6edf3', cursor: 'pointer' }}
+                    style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer' }}
                     onClick={() => setSelectedNodeId(n.id)}
                   >
                     <b>{n.op === 'subtract' ? '−' : '+'}</b> {n.name}{' '}
@@ -1446,7 +1446,7 @@ export function MeshBuilder({
             </div>
 
             {curNode && (
-              <div style={{ borderTop: '1px solid #2b323b', paddingTop: 7, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 7, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   <Field label="Operation">
                     <select
@@ -1482,7 +1482,7 @@ export function MeshBuilder({
                 </div>
                 {(['pos', 'rot', 'scale'] as const).map((prop) => (
                   <div key={prop} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 1fr 1fr', gap: 4, alignItems: 'center', fontSize: 11 }}>
-                    <span style={{ color: '#9aa7b8', textTransform: 'uppercase' }}>{prop}</span>
+                    <span style={{ color: 'var(--muted)', textTransform: 'uppercase' }}>{prop}</span>
                     {[0, 1, 2].map((ax) => (
                       <Numeric
                         key={ax}
@@ -1504,7 +1504,7 @@ export function MeshBuilder({
           </div>
 
           {/* Quick UV Unwrap */}
-          <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 8, background: '#192028', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 8, background: '#192028', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             <Field label="UV Unwrap">
               <select value={recipe.uvMode} onChange={(e) => commitRecipe((r) => (r.uvMode = e.target.value as UvMode))}>
                 <option value="atlas">Unique Per-Face Atlas (3D Brush)</option>
@@ -1519,7 +1519,7 @@ export function MeshBuilder({
           </div>
 
           {/* Unlimited Material Slots with Procedural Pattern + Project Material Link */}
-          <div style={{ border: '1px solid #2b323b', borderRadius: 6, padding: 8, background: '#192028', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 8, background: '#192028', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <Layers size={12} /> Material Slots ({recipe.slots.length})

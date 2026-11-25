@@ -127,7 +127,7 @@ export function SceneProfiler({
         border: '1px solid #303a47',
         background: 'rgba(13, 17, 23, 0.94)',
         backdropFilter: 'blur(10px)',
-        color: '#e6edf3',
+        color: 'var(--text)',
         boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
         fontFamily: 'Inter, system-ui, sans-serif',
         fontSize: 12,
@@ -188,10 +188,10 @@ export function SceneProfiler({
           </div>
         </div>
 
-        <div style={{ fontSize: 11, color: '#9aa7b8', display: 'flex', justifyContent: 'space-between' }}>
-          <span>Lights: <b style={{ color: '#e6edf3' }}>{stats.lights}</b></span>
-          <span>Particles: <b style={{ color: '#e6edf3' }}>{stats.particles}</b></span>
-          <span>Meshes: <b style={{ color: '#e6edf3' }}>{stats.meshCount}</b></span>
+        <div style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Lights: <b style={{ color: 'var(--text)' }}>{stats.lights}</b></span>
+          <span>Particles: <b style={{ color: 'var(--text)' }}>{stats.particles}</b></span>
+          <span>Meshes: <b style={{ color: 'var(--text)' }}>{stats.meshCount}</b></span>
         </div>
 
         {stats.topAssets.length > 0 && (

@@ -53,6 +53,7 @@ export default function Assets({
       (!groups[folder].length || groups[folder].includes(a.type)) &&
       a.name.toLowerCase().includes(search.toLowerCase()),
   )
+  const selectedModel = filtered.find((asset) => asset.id === chosen && asset.type === 'model')
   return (
     <div className="asset-area">
       <aside className="folders">
@@ -77,6 +78,10 @@ export default function Assets({
             <Search size={13} />
             <input placeholder="Find assets..." value={search} onChange={(e) => query(e.target.value)} />
           </label>
+          {selectedModel && <>
+            <button className="minor-btn" onClick={() => editAsset(selectedModel.id)}>Edit model</button>
+            <button className="minor-btn" onClick={() => onUse(selectedModel)}>Add to scene</button>
+          </>}
           <button className="icon" title="Toggle asset layout" onClick={() => list(!rows)}>
             {rows ? <List /> : <Grid2X2 />}
           </button>

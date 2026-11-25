@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Play,
   Pause,
@@ -65,6 +65,11 @@ export function ModelEditor({
 }) {
   const [tab, setTab] = useState<'materials' | 'animations'>('materials')
   const [info, setInfo] = useState<InspectedModel | null>(null)
+  const [updating, setUpdating] = useState(false)
+  const [previewError, setPreviewError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  const [showGrid, setShowGrid] = useState(true)
+  const [partQuery, setPartQuery] = useState('')
   const [selectedPart, setSelectedPart] = useState(0)
   const [autoRotate, setAutoRotate] = useState(false)
 
@@ -93,7 +98,7 @@ export function ModelEditor({
     yaw: 0.55,
     pitch: 0.32,
     dist: 4.5,
-    targetY: 0.8,
+    targetX: 0, targetY: 0.8, targetZ: 0,
     dragging: false,
     panning: false,
     lx: 0,
@@ -119,7 +124,11 @@ export function ModelEditor({
   const customClips: ModelAnimationClip[] = Array.isArray(a.properties?.clips) ? a.properties.clips : []
   const partMaterials: Record<string, string> = a.properties?.partMaterials || {}
   const partOverrides: Record<string, ModelPartMaterialOverride> = a.properties?.partOverrides || {}
-  const matAssets = p.assets.filter((x) => x.type === 'material')
+  const matAssets = useMemo(() => p.assets.filter((x) => x.type === 'material'), [p.assets])
+  const syncKey = useMemo(() => JSON.stringify({
+    pm: a.properties?.partMaterials, po: a.properties?.partOverrides, cl: a.properties?.clips,
+    mats: matAssets.map((material) => [material.id, material.properties]),
+  }), [a.properties, matAssets])
 
   const buildPreviewProject = () => {
     const sample = makeProject('Model Preview')
@@ -140,28 +149,40 @@ export function ModelEditor({
     const sy = bounds.max[1] - bounds.min[1]
     const sz = bounds.max[2] - bounds.min[2]
     const radius = Math.max(0.35, Math.hypot(sx, sy, sz) * 0.5)
-    orbitRef.current.dist = Math.max(1.6, radius * 2.4)
+    const host = previewHostRef.current
+    const aspect = host && host.clientHeight ? host.clientWidth / host.clientHeight : 1
+    orbitRef.current.dist = radius * 3 / Math.max(0.1, Math.min(1, aspect))
+    orbitRef.current.targetX = (bounds.min[0] + bounds.max[0]) / 2
+    orbitRef.current.targetZ = (bounds.min[2] + bounds.max[2]) / 2
     orbitRef.current.targetY = (bounds.min[1] + bounds.max[1]) * 0.5
   }
 
+  const lastSync = useRef('')
+  useEffect(() => { worldRef.current?.setGrid(showGrid, -0.01) }, [showGrid])
   // Initialize live 3D preview world
   useEffect(() => {
     const host = previewHostRef.current
     if (!host) return
+    setPreviewError('')
+    setUpdating(false)
+    setInfo(null)
+    lastSync.current = syncKey
     const sample = buildPreviewProject()
     let w: RenderWorld
     try {
       w = createWorld(host, sample, undefined, { editor: true })
-    } catch {
+    } catch (error) {
+      setPreviewError(String(error))
       return
     }
     worldRef.current = w
-    w.setGrid(true, -0.01)
+    w.setGrid(showGrid, -0.01)
 
     let cancelled = false
     w.ready().then(() => {
       if (cancelled) return
       const insp = w.inspectModel(PREVIEW_ENTITY_ID) as InspectedModel | undefined
+      if (!insp) { setPreviewError('No model geometry could be decoded.'); return }
       if (insp) {
         setInfo(insp)
         frameModelBounds(insp.bounds)
@@ -177,7 +198,7 @@ export function ModelEditor({
           w.setAnimationTime(PREVIEW_ENTITY_ID, 0)
         }
       }
-    })
+    }).catch((error) => { if (!cancelled) setPreviewError(String(error)) })
 
     let raf = 0
     let lastUiSync = 0
@@ -188,11 +209,12 @@ export function ModelEditor({
         o.yaw += 0.006
       }
       w.camera.position.set(
-        Math.sin(o.yaw) * Math.cos(o.pitch) * o.dist,
+        o.targetX + Math.sin(o.yaw) * Math.cos(o.pitch) * o.dist,
         Math.sin(o.pitch) * o.dist + o.targetY,
-        Math.cos(o.yaw) * Math.cos(o.pitch) * o.dist,
+        o.targetZ + Math.cos(o.yaw) * Math.cos(o.pitch) * o.dist,
       )
-      w.camera.lookAt(new Vector3(0, o.targetY, 0))
+      w.camera.lookAt(new Vector3(o.targetX, o.targetY, o.targetZ))
+      w.camera.height = 0
       w.camera.fov = 42
       w.render()
 
@@ -217,33 +239,37 @@ export function ModelEditor({
       }
     }
     raf = requestAnimationFrame(loopFrame)
+    const zoom = (event: WheelEvent) => {
+      event.preventDefault()
+      const orbit = orbitRef.current
+      orbit.dist = Math.max(0.05, orbit.dist * Math.exp(Math.max(-1, Math.min(1, event.deltaY * 0.0012))))
+    }
+    host.addEventListener('wheel', zoom, { passive: false })
     return () => {
       cancelled = true
+      host.removeEventListener('wheel', zoom)
       cancelAnimationFrame(raf)
       worldRef.current = null
       w.dispose()
     }
-  }, [])
+  }, [a.id, a.data, attempt])
 
   // Sync preview whenever material overrides, project materials, or custom clips change
-  const syncKey = JSON.stringify({
-    pm: a.properties?.partMaterials,
-    po: a.properties?.partOverrides,
-    cl: a.properties?.clips,
-    mats: matAssets.map((m) => [m.id, m.properties]),
-  })
-
   useEffect(() => {
     const w = worldRef.current
-    if (!w) return
+    if (!w || lastSync.current === syncKey) return
+    lastSync.current = syncKey
+    setPreviewError('')
+    setUpdating(true)
     const prevState = w.getAnimationState(PREVIEW_ENTITY_ID)
     w.load(buildPreviewProject())
-    w.setGrid(true, -0.01)
+    w.setGrid(showGrid, -0.01)
     let cancelled = false
     w.ready().then(() => {
       if (cancelled) return
       const insp = w.inspectModel(PREVIEW_ENTITY_ID) as InspectedModel | undefined
-      if (insp) setInfo(insp)
+      setInfo(insp ?? null)
+      if (!insp) setPreviewError('No model geometry could be decoded.')
       if (prevState?.clip) {
         const ok = w.playAnimation(
           PREVIEW_ENTITY_ID,
@@ -257,7 +283,8 @@ export function ModelEditor({
           if (!prevState.playing) w.pauseAnimation(PREVIEW_ENTITY_ID)
         }
       }
-    })
+    }).catch((error) => { if (!cancelled) setPreviewError(String(error)) })
+      .finally(() => { if (!cancelled) setUpdating(false) })
     return () => {
       cancelled = true
     }
@@ -452,6 +479,7 @@ export function ModelEditor({
     }
   }
 
+  const visibleParts = info?.parts.filter((part) => part.name.toLowerCase().includes(partQuery.trim().toLowerCase())) ?? []
   const totalTris = info ? info.parts.reduce((s, pt) => s + pt.triangles, 0) : 0
   const safePartIdx = info && info.parts.length ? Math.min(selectedPart, info.parts.length - 1) : 0
   const curPart = info?.parts[safePartIdx]
@@ -465,7 +493,7 @@ export function ModelEditor({
   const playheadPct = Math.max(0, Math.min(100, (curTime / safeDur) * 100))
 
   return (
-    <div className="mf-html-studio">
+    <div className="mf-html-studio mf-model-editor">
       <div className="mf-html-top">
         <div className="mf-html-tabs">
           <button
@@ -482,7 +510,7 @@ export function ModelEditor({
           >
             <Film size={13} /> Animations ({(info?.nativeClips.length ?? 0) + customClips.length})
           </button>
-          <span style={{ fontSize: 11, color: '#9ca8b8', marginLeft: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 8 }}>
             {totalTris.toLocaleString()} tris · {info?.bones.length ?? 0} nodes
             {a.properties?.convertedFrom ? ` · from ${a.properties.convertedFrom}` : ''}
           </span>
@@ -492,6 +520,7 @@ export function ModelEditor({
             type="button"
             className="mf-btn"
             style={{ fontSize: 11.5 }}
+            aria-pressed={autoRotate}
             onClick={() => setAutoRotate((v) => !v)}
             title="Toggle turntable auto-rotation"
           >
@@ -501,25 +530,27 @@ export function ModelEditor({
             type="button"
             className="mf-btn"
             style={{ fontSize: 11.5 }}
+            disabled={!info}
             onClick={() => info && frameModelBounds(info.bounds)}
             title="Re-center preview camera"
           >
             Frame
           </button>
+          <button type="button" className="mf-btn" aria-pressed={showGrid} onClick={() => setShowGrid(!showGrid)}>Grid</button>
           <button
             type="button"
             className="mf-btn"
             style={{ fontSize: 11.5 }}
             onClick={onDownload}
-            title="Download model as .glb"
+            title="Download source model"
           >
-            <Download size={12} /> .glb
+            <Download size={12} /> Download
           </button>
         </div>
       </div>
 
       <div
-        className="mf-html-split"
+        className="mf-html-split mf-model-columns"
         style={{ gridTemplateColumns: 'minmax(300px, 1.05fr) minmax(360px, 1.15fr)', minHeight: 490 }}
       >
         {/* Left: Live 3D Interactive Preview */}
@@ -527,7 +558,7 @@ export function ModelEditor({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            borderRight: '1px solid #2b323b',
+            borderRight: '1px solid var(--border)',
             background: '#141920',
             minHeight: 480,
           }}
@@ -550,7 +581,10 @@ export function ModelEditor({
               o.lx = e.clientX
               o.ly = e.clientY
               if (o.panning) {
-                o.targetY = Math.max(-10, Math.min(20, o.targetY + dy * 0.01))
+                const units = o.dist / Math.max(1, e.currentTarget.clientHeight)
+                o.targetY += dy * units
+                o.targetX -= dx * Math.cos(o.yaw) * units
+                o.targetZ += dx * Math.sin(o.yaw) * units
               } else {
                 o.yaw -= dx * 0.01
                 o.pitch = Math.max(-1.25, Math.min(1.4, o.pitch + dy * 0.01))
@@ -563,20 +597,15 @@ export function ModelEditor({
                 e.currentTarget.releasePointerCapture(e.pointerId)
               } catch {}
             }}
+            onLostPointerCapture={() => { orbitRef.current.dragging = false }}
             onContextMenu={(e) => e.preventDefault()}
-            onWheel={(e) => {
-              orbitRef.current.dist = Math.max(
-                0.5,
-                Math.min(50, orbitRef.current.dist * (1 + e.deltaY * 0.0012)),
-              )
-            }}
           />
 
           {/* Compact preview playback & hint bar */}
           <div
             style={{
               padding: '8px 10px',
-              borderTop: '1px solid #2b323b',
+              borderTop: '1px solid var(--border)',
               background: '#192028',
               display: 'flex',
               alignItems: 'center',
@@ -585,6 +614,8 @@ export function ModelEditor({
               fontSize: 11.5,
             }}
           >
+            {updating && <span role="status">Updating preview…</span>}
+            {previewError && <div role="alert">Preview unavailable · {previewError} <button type="button" className="mf-btn" onClick={() => setAttempt(attempt + 1)}>Retry preview</button></div>}
             {(info?.allClips.length ?? 0) > 0 ? (
               <>
                 <button type="button" className="mf-btn" onClick={togglePlay} title="Play / Pause">
@@ -596,13 +627,13 @@ export function ModelEditor({
                 <span style={{ color: '#dbe4ef', fontWeight: 600 }}>
                   {activeClip || sourceClip || '—'}
                 </span>
-                <span style={{ color: '#9ca8b8', fontFamily: 'monospace' }}>
+                <span style={{ color: 'var(--muted)', fontFamily: 'monospace' }}>
                   {curTime.toFixed(2)}s / {safeDur.toFixed(2)}s ({Math.round(curTime * fps)}f)
                 </span>
               </>
             ) : (
               <span style={{ color: '#8d99a8' }}>
-                Drag to orbit · Shift+drag to pan height · Scroll to zoom
+                Drag to orbit · Shift+drag to pan · Scroll to zoom
               </span>
             )}
           </div>
@@ -621,17 +652,17 @@ export function ModelEditor({
         >
           {tab === 'materials' && (
             <>
-              <div style={{ fontSize: 11.5, color: '#9ca8b8' }}>
+              <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
                 Assign a project Material to any mesh slot or tweak embedded GLB properties directly.
               </div>
 
               {!info ? (
-                <div style={{ fontSize: 12, color: '#9ca8b8' }}>Loading model geometry…</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>{previewError ? 'Model geometry unavailable' : 'Loading model geometry…'}</div>
               ) : info.parts.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#9ca8b8' }}>No renderable mesh parts found in this model.</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>No renderable mesh parts found in this model.</div>
               ) : (
                 <>
-                  {/* Mesh Part Slots List */}
+                  <input type="search" aria-label="Filter mesh parts" placeholder="Filter mesh parts" value={partQuery} onChange={(e) => setPartQuery(e.target.value)} />
                   <div
                     style={{
                       display: 'flex',
@@ -639,13 +670,14 @@ export function ModelEditor({
                       gap: 4,
                       maxHeight: 155,
                       overflowY: 'auto',
-                      border: '1px solid #2b323b',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       padding: 6,
-                      background: '#161b22',
+                      background: 'var(--panel)',
                     }}
                   >
-                    {info.parts.map((pt) => {
+                    {visibleParts.length === 0 && <span role="status">No matching mesh parts</span>}
+                    {visibleParts.map((pt) => {
                       const assignedId = partMaterials[String(pt.index)]
                       const assignedMat = assignedId ? matAssets.find((m) => m.id === assignedId) : undefined
                       const hasOvr = Boolean(partOverrides[String(pt.index)])
@@ -654,6 +686,7 @@ export function ModelEditor({
                         <button
                           key={pt.index}
                           type="button"
+                          aria-pressed={active}
                           onClick={() => setSelectedPart(pt.index)}
                           style={{
                             display: 'flex',
@@ -664,7 +697,7 @@ export function ModelEditor({
                             borderRadius: 4,
                             border: active ? '1px solid #4c9aff' : '1px solid transparent',
                             background: active ? '#222c3a' : 'transparent',
-                            color: '#e6edf3',
+                            color: 'var(--text)',
                             cursor: 'pointer',
                             textAlign: 'left',
                             fontSize: 12,
@@ -708,7 +741,7 @@ export function ModelEditor({
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 8,
-                        border: '1px solid #2b323b',
+                        border: '1px solid var(--border)',
                         borderRadius: 6,
                         padding: 10,
                         background: '#192028',
@@ -756,13 +789,13 @@ export function ModelEditor({
                       </Field>
 
                       {curPartMatId ? (
-                        <div style={{ fontSize: 11.5, color: '#9ca8b8' }}>
+                        <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
                           Using project Material asset. Edit its textures, shader, and PBR settings in the Materials
                           library.
                         </div>
                       ) : (
                         <>
-                          <div style={{ fontSize: 11, color: '#9ca8b8', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                             Quick embedded slot overrides (keeps GLB texture):
                           </div>
                           <Field label="Tint color">
@@ -857,9 +890,9 @@ export function ModelEditor({
           {tab === 'animations' && (
             <>
               {!info ? (
-                <div style={{ fontSize: 12, color: '#9ca8b8' }}>Loading animations…</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>Loading animations…</div>
               ) : info.nativeClips.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#9ca8b8' }}>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                   This model has no embedded animation tracks. Import a rigged/animated .glb, .fbx, .x, or .smd model
                   to slice clips.
                 </div>
@@ -892,7 +925,7 @@ export function ModelEditor({
                   {/* Interactive Timeline Scrubber */}
                   <div
                     style={{
-                      border: '1px solid #2b323b',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       padding: 10,
                       background: '#192028',
@@ -1012,7 +1045,7 @@ export function ModelEditor({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 11, color: '#9ca8b8' }}>
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>
                             Start ({Math.round(sliceStart * fps)}f)
                           </span>
                           <button
@@ -1039,7 +1072,7 @@ export function ModelEditor({
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 11, color: '#9ca8b8' }}>
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>
                             End ({Math.round(sliceEnd * fps)}f)
                           </span>
                           <button
@@ -1129,12 +1162,12 @@ export function ModelEditor({
                               borderRadius: 5,
                               border:
                                 activeClip === cl.name ? '1px solid #3fb950' : '1px solid #2b323b',
-                              background: '#161b22',
+                              background: 'var(--panel)',
                               fontSize: 12,
                             }}
                           >
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ fontWeight: 600, color: '#e6edf3' }}>{cl.name}</div>
+                              <div style={{ fontWeight: 600, color: 'var(--text)' }}>{cl.name}</div>
                               <div style={{ fontSize: 10.5, color: '#8d99a8' }}>
                                 {cl.sourceClip} · {cl.startTime.toFixed(2)}s – {cl.endTime.toFixed(2)}s (
                                 {(cl.endTime - cl.startTime).toFixed(2)}s)
@@ -1177,7 +1210,7 @@ export function ModelEditor({
 
                   {/* Imported Native Tracks */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 600, color: '#9ca8b8' }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)' }}>
                       Imported Tracks ({info.nativeClips.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

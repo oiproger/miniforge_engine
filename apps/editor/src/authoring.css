@@ -1298,3 +1298,32 @@
   color: rgba(200, 212, 226, 0.55);
   pointer-events: none;
 }
+
+/* Shared authoring controls use the same theme as the scene inspector. */
+.mf-dialog :is(.mf-html-tabs, .mf-bp-tabs, .mf-bp-actions, .mf-html-templates) {
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.mf-dialog :is(.mf-btn, .mf-html-tabs button, .mf-bp-toolbar select, input[type="search"]) {
+  font: inherit;
+  font-size: 12px;
+  min-height: 28px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--soft);
+}
+.mf-dialog :is(.mf-btn, .mf-html-tabs button):enabled:hover { border-color: var(--accent); }
+.mf-dialog :is(.mf-html-tabs button.active, .mf-btn[aria-pressed="true"]) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+}
+:where(button, input, select, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mf-dialog button:disabled { opacity: .55; cursor: default; }
+.mf-dialog .mf-bp-toolbar select { max-width: min(26ch, 100%); }
+.mf-model-editor input[type="search"] { padding-inline: 8px; }
+@media (max-width: 800px) {
+  .mf-model-editor .mf-model-columns { grid-template-columns: minmax(0, 1fr) !important; }
+}

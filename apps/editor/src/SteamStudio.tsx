@@ -120,12 +120,12 @@ export function SteamStudio({
           {tab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid #2b323b' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid var(--border)' }}>
                   <input type="checkbox" checked={cfg.enabled} onChange={(e) => patchCfg({ enabled: e.target.checked })} />
                   <span><strong>Enable Steamworks SDK</strong> (auto-generates <code>steam_appid.txt</code> on Desktop Export)</span>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  <span style={{ color: '#94a3b8' }}>Steam AppID (480 = Spacewar test app)</span>
+                  <span style={{ color: 'var(--muted)' }}>Steam AppID (480 = Spacewar test app)</span>
                   <input
                     type="number"
                     min={1}
@@ -134,11 +134,11 @@ export function SteamStudio({
                   />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  <span style={{ color: '#94a3b8' }}>Default Rich Presence Status</span>
+                  <span style={{ color: 'var(--muted)' }}>Default Rich Presence Status</span>
                   <input value={cfg.richPresence || ''} onChange={(e) => patchCfg({ richPresence: e.target.value })} placeholder="In Lobby / Exploring" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  <span style={{ color: '#94a3b8' }}>Default Lobby Max Players</span>
+                  <span style={{ color: 'var(--muted)' }}>Default Lobby Max Players</span>
                   <input
                     type="number"
                     min={2}
@@ -219,7 +219,7 @@ export function SteamStudio({
           {tab === 'lobbies' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {/* Left: Lobby Inspector */}
-              <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <strong style={{ fontSize: 12, color: '#f8fafc' }}>Steam Lobby Inspector (AppID {cfg.appId || 480})</strong>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input value={lobbyName} onChange={(e) => setLobbyName(e.target.value)} placeholder="Lobby name" style={{ flex: 1 }} />
@@ -266,7 +266,7 @@ export function SteamStudio({
                         Leave
                       </button>
                     </div>
-                    <div style={{ color: '#94a3b8', marginTop: 4 }}>
+                    <div style={{ color: 'var(--muted)', marginTop: 4 }}>
                       ID: <code>{activeLobby.id}</code> · Members: {activeLobby.members.length}/{activeLobby.maxMembers}
                     </div>
                   </div>
@@ -297,14 +297,14 @@ export function SteamStudio({
               </div>
 
               {/* Right: Cloud Saves Tester */}
-              <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <strong style={{ fontSize: 12, color: '#f8fafc' }}>Steam Cloud Save Tester</strong>
                 <input value={cloudFile} onChange={(e) => setCloudFile(e.target.value)} placeholder="save.json" />
                 <textarea
                   rows={5}
                   value={cloudData}
                   onChange={(e) => setCloudData(e.target.value)}
-                  style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11.5, background: '#0d1117', color: '#e6edf3', border: '1px solid #2b323b', borderRadius: 6, padding: 8 }}
+                  style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11.5, background: '#0d1117', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}
                 />
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
@@ -344,7 +344,7 @@ export function SteamStudio({
 
           {tab === 'debug' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: '#94a3b8' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: 'var(--muted)' }}>
                 <span>
                   Mode: <strong style={{ color: '#7ee787' }}>{mgrRef.current?.isNative() ? 'Native Steamworks SDK' : 'Local Debug Bridge (AppID ' + (cfg.appId || 480) + ')'}</strong>
                 </span>
@@ -360,7 +360,7 @@ export function SteamStudio({
                   Clear Logs
                 </button>
               </div>
-              <div style={{ maxHeight: 320, overflowY: 'auto', background: '#0d1117', border: '1px solid #2b323b', borderRadius: 8, padding: 10, fontFamily: 'ui-monospace, monospace', fontSize: 11.5 }}>
+              <div style={{ maxHeight: 320, overflowY: 'auto', background: '#0d1117', border: '1px solid var(--border)', borderRadius: 8, padding: 10, fontFamily: 'ui-monospace, monospace', fontSize: 11.5 }}>
                 {logs.length === 0 ? (
                   <div style={{ color: '#64748b' }}>No Steam API calls recorded yet.</div>
                 ) : (

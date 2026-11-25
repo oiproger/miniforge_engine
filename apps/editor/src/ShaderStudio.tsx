@@ -538,10 +538,10 @@ export function ShaderStudio({
       {/* Side-by-Side Live Preview + Uniform Sliders & Code Editor */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: 10, minHeight: 340 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ border: '1px solid #2b323b', borderRadius: 8, overflow: 'hidden', height: 220, background: '#090d12' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 220, background: '#090d12' }}>
             <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
           </div>
-          <div style={{ border: '1px solid #2b323b', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, background: '#141a22', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <strong style={{ fontSize: 11.5, color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Shader Uniforms ({uniforms.length})
             </strong>
@@ -596,10 +596,10 @@ export function ShaderStudio({
             minHeight: 340,
             resize: 'vertical',
             borderRadius: 8,
-            border: '1px solid #2b323b',
+            border: '1px solid var(--border)',
             padding: 12,
             background: '#0d1117',
-            color: '#e6edf3',
+            color: 'var(--text)',
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
             fontSize: 12,
             lineHeight: 1.5,

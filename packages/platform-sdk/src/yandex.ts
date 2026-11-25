@@ -33,7 +33,9 @@ export function createPlatform(id: string) {
           })
       }),
     async save(key, value) {
-      await (await getPlayer())?.setData({ [id + '.' + key]: value })
+      const account = await getPlayer()
+      if (!account) throw new Error('Yandex cloud unavailable')
+      await account.setData({ [id + '.' + key]: value }, true)
     },
     async load(key) {
       const k = id + '.' + key

@@ -36,9 +36,10 @@ export async function openProjectFromDisk(): Promise<{ project: Project; label: 
   if (invoke) {
     const res = (await invoke('open_project_file')) as [string, string] | null
     if (!res) return null
+    const project = validateProject(JSON.parse(res[1]))
     linkedPath = res[0]
     linkedFileHandle = null
-    return { project: validateProject(JSON.parse(res[1])), label: res[0] }
+    return { project, label: res[0] }
   }
   const win = window as any
   if (typeof win.showOpenFilePicker === 'function') {
@@ -49,9 +50,10 @@ export async function openProjectFromDisk(): Promise<{ project: Project; label: 
     if (!handle) return null
     const file = await handle.getFile()
     const text = await file.text()
+    const project = validateProject(JSON.parse(text))
     linkedFileHandle = handle
     linkedPath = null
-    return { project: validateProject(JSON.parse(text)), label: handle.name }
+    return { project, label: handle.name }
   }
   return null
 }
@@ -62,26 +64,25 @@ export async function saveProjectToDisk(project: Project, forcePick = false): Pr
   const defaultName = (project.name || 'project').replace(/[^\w.-]+/g, '_') + '.json'
   const invoke = tauriInvoke()
   if (invoke) {
-    if (!linkedPath || forcePick) {
-      const chosen = (await invoke('pick_project_file', { defaultName })) as string | null
-      if (!chosen) return null
-      linkedPath = chosen
-    }
-    await invoke('write_project_file', { path: linkedPath, content: json })
-    return linkedPath
+    const path = linkedPath && !forcePick ? linkedPath : await invoke('pick_project_file', { defaultName })
+    if (!path) return null
+    await invoke('write_project_file', { path, content: json })
+    linkedPath = path
+    linkedFileHandle = null
+    return path
   }
   const win = window as any
   if (typeof win.showSaveFilePicker === 'function') {
-    if (!linkedFileHandle || forcePick) {
-      linkedFileHandle = await win.showSaveFilePicker({
-        suggestedName: defaultName,
-        types: [{ description: 'Miniforge Project (.json)', accept: { 'application/json': ['.json'] } }],
-      })
-    }
-    const writable = await linkedFileHandle.createWritable()
+    const handle = linkedFileHandle && !forcePick ? linkedFileHandle : await win.showSaveFilePicker({
+      suggestedName: defaultName,
+      types: [{ description: 'Miniforge Project (.json)', accept: { 'application/json': ['.json'] } }],
+    })
+    const writable = await handle.createWritable()
     await writable.write(json)
     await writable.close()
-    return linkedFileHandle.name as string
+    linkedFileHandle = handle
+    linkedPath = null
+    return handle.name as string
   }
   return null
 }

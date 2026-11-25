@@ -142,14 +142,14 @@ export function SceneEntityPickerButton({
                 justifyContent: 'space-between',
                 padding: '10px 14px',
                 background: '#1a222c',
-                borderBottom: '1px solid #2b323b',
+                borderBottom: '1px solid var(--border)',
                 fontSize: 13,
               }}
             >
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#eef3f8' }}>
                 <Crosshair size={15} color="#f3a05d" />
                 Pick Target Entity in 3D Scene
-                <small style={{ fontWeight: 400, color: '#9aa7b8' }}>
+                <small style={{ fontWeight: 400, color: 'var(--muted)' }}>
                   Click an object to pick · Right-drag to orbit · Scroll to zoom
                 </small>
               </span>

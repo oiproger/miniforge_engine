@@ -109,6 +109,16 @@ export function SequencerEditor({
   const curTrack = data.tracks.find((t) => t.id === selTrackId) ?? data.tracks[0]
   const curKf = curTrack?.keyframes.find((k) => k.id === selKfId) ?? curTrack?.keyframes[0]
 
+  const keys = [...(curTrack?.keyframes ?? [])].sort((a, b) => a.time - b.time)
+  const previousKey = keys.filter((k) => k.time < playhead - 0.00001).at(-1)
+  const nextKey = keys.find((k) => k.time > playhead + 0.00001)
+  function seekKey(key: typeof nextKey) {
+    if (!key) return
+    setPlaying(false)
+    setSelKfId(key.id)
+    setPlayhead(key.time)
+  }
+
   return (
     <div className="mf-bp-editor">
       <div className="mf-bp-toolbar">
@@ -116,6 +126,8 @@ export function SequencerEditor({
           <span style={{ fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <Clapperboard size={13} /> Keyframe Sequencer
           </span>
+          <button type="button" className="mf-btn" disabled={!previousKey} onClick={() => seekKey(previousKey)}>Previous key</button>
+          <button type="button" className="mf-btn" disabled={!nextKey} onClick={() => seekKey(nextKey)}>Next key</button>
           <button type="button" className="mf-btn" onClick={() => setPlaying((v) => !v)}>
             {playing ? <Pause size={12} /> : <Play size={12} />}
           </button>
@@ -261,7 +273,7 @@ export function SequencerEditor({
         </div>
 
         {/* Right: Track & Keyframe Inspector */}
-        <aside className="mf-bp-sidebar" style={{ borderRight: 'none', borderLeft: '1px solid #2b323b' }}>
+        <aside className="mf-bp-sidebar" style={{ borderRight: 'none', borderLeft: '1px solid var(--border)' }}>
           {!curTrack ? (
             <div className="mf-bp-empty">Add a track above</div>
           ) : (
@@ -339,7 +351,7 @@ export function SequencerEditor({
               </button>
 
               {curKf && (
-                <div style={{ borderTop: '1px solid #2b323b', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong style={{ fontSize: 12 }}>Selected Keyframe</strong>
                     <button

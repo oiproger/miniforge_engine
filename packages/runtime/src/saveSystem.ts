@@ -29,6 +29,11 @@ export interface SaveSnapshot {
   custom: Record<string, unknown>
 }
 
+export type SaveResult = SaveSnapshot & {
+  localSaved: boolean
+  cloudSaved: boolean
+}
+
 export interface SaveOptions {
   /** Also sync snapshot to platform cloud storage (Yandex Games / Poki / Web adapter). Default: true. */
   cloudSync?: boolean
@@ -182,23 +187,29 @@ export class SaveManager {
     return true
   }
 
-  async save(slot = 'main', options: SaveOptions = {}): Promise<SaveSnapshot> {
+  async save(slot = 'main', options: SaveOptions = {}): Promise<SaveResult> {
     const snapshot = this.capture(slot)
+    let localSaved = false
+    let cloudSaved = false
     try {
       localStorage.setItem(this.localKey(slot), JSON.stringify(snapshot))
+      localSaved = true
       this.trackSlot(slot, true)
     } catch {
-      /* localStorage quota or private mode */
+      /* Cloud may still be available when device storage is full. */
     }
-    if (options.cloudSync !== false) {
+    if (options.cloudSync !== false && this.ctx.platform.saveCloud) {
       try {
-        await this.ctx.platform.saveData(this.cloudKey(slot), snapshot)
+        await this.ctx.platform.saveCloud(this.cloudKey(slot), snapshot)
+        cloudSaved = true
       } catch {
-        /* platform cloud unavailable offline */
+        /* A successful device write is sufficient for offline play. */
       }
     }
-    this.ctx.events.emit('save.completed', { slot, savedAt: snapshot.savedAt, cloudSync: options.cloudSync !== false })
-    return snapshot
+    this.ctx.events.emit(localSaved || cloudSaved ? 'save.completed' : 'save.failed', {
+      slot, savedAt: snapshot.savedAt, localSaved, cloudSaved, cloudSync: cloudSaved,
+    })
+    return { ...snapshot, localSaved, cloudSaved }
   }
 
   private readLocal(slot: string): SaveSnapshot | null {

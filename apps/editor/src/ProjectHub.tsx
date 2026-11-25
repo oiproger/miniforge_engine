@@ -199,7 +199,7 @@ export function ProjectHub({
         inset: 0,
         zIndex: 2000,
         background: 'radial-gradient(circle at 20% 0%, #1c2432 0%, #0d1117 65%)',
-        color: '#e6edf3',
+        color: 'var(--text)',
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
@@ -237,7 +237,7 @@ export function ProjectHub({
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '0.02em' }}>
-              Miniforge Engine <span style={{ fontSize: 11, color: '#f59e0b', marginLeft: 4 }}>v3.0.0</span>
+              Miniforge Engine <span style={{ fontSize: 11, color: '#f59e0b', marginLeft: 4 }}>v3.0.3</span>
             </div>
             <div style={{ fontSize: 12, color: '#8b9bb0' }}>Project Hub · Select, create or explore an example</div>
           </div>
@@ -280,7 +280,7 @@ export function ProjectHub({
                 gridTemplateColumns: '210px 1fr',
               }}
             >
-              <div style={{ background: '#0e131a', position: 'relative', minHeight: 132 }}>
+              <div style={{ background: 'var(--bg)', position: 'relative', minHeight: 132 }}>
                 {currentThumb ? (
                   <img src={currentThumb} alt={currentProject.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 ) : (
@@ -295,7 +295,7 @@ export function ProjectHub({
                     Active / Saved Project
                   </div>
                   <div style={{ fontSize: 17, fontWeight: 700, marginTop: 3 }}>{currentProject.name}</div>
-                  <div style={{ fontSize: 12.5, color: '#9aa7b8', marginTop: 4, lineHeight: 1.4 }}>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 4, lineHeight: 1.4 }}>
                     {currentProject.description || 'Your current workspace project stored in browser memory.'}
                   </div>
                 </div>
@@ -383,9 +383,9 @@ export function ProjectHub({
                       gap: 7,
                       padding: '10px 14px',
                       borderRadius: 8,
-                      border: '1px solid #334155',
+                      border: '1px solid var(--border)',
                       background: '#1e2736',
-                      color: '#e6edf3',
+                      color: 'var(--text)',
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: 'pointer',
@@ -417,7 +417,7 @@ export function ProjectHub({
                           borderRadius: 7,
                           border: active ? '1px solid #f59e0b' : '1px solid #2b3646',
                           background: active ? 'rgba(245,158,11,0.14)' : '#0e131a',
-                          color: '#e6edf3',
+                          color: 'var(--text)',
                           cursor: 'pointer',
                         }}
                       >
@@ -427,7 +427,7 @@ export function ProjectHub({
                     )
                   })}
                 </div>
-                <div style={{ fontSize: 11.5, color: '#9aa7b8' }}>
+                <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
                   {STARTER_TEMPLATES.find((t) => t.id === selectedTpl)?.description}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -438,9 +438,9 @@ export function ProjectHub({
                     style={{
                       padding: '7px 10px',
                       borderRadius: 6,
-                      border: '1px solid #334155',
-                      background: '#0e131a',
-                      color: '#e6edf3',
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg)',
+                      color: 'var(--text)',
                       fontSize: 12.5,
                     }}
                   />
@@ -451,9 +451,9 @@ export function ProjectHub({
                     style={{
                       padding: '7px 10px',
                       borderRadius: 6,
-                      border: '1px solid #334155',
-                      background: '#0e131a',
-                      color: '#e6edf3',
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg)',
+                      color: 'var(--text)',
                       fontSize: 12.5,
                     }}
                   />
@@ -465,9 +465,9 @@ export function ProjectHub({
                     style={{
                       padding: '6px 12px',
                       borderRadius: 6,
-                      border: '1px solid #334155',
+                      border: '1px solid var(--border)',
                       background: 'transparent',
-                      color: '#9aa7b8',
+                      color: 'var(--muted)',
                       cursor: 'pointer',
                       fontSize: 12.5,
                     }}
@@ -528,7 +528,7 @@ export function ProjectHub({
                     transition: 'border-color 0.15s ease, transform 0.15s ease',
                   }}
                 >
-                  <div style={{ position: 'relative', aspectRatio: '16 / 9', background: '#0e131a', overflow: 'hidden' }}>
+                  <div style={{ position: 'relative', aspectRatio: '16 / 9', background: 'var(--bg)', overflow: 'hidden' }}>
                     {thumb ? (
                       <img src={thumb} alt={ex.project.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     ) : (
@@ -560,13 +560,14 @@ export function ProjectHub({
                   </div>
                   <div style={{ padding: 15, display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between', gap: 12 }}>
                     <div>
-                      <div style={{ fontSize: 15.5, fontWeight: 700, color: '#f1f5f9' }}>{ex.project.name}</div>
-                      <div style={{ fontSize: 12.5, color: '#9aa7b8', marginTop: 5, lineHeight: 1.45 }}>
+                      <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--text)' }}>{ex.project.name}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 5, lineHeight: 1.45 }}>
                         {ex.project.description || `Example project loaded from examples/${ex.fileName}`}
                       </div>
                     </div>
                     <button
                       type="button"
+                      aria-label={`Open example ${ex.project.name}`}
                       onClick={() => onOpenExample(structuredClone(ex.project))}
                       style={{
                         width: '100%',

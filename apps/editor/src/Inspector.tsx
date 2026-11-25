@@ -1132,7 +1132,7 @@ export function Inspector({
                 </div>
                 {exposedVars.length > 0 && (
                   <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ fontSize: 10.5, color: '#9aa7b8', marginBottom: 4, textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--muted)', marginBottom: 4, textTransform: 'uppercase' }}>
                       Exposed Variables
                     </div>
                     {exposedVars.map((v) => {
@@ -1478,6 +1478,7 @@ export function Inspector({
                       <button
                         key={item.type}
                         type="button"
+                        aria-label={item.name}
                         className={'mf-comp-item' + (has ? ' has' : '')}
                         onClick={() => add(item.type)}
                       >
