@@ -5,6 +5,7 @@ import { SteamManager, type SteamLobby, type SteamLogEntry } from '../../../pack
 
 export const DEFAULT_STEAM: SteamSettings = {
   enabled: false,
+  localDebug: false,
   appId: 480,
   cloudSaves: true,
   richPresence: 'In Main Menu',
@@ -49,14 +50,14 @@ export function SteamStudio({
   }
 
   useEffect(() => {
-    const m = new SteamManager()
+    const m = new SteamManager({ localDebug: Boolean(cfg.localDebug) })
     mgrRef.current = m
     void m.init(cfg.appId || 480).then(() => syncDebugState())
     return () => {
       m.dispose()
       mgrRef.current = null
     }
-  }, [cfg.appId])
+  }, [cfg.appId, cfg.localDebug])
 
   const patchCfg = (patch: Partial<SteamSettings>) => setCfg((prev) => ({ ...prev, ...patch }))
 
@@ -99,6 +100,9 @@ export function SteamStudio({
         </header>
 
         <div className="mf-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div role="status" style={{ padding: '9px 12px', background: '#22201a', border: '1px solid #a27b38', borderRadius: 8, fontSize: 12, color: '#f8dca3' }}>
+            {mgrRef.current?.isNative() ? 'Native Steamworks connected.' : cfg.localDebug ? 'LOCAL DEBUG ONLY: lobbies, achievements and cloud files are simulated in this browser. They are NOT Steamworks.' : 'Real Steamworks is unavailable in the current build. Enable Local Debug for isolated editor tests; a native Steamworks-enabled Tauri build is required for release.'}
+          </div>
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid #242c37', paddingBottom: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -119,10 +123,14 @@ export function SteamStudio({
 
           {tab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid var(--border)' }}>
+                <input type="checkbox" checked={Boolean(cfg.localDebug)} onChange={(e) => patchCfg({ localDebug: e.target.checked })} />
+                <span><strong>Local Debug Simulation</strong> — browser-only test lobbies, fake achievements and local saves; never uploads to Steam.</span>
+              </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid var(--border)' }}>
                   <input type="checkbox" checked={cfg.enabled} onChange={(e) => patchCfg({ enabled: e.target.checked })} />
-                  <span><strong>Enable Steamworks SDK</strong> (auto-generates <code>steam_appid.txt</code> on Desktop Export)</span>
+                  <span><strong>Configure Steam features</strong> (requires a native Steamworks adapter; AppID file alone does not enable Steamworks)</span>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                   <span style={{ color: 'var(--muted)' }}>Steam AppID (480 = Spacewar test app)</span>
@@ -191,6 +199,7 @@ export function SteamStudio({
                             type="button"
                             className="mf-btn"
                             style={{ fontSize: 11, padding: '2px 8px' }}
+                            disabled={!cfg.localDebug && !mgrRef.current?.isNative()}
                             onClick={async () => {
                               if (unlocked) await mgrRef.current?.clearAchievement(ach.id)
                               else await mgrRef.current?.unlockAchievement(ach.id)
@@ -227,11 +236,14 @@ export function SteamStudio({
                     type="button"
                     className="mf-primary"
                     style={{ fontSize: 11.5 }}
+                    disabled={!cfg.localDebug && !mgrRef.current?.isNative()}
                     onClick={async () => {
-                      await mgrRef.current?.createLobby({ name: lobbyName, maxMembers: cfg.lobbyMaxMembers || 4 })
-                      const list = (await mgrRef.current?.listLobbies()) || []
-                      setLobbies(list)
-                      syncDebugState()
+                      try {
+                        await mgrRef.current?.createLobby({ name: lobbyName, maxMembers: cfg.lobbyMaxMembers || 4 })
+                        const list = (await mgrRef.current?.listLobbies()) || []
+                        setLobbies(list)
+                        syncDebugState()
+                      } catch (error) { setCloudStatus(String(error)); syncDebugState() }
                     }}
                   >
                     Create Lobby
@@ -284,8 +296,10 @@ export function SteamStudio({
                         type="button"
                         className="mf-btn"
                         style={{ fontSize: 10.5, padding: '2px 7px' }}
+                        disabled={!cfg.localDebug && !mgrRef.current?.isNative()}
                         onClick={async () => {
-                          await mgrRef.current?.joinLobby(l.id)
+                          const joined = await mgrRef.current?.joinLobby(l.id)
+                          if (!joined) setCloudStatus(`Unable to join lobby ${l.name}`)
                           syncDebugState()
                         }}
                       >
@@ -311,9 +325,10 @@ export function SteamStudio({
                     type="button"
                     className="mf-primary"
                     style={{ fontSize: 11.5 }}
+                    disabled={!cfg.localDebug && !mgrRef.current?.isNative()}
                     onClick={async () => {
                       const ok = await mgrRef.current?.cloudWrite(cloudFile, cloudData)
-                      setCloudStatus(ok ? `Saved "${cloudFile}" to Steam Cloud` : 'Write failed')
+                      setCloudStatus(ok ? `Saved "${cloudFile}" to ${mgrRef.current?.isNative() ? 'Steam Cloud' : 'LOCAL DEBUG STORAGE'}` : 'Write failed or Steam unavailable')
                       syncDebugState()
                     }}
                   >
@@ -323,6 +338,7 @@ export function SteamStudio({
                     type="button"
                     className="mf-btn"
                     style={{ fontSize: 11.5 }}
+                    disabled={!cfg.localDebug && !mgrRef.current?.isNative()}
                     onClick={async () => {
                       const res = await mgrRef.current?.cloudRead(cloudFile)
                       if (res !== null && res !== undefined) {
@@ -346,7 +362,7 @@ export function SteamStudio({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: 'var(--muted)' }}>
                 <span>
-                  Mode: <strong style={{ color: '#7ee787' }}>{mgrRef.current?.isNative() ? 'Native Steamworks SDK' : 'Local Debug Bridge (AppID ' + (cfg.appId || 480) + ')'}</strong>
+                  Mode: <strong style={{ color: '#7ee787' }}>{mgrRef.current?.isNative() ? 'Native Steamworks SDK' : cfg.localDebug ? 'LOCAL MOCK (no Steam connection)' : 'UNAVAILABLE (native SDK not loaded)'}</strong>
                 </span>
                 <button
                   type="button"

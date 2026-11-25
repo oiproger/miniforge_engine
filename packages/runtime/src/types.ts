@@ -181,7 +181,7 @@ export interface GraphicsAPI {
   /** Toggle global smooth shading on newly built geometry. */
   setSmoothShading(enabled: boolean): void
   /** Bake static lighting & reflection probes globally or for a specific Bake Zone entity ID. */
-  bakeLighting(zoneId?: string): void
+  bakeLighting(zoneId?: string): Promise<void>
   /** Configure global cubemap reflections ('off' | 'baked' | 'realtime'). */
   setReflections(mode: 'off' | 'baked' | 'realtime', resolution?: number, interval?: number): void
   /** Force re-capture of a specific Bake Zone's reflection cubemap. */
@@ -542,6 +542,8 @@ export interface GameOptions {
   onEvent?: (name: string, data?: unknown) => void
   physics?: (view: RenderWorld, scene: Scene) => Promise<PhysicsSession>
   performance?: boolean
+  /** True only for an editor preview; prevents debug-only Steam simulation in shipped games. */
+  preview?: boolean
 }
 
 export interface GameSession {
@@ -581,6 +583,10 @@ export interface NetAPI {
   getLocalPlayerAction(playerIndex: number, action: "jump" | "interact" | "attack"): boolean
   /** Set a synchronized per-entity variable (writes entity.properties[key] and syncs delta to remote peers). */
   setEntityVar(entityId: string, key: string, value: any): void
+  /** Write a field selected in Network Sync's Sync Paths (e.g. components.light.intensity). */
+  setSyncedField(entityId: string, path: string, value: unknown): boolean
+  /** Read a configured field without modifying it. */
+  getSyncedField(entityId: string, path: string): unknown
   /** Read a synchronized per-entity variable (from entity.properties[key]). */
   getEntityVar<T = any>(entityId: string, key: string, fallback?: T): T
   /** Subscribe to remote updates of a specific synced variable on an entity. */
@@ -595,7 +601,7 @@ export interface NetAPI {
   sendChat(text: string): void
   /** Subscribe to incoming lobby/match chat messages. */
   onChat(handler: (msg: NetChatMessage) => void): () => void
-  /** Spawn a prefab with NetworkSync attached and broadcast spawn RPC to remote peers. */
+  /** Host-authoritative prefab spawn with stable network ID, replicated to late joiners. */
   spawnNetworkPlayer(prefabId: string, ownerPeerId?: string, pos?: Vec3): string
 }
 

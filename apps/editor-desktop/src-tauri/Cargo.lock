@@ -1850,6 +1850,7 @@ name = "miniforge"
 version = "3.0.3"
 dependencies = [
  "rfd",
+ "serde_json",
  "tauri",
  "tauri-build",
 ]

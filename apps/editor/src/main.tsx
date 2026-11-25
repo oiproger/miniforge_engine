@@ -625,7 +625,7 @@ function App() {
           lightBounce: 0.65,
           bakeReflections: true,
           reflectionMode: 'baked',
-          reflectionResolution: 128,
+          reflectionResolution: 256,
           updateInterval: 4,
         })
       if (kind === '3D Particle')
@@ -655,6 +655,8 @@ function App() {
       if (kind === '3D Decal')
         e.components.push({
           type: 'decal',
+          material: '',
+          projection: 'surface', projectionDepth: 0.6,
           texture: '',
           color: '#ffffff',
           width: 1.2,
@@ -1417,7 +1419,7 @@ function App() {
       {target && (
         <Authoring key={target} project={p} target={target} focusUiId={focusUiId} onChange={change} onClose={() => {setFocusUiId(undefined);edit('')}} />
       )}
-      {showProfiler && <SceneProfiler p={p} onClose={() => setShowProfiler(false)} />}
+      {showProfiler && <SceneProfiler p={p} runtimeStats={preview ? stats : undefined} onClose={() => setShowProfiler(false)} />}
       {showSteam && (
         <SteamStudio
           p={p}

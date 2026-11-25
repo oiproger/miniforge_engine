@@ -15,6 +15,7 @@ import { SaveManager } from './saveSystem'
 import { TouchController } from './touch'
 import { Input } from './input'
 import { NetManager, type NetEntitySnapshot } from './net'
+import { readSyncPath, writeSyncPath, safeSyncValue, syncPaths } from './networkSyncFields'
 import { SteamManager } from './steam'
 import { Events, Lifecycle, type ScriptLifecycle } from './lifecycle'
 import { Overlay, translate, type Phase } from './overlay'
@@ -130,7 +131,7 @@ export async function startGame(
   }
   let language = project.settings.language,
     best = 0
-  const steam = new SteamManager()
+  const steam = new SteamManager({ localDebug: Boolean(options.preview && (project.settings as any).steam?.localDebug) })
   const steamCfg = (project.settings as any).steam
   if (steamCfg?.enabled || (project.settings as any).multiplayer?.mode === "steam-p2p") {
     void steam.init(Number(steamCfg?.appId || 480)).then(() => {
@@ -141,6 +142,8 @@ export async function startGame(
     init: (appId?: number) => steam.init(appId ?? Number(steamCfg?.appId || 480)),
     isAvailable: () => steam.isAvailable(),
     isNative: () => steam.isNative(),
+    isDebug: () => steam.isDebug(),
+    getMode: () => steam.getMode(),
     getUser: () => steam.getUser(),
     unlockAchievement: (id: string) => steam.unlockAchievement(id),
     clearAchievement: (id: string) => steam.clearAchievement(id),
@@ -168,6 +171,10 @@ export async function startGame(
   const peerProxies = new Map<string, Set<string>>()
   const trackedEntityVarKeys = new Map<string, Set<string>>()
   const lastSentEntityVars = new Map<string, Record<string, string>>()
+  const lastSentEntityActive = new Map<string, boolean>()
+  const netDestroyed = new Set<string>()
+  const netSpawned = new Map<string, { prefabId: string; owner: string; pos?: Vec3; id: string }>()
+  let applyingRemoteNetwork = false
   const entityVarListeners = new Map<string, Set<(value: any, prevValue: any) => void>>()
   let netSyncAccum = 0
   const REMOTE_AVATAR_COLORS = ["#f59e0b", "#22c55e", "#ec4899", "#a855f7", "#06b6d4"]
@@ -203,13 +210,12 @@ export async function startGame(
         }
         return clone
       })
+    const templateSync = templateEnt.components.find(c => c.type === 'networkSync' && c.enabled !== false)
     visualComps.push({
-      type: "networkSync",
+      ...(templateSync ? structuredClone(templateSync) : {}),
+      type: 'networkSync',
       owner: fromPeerId,
-      syncTransform: true,
-      syncAnimation: true,
       syncVariables: false,
-      interpolate: true,
     })
     const proxy: Entity = {
       id: proxyId,
@@ -238,11 +244,40 @@ export async function startGame(
     return proxy
   }
 
+  const isFiniteNetworkVec3 = (v: unknown): v is Vec3 => Array.isArray(v) && v.length === 3 && v.every(x => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) < 1_000_000)
+  const hostPeerId = () => net.getPeers().find(p => p.isHost)?.id
+  function notifySyncedVar(id: string, key: string, value: unknown, prev: unknown, peerId: string, templateId: string) {
+    const listeners = entityVarListeners.get(id + ':' + key)
+    if (listeners) for (const fn of listeners) fn(value, prev)
+    emit('net.entityVarChanged', { source: id, templateId, peerId, key, value, prevValue: prev })
+  }
+  function applySyncedComponentField(ent: Entity, path: string) {
+    const match = path.match(/^components\.([a-zA-Z_-]+)(?:\[\d+\])?\.(.+)$/)
+    if (!match) return
+    const value = readSyncPath(ent, path)
+    const prop = match[2]
+    if (match[1] === 'light') {
+      if (prop === 'intensity' && Number.isFinite(value)) world.setLightIntensity(ent.id, Number(value))
+      if (prop === 'color' && typeof value === 'string') world.setLightColor(ent.id, value)
+      if (prop === 'range' && Number.isFinite(value)) world.setLightRange(ent.id, Number(value))
+    }
+    if (match[1] === 'mesh') {
+      if (prop === 'color' && typeof value === 'string') world.setEntityColor(ent.id, value)
+      if (prop === 'material' && typeof value === 'string') world.setEntityMaterial(ent.id, value)
+    }
+    if (match[1] === 'decal' && prop === 'opacity' && Number.isFinite(value)) world.setDecalOpacity(ent.id, Number(value))
+    if (match[1] === 'particle' && prop === 'rate' && Number.isFinite(value)) world.setParticleRate(ent.id, Number(value))
+  }
   net.onSnapshot((snaps, fromPeerId) => {
-    for (const s of snaps) {
+    if (!net.getPeers().some(p => p.id === fromPeerId)) return
+    for (const s of snaps.slice(0, 256)) {
+      if (!s || typeof s.id !== 'string' || !isFiniteNetworkVec3(s.pos) || !isFiniteNetworkVec3(s.rot) || s.scale && !isFiniteNetworkVec3(s.scale)) continue
       let ent = scene.entities.find((e) => e.id === s.id)
       const nsc = ent?.components.find((c) => c.type === "networkSync" && c.enabled !== false)
       if (!ent || !nsc) continue
+      // An owner-only snapshot must come from that owner, never an arbitrary peer.
+      if ((nsc.owner || 'host') === 'host' && fromPeerId !== hostPeerId()) continue
+      if ((nsc.owner || 'host') !== 'host' && nsc.owner !== 'local' && nsc.owner !== fromPeerId) continue
       if (nsc.owner === "local") {
         // Each peer owns its own local instance; spawn/update a dedicated remote proxy avatar for other peers
         if (!fromPeerId || fromPeerId === net.peerId) continue
@@ -250,7 +285,7 @@ export async function startGame(
         if (!proxy) continue
         ent = proxy
       } else {
-        const isLocalOwned = (nsc.owner === "host" && net.isHost) || nsc.owner === net.peerId
+        const isLocalOwned = ((nsc.owner || 'host') === 'host' && net.isHost) || nsc.owner === net.peerId
         if (isLocalOwned) continue
       }
       if (nsc.syncTransform !== false) {
@@ -278,28 +313,55 @@ export async function startGame(
           if (!cur || cur.clip !== s.animClip) world.crossfadeAnimation(ent.id, s.animClip, 0.15, true, 1)
         }
       }
+      if (nsc.syncActive && typeof s.active === 'boolean') {
+        applyingRemoteNetwork = true
+        try {
+          const prior = ent.active
+          setActive(ent.id, s.active)
+          if (prior !== ent.active) emit('net.activeChanged', { source: ent.id, active: ent.active, peerId: fromPeerId })
+        } finally { applyingRemoteNetwork = false }
+      }
+      if (s.fields && typeof s.fields === 'object' && !Array.isArray(s.fields)) {
+        const allowed = new Set(syncPaths(nsc))
+        for (const [path, val] of Object.entries(s.fields).slice(0, 32)) {
+          if (!allowed.has(path)) continue
+          const prev = readSyncPath(ent, path)
+          if (writeSyncPath(ent, path, val)) {
+            applySyncedComponentField(ent, path)
+            emit('net.fieldChanged', { source: ent.id, templateId: s.id, peerId: fromPeerId, path, value: val, prevValue: prev })
+            if (path.startsWith('properties.')) notifySyncedVar(ent.id, path.slice(11), val, prev, fromPeerId, s.id)
+          }
+        }
+      }
       if (s.vars && typeof s.vars === "object") {
         ent.properties = ent.properties || {}
-        for (const [k, v] of Object.entries(s.vars)) {
+        const allowedVars = new Set(syncPaths(nsc).filter(path => /^properties\.[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/.test(path)).map(path => path.slice(11)))
+        for (const [k, v] of Object.entries(s.vars).slice(0, 64)) {
+          if (!allowedVars.has(k)) continue
           const prev = ent.properties[k]
-          if (JSON.stringify(prev) !== JSON.stringify(v)) {
+          if (JSON.stringify(prev) !== JSON.stringify(v) && safeSyncValue(v) !== undefined) {
             ent.properties[k] = v
-            const listeners = entityVarListeners.get(ent.id + ":" + k)
-            if (listeners) for (const fn of listeners) fn(v, prev)
-            emit("net.entityVarChanged", { source: ent.id, templateId: s.id, peerId: fromPeerId, key: k, value: v, prevValue: prev })
+            notifySyncedVar(ent.id, k, v, prev, fromPeerId, s.id)
           }
         }
       }
     }
   })
-  net.onWorldState((incomingVars) => {
-    for (const [k, v] of Object.entries(incomingVars)) {
+  net.onWorldState((incomingVars, fromPeerId) => {
+    if (fromPeerId !== hostPeerId()) return
+    for (const [k, v] of Object.entries(incomingVars).slice(0, 256)) {
+      if (!/^[a-zA-Z_][a-zA-Z0-9_.-]{0,63}$/.test(k) || ['__proto__', 'constructor', 'prototype'].includes(k)) continue
       if (vars[k] !== v) vars[k] = v
     }
   })
   net.onPeerJoin((pid) => {
     lastSentEntityVars.clear()
+    lastSentEntityActive.clear()
     netSyncAccum = 999
+    if (net.isHost && pid !== net.peerId) {
+      for (const spawned of [...netSpawned.values()].slice(0, 256)) net.rpc('net:spawn', spawned, pid)
+      if (netDestroyed.size) net.rpc('net:despawn-state', { ids: [...netDestroyed].slice(0, 512) }, pid)
+    }
     emit("net.peerJoin", { source: "net", peerId: pid })
   })
   net.onPeerLeave((pid) => {
@@ -317,15 +379,67 @@ export async function startGame(
     emit("net.peerLeave", { source: "net", peerId: pid })
   })
   net.onRpc("*", (ev, sender) => emit("net.rpc", { source: sender, name: ev?.name, payload: ev?.payload, sender }))
-  net.onRpc("net:spawn", (data) => {
-    if (!data?.prefabId) return
+  net.onRpc('net:spawn', (data, sender) => {
+    if (sender !== hostPeerId() || !data || typeof data.prefabId !== 'string' || typeof data.id !== 'string') return
+    if (!/^net-[a-zA-Z0-9_-]{4,80}$/.test(data.id) || scene.entities.some(e => e.id === data.id) || netDestroyed.has(data.id)) return
+    if (!project.assets.some(a => a.type === 'prefab' && a.id === data.prefabId)) return
+    const pos = isFiniteNetworkVec3(data.pos) ? data.pos : undefined
     try {
-      const id = spawnPrefab(String(data.prefabId), Array.isArray(data.pos) ? data.pos : undefined)
-      const ent = scene.entities.find((e) => e.id === id)
-      if (ent && !ent.components.some((c) => c.type === "networkSync")) {
-        ent.components.push({ type: "networkSync", owner: String(data.owner || "host"), syncTransform: true, syncAnimation: true, interpolate: true })
+      const id = spawnPrefab(data.prefabId, pos, null, data.id)
+      const ent = scene.entities.find(e => e.id === id)
+      if (ent) {
+        ent.components = ent.components.filter(c => c.type !== 'networkSync')
+        const owner = typeof data.owner === 'string' && (data.owner === 'host' || net.getPeers().some(p => p.id === data.owner)) ? data.owner : 'host'
+        ent.components.push({ type: 'networkSync', owner, syncTransform: true, syncActive: true, syncAnimation: true, syncLifecycle: true, interpolate: true })
       }
-    } catch {}
+    } catch (err) { console.warn('Network prefab spawn rejected', err) }
+  })
+  net.onRpc('net:despawn', (data, sender) => {
+    if (sender !== hostPeerId() || typeof data?.id !== 'string') return
+    const ent = scene.entities.find(e => e.id === data.id)
+    if (!ent || !ent.components.some(c => c.type === 'networkSync' && c.syncLifecycle)) return
+    netDestroyed.add(ent.id)
+    applyingRemoteNetwork = true
+    try { destroy(ent.id) } finally { applyingRemoteNetwork = false }
+  })
+  const pendingPickupRequests = new Map<string, number>()
+  net.onRpc('net:collect-request', (data, sender) => {
+    if (!net.isHost || sender === net.peerId || !net.getPeers().some(p => p.id === sender)) return
+    if (typeof data?.id !== 'string') return
+    const coin = coins.find(c => c.entity.id === data.id)
+    const sync = coin?.entity.components.find(c => c.type === 'networkSync' && c.enabled !== false)
+    if (!coin || !sync || sync.owner !== 'host' || !sync.syncActive || !active(coin.entity.id)) return
+    const key = sender + ':' + player?.entity.id
+    const proxyId = remoteLocalProxies.get(key)
+    const proxy = proxyId && world.objects.get(proxyId)
+    if (!proxy) return
+    const collector = proxy.getWorldPosition(new Vector3())
+    const location = coin.object.getWorldPosition(new Vector3())
+    const radius = Math.max(0.1, Math.min(5, Number(coin.params.radius ?? 0.65)))
+    if (Math.hypot(location.x - collector.x, location.z - collector.z) > radius + 0.3) return
+    setActive(coin.entity.id, false)
+    const points = Number(coin.params.points ?? coin.params.value ?? 1)
+    net.rpc('net:collect-awarded', { id: coin.entity.id, points: Number.isFinite(points) ? points : 1 }, sender)
+    emit('coin.collected', coin.entity.id)
+  })
+  net.onRpc('net:collect-awarded', (data, sender) => {
+    if (sender !== hostPeerId() || typeof data?.id !== 'string') return
+    const points = Number(data.points)
+    if (!Number.isFinite(points) || Math.abs(points) > 10000) return
+    vars.score += points
+    pendingPickupRequests.delete(data.id)
+    emit('coin.collected', data.id)
+  })
+  net.onRpc('net:despawn-state', (data, sender) => {
+    if (sender !== hostPeerId() || !Array.isArray(data?.ids)) return
+    for (const id of data.ids.slice(0, 512)) {
+      if (typeof id !== 'string') continue
+      const ent = scene.entities.find(e => e.id === id)
+      if (!ent || !ent.components.some(c => c.type === 'networkSync' && c.syncLifecycle)) continue
+      netDestroyed.add(id)
+      applyingRemoteNetwork = true
+      try { destroy(id) } finally { applyingRemoteNetwork = false }
+    }
   })
 
   const netAPI = {
@@ -348,6 +462,9 @@ export async function startGame(
       if (!entityId || !key) return
       const ent = scene.entities.find((e) => e.id === entityId)
       if (!ent) return
+      const sync = ent.components.find(c => c.type === 'networkSync' && c.enabled !== false)
+      if (net.connected && sync?.owner === 'host' && !net.isHost) return
+      if (!/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/.test(key) || ['constructor', 'prototype', '__proto__'].includes(key) || safeSyncValue(value) === undefined) return
       ent.properties = ent.properties || {}
       const prev = ent.properties[key]
       ent.properties[key] = value
@@ -367,6 +484,18 @@ export async function startGame(
       if (!ent || !ent.properties || !(key in ent.properties)) return fallback as T
       return ent.properties[key] as T
     },
+    setSyncedField: (entityId: string, path: string, value: unknown) => {
+      const ent = scene.entities.find(e => e.id === entityId)
+      const nsc = ent?.components.find(c => c.type === 'networkSync' && c.enabled !== false)
+      if (!ent || !nsc || !syncPaths(nsc).includes(path) || net.connected && nsc.owner === 'host' && !net.isHost) return false
+      if (!writeSyncPath(ent, path, value)) return false
+      applySyncedComponentField(ent, path)
+      return true
+    },
+    getSyncedField: (entityId: string, path: string) => {
+      const ent = scene.entities.find(e => e.id === entityId)
+      return ent ? readSyncPath(ent, path) : undefined
+    },
     onEntityVarChange: (entityId: string, key: string, handler: (value: any, prevValue: any) => void) => {
       const mapKey = entityId + ":" + key
       let set = entityVarListeners.get(mapKey)
@@ -382,20 +511,21 @@ export async function startGame(
     discoverLan: (timeoutMs?: number) => net.discoverLan(timeoutMs),
     sendChat: (text: string) => net.sendChat(text),
     onChat: (handler: any) => net.onChat(handler),
-    spawnNetworkPlayer: (prefabId: string, ownerPeerId?: string, pos?: Vec3) => {
-      const owner = ownerPeerId || net.peerId
-      const id = spawnPrefab(prefabId, pos)
-      const ent = scene.entities.find((e) => e.id === id)
+    spawnNetworkPlayer: (prefabId: string, _ownerPeerId?: string, pos?: Vec3) => {
+      if (!net.isHost) throw Error('Only the host may spawn authoritative network prefabs')
+      const asset = project.assets.find(a => a.type === 'prefab' && a.id === prefabId)
+      if (!asset) throw Error('Unknown network prefab: ' + prefabId)
+      const id = 'net-' + uid().replace(/[^a-zA-Z0-9_-]/g, '').padEnd(6, 'x')
+      const owner = _ownerPeerId && net.getPeers().some(p => p.id === _ownerPeerId) ? _ownerPeerId : 'host'
+      const spawn = { prefabId, owner, pos, id }
+      const created = spawnPrefab(prefabId, pos, null, id)
+      const ent = scene.entities.find(e => e.id === created)
       if (ent) {
-        let nsc = ent.components.find((c) => c.type === "networkSync")
-        if (!nsc) {
-          nsc = { type: "networkSync", owner, syncTransform: true, syncAnimation: true, syncVariables: false, interpolate: true }
-          ent.components.push(nsc)
-        } else {
-          nsc.owner = owner
-        }
+        ent.components = ent.components.filter(c => c.type !== 'networkSync')
+        ent.components.push({ type: 'networkSync', owner, syncTransform: true, syncActive: true, syncAnimation: true, syncLifecycle: true, interpolate: true })
       }
-      net.rpc("net:spawn", { prefabId, owner, pos }, "others")
+      netSpawned.set(id, spawn)
+      net.rpc('net:spawn', spawn, 'others')
       return id
     },
   }
@@ -417,7 +547,7 @@ export async function startGame(
             room: mpCfg.roomCode || "lobby-1",
             gameName: project.name,
             mode: mpCfg.mode,
-          })
+          }).then(info => { if (!info) options.onEvent?.('net.error', net.lastError || 'Could not start LAN server') })
         } else {
           void net.connect({
             mode: qpRoom ? "client-server-ws" : mpCfg.mode,
@@ -425,7 +555,7 @@ export async function startGame(
             url: qpRoom ? "local" : mpCfg.serverUrl || "local",
             simulatedLatencyMs: Number(mpCfg.simulatedLatencyMs || 0),
             simulatedPacketLoss: Number(mpCfg.simulatedPacketLoss || 0),
-          })
+          }).then(ok => { if (!ok) options.onEvent?.('net.error', net.lastError || 'Network connection failed') })
         }
       }
     } catch {}
@@ -643,9 +773,24 @@ export async function startGame(
     setOptimization: (opts) => world.setOptimization(opts),
   }
 
+  /** Keep declarative component values in step with the rendering API when the
+   * corresponding path is selected for replication. Do not let non-owners
+   * overwrite authoritative state while the network is connected. */
+  function recordLiveSyncField(id: string, path: string, value: unknown): boolean {
+    const ent = scene.entities.find(e => e.id === id)
+    const nsc = ent?.components.find(c => c.type === 'networkSync' && c.enabled !== false)
+    if (!ent || !nsc || !syncPaths(nsc).includes(path)) return true
+    if (net.connected && (nsc.owner || 'host') === 'host' && !net.isHost) return false
+    writeSyncPath(ent, path, value)
+    return true
+  }
   const materialsAPI: MaterialsAPI = {
-    set: (entityId, materialAssetId) => world.setEntityMaterial(entityId, materialAssetId),
-    setColor: (entityId, hex, opacity) => world.setEntityColor(entityId, hex, opacity),
+    set: (entityId, materialAssetId) => {
+      if (recordLiveSyncField(entityId, 'components.mesh.material', materialAssetId)) world.setEntityMaterial(entityId, materialAssetId)
+    },
+    setColor: (entityId, hex, opacity) => {
+      if (recordLiveSyncField(entityId, 'components.mesh.color', hex)) world.setEntityColor(entityId, hex, opacity)
+    },
     setEmissive: (entityId, hex, intensity) => world.setEntityEmissive(entityId, hex, intensity),
     setShader: (entityId, shaderAssetId) => world.setEntityShader(entityId, shaderAssetId),
     setShaderUniform: (target, name, value) => world.setShaderUniform(target, name, value),
@@ -713,9 +858,15 @@ export async function startGame(
   }
 
   const lightsAPI: LightsAPI = {
-    setIntensity: (id, intensity) => world.setLightIntensity(id, intensity),
-    setColor: (id, hex) => world.setLightColor(id, hex),
-    setRange: (id, range) => world.setLightRange(id, range),
+    setIntensity: (id, intensity) => {
+      if (recordLiveSyncField(id, 'components.light.intensity', intensity)) world.setLightIntensity(id, intensity)
+    },
+    setColor: (id, hex) => {
+      if (recordLiveSyncField(id, 'components.light.color', hex)) world.setLightColor(id, hex)
+    },
+    setRange: (id, range) => {
+      if (recordLiveSyncField(id, 'components.light.range', range)) world.setLightRange(id, range)
+    },
     setGlow: (id, glow, falloff) => world.setLightGlow(id, glow, falloff),
     setSunRays: (id, enabled, intensity, decay) => world.setLightSunRays(id, enabled, intensity, decay),
     setShadowLight: (id) => world.setShadowLight(id),
@@ -935,12 +1086,18 @@ export async function startGame(
   function startEntities(ids: Iterable<string>) {
     for (const id of [...ids]) if (active(id) && toStart.delete(id)) { initAnimMachineFor(id); lifecycle.call('onStart', id) }
   }
-  function spawnPrefab(assetId: string, position?: Vec3, parent: string | null = null): string {
+  function spawnPrefab(assetId: string, position?: Vec3, parent: string | null = null, networkId?: string): string {
     if (disposed || unloading) throw Error('Scene is unloading')
     const asset =
       project.assets.find((a) => a.type === 'prefab' && (a.id === assetId || a.name === assetId)) ?? makePrefab(scene, assetId)
     const offset = scene.entities.length
     const root = instantiatePrefab(scene, asset, parent)
+    if (networkId) {
+      if (scene.entities.some(e => e !== root && e.id === networkId)) throw Error('Network entity ID is already in use')
+      const oldId = root.id
+      root.id = networkId
+      for (const e of scene.entities.slice(offset)) if (e.parent === oldId) e.parent = networkId
+    }
     if (position) root.transform.position = [...position]
     const nodes = scene.entities.slice(offset)
     try {
@@ -971,6 +1128,18 @@ export async function startGame(
     const nodes = subtree(scene, id),
       ids = new Set(nodes.map((e) => e.id))
     if (!ids.size) return
+    const rootSync = nodes[0]?.components.find(c => c.type === 'networkSync' && c.enabled !== false)
+    if (net.connected && !net.isHost && !applyingRemoteNetwork && rootSync?.owner === 'host' && rootSync?.syncLifecycle) return
+    if (!applyingRemoteNetwork && net.isHost) {
+      for (const ent of nodes) {
+        const sync = ent.components.find(c => c.type === 'networkSync' && c.enabled !== false)
+        if (sync?.syncLifecycle) {
+          netDestroyed.add(ent.id)
+          netSpawned.delete(ent.id)
+          if (net.connected) net.rpc('net:despawn', { id: ent.id }, 'others')
+        }
+      }
+    }
     for (const key of ids) destroying.add(key)
     for (const e of nodes.reverse()) {
       const key = e.id
@@ -983,6 +1152,9 @@ export async function startGame(
       clearTriggerPairsFor(key)
       tweens.killOwner(key)
       navAgents.delete(key)
+      lastSentEntityActive.delete(key)
+      lastSentEntityVars.delete(key)
+      trackedEntityVarKeys.delete(key)
       physics?.remove(key)
     }
     scene.entities = scene.entities.filter((e) => !ids.has(e.id))
@@ -1000,6 +1172,8 @@ export async function startGame(
   function setActive(id: string, enabled: boolean) {
     const nodes = subtree(scene, id)
     if (!nodes.length || destroying.has(id) || unloading) return
+    const sync = nodes[0].components.find(c => c.type === 'networkSync' && c.enabled !== false)
+    if (net.connected && !net.isHost && !applyingRemoteNetwork && sync?.owner === 'host' && sync?.syncActive) return
     const prevActive = new Map(nodes.map((e) => [e.id, active(e.id)]))
     nodes[0].active = enabled
     world.setEntityActive(id, enabled)
@@ -1534,6 +1708,11 @@ export async function startGame(
       remoteLocalProxies.clear()
       peerProxies.clear()
       remoteNetTargets.clear()
+      pendingPickupRequests.clear()
+      lastSentEntityVars.clear()
+      lastSentEntityActive.clear()
+      netDestroyed.clear()
+      netSpawned.clear()
       if (last || id !== sceneId || reset) world.load(project, id)
       sceneId = id
       scene = structuredClone(target)
@@ -1790,9 +1969,17 @@ export async function startGame(
       coin.object.getWorldPosition(point)
       if (Math.hypot(playerPoint.x - point.x, playerPoint.z - point.z) > (coin.params.radius ?? 0.65))
         continue
+      const sync = coin.entity.components.find(c => c.type === 'networkSync' && c.enabled !== false)
+      if (net.connected && sync?.owner === 'host' && sync.syncActive && !net.isHost) {
+        if (performance.now() - (pendingPickupRequests.get(coin.entity.id) ?? -Infinity) > 650) {
+          pendingPickupRequests.set(coin.entity.id, performance.now())
+          net.rpc('net:collect-request', { id: coin.entity.id }, 'host')
+        }
+        continue
+      }
+      if (!active(coin.entity.id)) continue
       vars.score += Number(coin.params.points ?? coin.params.value ?? 1)
       contact(actor.entity.id, coin.entity.id, true, true)
-      if (!active(coin.entity.id)) continue
       setActive(coin.entity.id, false)
       playSound()
       emit('coin.collected', coin.entity.id)
@@ -1879,7 +2066,7 @@ export async function startGame(
           for (const ent of scene.entities) {
             const nsc = ent.components.find((c) => c.type === "networkSync" && c.enabled !== false)
             if (!nsc) continue
-            const owned = (nsc.owner === "host" && net.isHost) || nsc.owner === "local" || nsc.owner === net.peerId
+            const owned = ((nsc.owner || 'host') === 'host' && net.isHost) || nsc.owner === 'local' || nsc.owner === net.peerId
             if (!owned) continue
             const obj = world.objects.get(ent.id)
             if (!obj || !Number.isFinite(obj.position.x) || !Number.isFinite(obj.position.y) || !Number.isFinite(obj.position.z)) continue
@@ -1889,6 +2076,31 @@ export async function startGame(
               rot: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
               scale: [obj.scale.x, obj.scale.y, obj.scale.z],
             }
+            if (nsc.syncActive) {
+              const prev = lastSentEntityActive.get(ent.id)
+              if (prev !== ent.active) {
+                snap.active = ent.active
+                lastSentEntityActive.set(ent.id, ent.active)
+              }
+            }
+            const requested = syncPaths(nsc)
+            if (requested.length) {
+              let cache = lastSentEntityVars.get(ent.id)
+              if (!cache) lastSentEntityVars.set(ent.id, (cache = {}))
+              const fields: Record<string, unknown> = {}
+              let fieldBytes = 0
+              for (const path of requested) {
+                const safe = safeSyncValue(readSyncPath(ent, path))
+                if (safe === undefined) continue
+                const serialized = JSON.stringify(safe)
+                if (cache[path] !== serialized && fieldBytes + serialized.length + path.length < 24000) {
+                  fields[path] = safe
+                  fieldBytes += serialized.length + path.length
+                  cache[path] = serialized
+                }
+              }
+              if (Object.keys(fields).length) snap.fields = fields
+            }
             if (nsc.syncAnimation) {
               const sm = animMachines.get(ent.id)
               if (sm) snap.animState = sm.currentState
@@ -1896,14 +2108,8 @@ export async function startGame(
               if (curClip) snap.animClip = curClip
             }
             if (nsc.syncVariables && net.isHost) syncVars = true
-            const keyList = new Set<string>(
-              String(nsc.syncKeys || "")
-                .split(",")
-                .map((x: string) => x.trim())
-                .filter(Boolean),
-            )
-            const dynKeys = trackedEntityVarKeys.get(ent.id)
-            if (dynKeys) for (const dk of dynKeys) keyList.add(dk)
+            const keyList = new Set<string>()
+            for (const path of syncPaths(nsc)) if (path.startsWith('properties.') && !path.slice(11).includes('.')) keyList.add(path.slice(11))
             if (keyList.size > 0 && ent.properties) {
               let sentCache = lastSentEntityVars.get(ent.id)
               if (!sentCache) {
@@ -1911,14 +2117,16 @@ export async function startGame(
                 lastSentEntityVars.set(ent.id, sentCache)
               }
               const delta: Record<string, any> = {}
-              let hasDelta = false
+              let hasDelta = false, legacyBytes = 0
               for (const k of keyList) {
                 if (!(k in ent.properties)) continue
-                const val = ent.properties[k]
+                const val = safeSyncValue(ent.properties[k])
+                if (val === undefined) continue
                 const ser = JSON.stringify(val)
-                if (sentCache[k] !== ser) {
+                if (sentCache[k] !== ser && legacyBytes + ser.length + k.length < 16000) {
                   sentCache[k] = ser
                   delta[k] = val
+                  legacyBytes += ser.length + k.length
                   hasDelta = true
                 }
               }
@@ -2003,6 +2211,7 @@ export async function startGame(
     physics?.dispose()
     touchCtrl.dispose()
     net.disconnect()
+    steam.dispose()
     overlay.dispose?.()
     world.dispose()
   }

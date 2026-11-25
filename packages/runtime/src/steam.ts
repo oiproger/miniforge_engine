@@ -37,12 +37,21 @@ async function invokeTauri<T = any>(cmd: string, args?: Record<string, any>): Pr
 }
 
 export class SteamManager {
+  /** Local mock is strictly opt-in. Never silently emulate Steamworks in a shipped game. */
+  private readonly opts: { localDebug?: boolean }
+  constructor(opts: { localDebug?: boolean } = {}) { this.opts = opts }
+
+  isDebug(): boolean { return !this.native && this.initialized && Boolean(this.opts.localDebug) }
+  getMode(): 'native' | 'local-debug' | 'unavailable' {
+    return this.native ? 'native' : this.isDebug() ? 'local-debug' : 'unavailable'
+  }
+  private nativeAchievements = new Set<string>()
   appId = 480
   initialized = false
   native = false
   user: SteamUserInfo = {
-    steamId: '765611980' + Math.floor(10000000 + Math.random() * 89999999),
-    name: 'DevPlayer_' + Math.random().toString(36).slice(2, 6),
+    steamId: '',
+    name: 'Steam unavailable',
     appId: 480,
     native: false,
   }
@@ -52,6 +61,9 @@ export class SteamManager {
   private p2pHandlers = new Set<P2PHandler>()
   private lobbyChannel: BroadcastChannel | null = null
   private p2pChannel: BroadcastChannel | null = null
+  private parentDebugHandler: ((event: MessageEvent) => void) | null = null
+  private localCloudFallback = new Map<string, string>()
+  private localAchievementsFallback = new Set<string>()
   private knownLobbies = new Map<string, SteamLobby>()
   private pollTimer: number | null = null
 
@@ -69,7 +81,10 @@ export class SteamManager {
   }
 
   async init(appId = 480): Promise<SteamUserInfo> {
-    this.appId = Number(appId) || 480
+    const requestedId = Number(appId)
+    this.appId = Number.isInteger(requestedId) && requestedId > 0 ? requestedId : 480
+    if (this.native && this.initialized && this.user.appId === this.appId) return this.getUser()
+    if (this.initialized && this.isDebug() && this.user.appId === this.appId) return this.getUser()
     const nativeRes = await invokeTauri<SteamUserInfo>('steam_init', { appId: this.appId })
     if (nativeRes && nativeRes.steamId) {
       this.native = true
@@ -80,34 +95,80 @@ export class SteamManager {
       return this.user
     }
 
-    // Browser / Editor local Steamworks debug bridge (AppID 480 Spacewar compatible)
     this.native = false
     this.user.appId = this.appId
     this.user.native = false
+    if (!this.opts.localDebug) {
+      this.initialized = false
+      this.user.steamId = ''
+      this.user.name = 'Steam unavailable'
+      this.log('steam_init', 'Native Steamworks is unavailable. Local simulation disabled; achievements/lobbies/cloud will not be faked.', 'warn')
+      return this.getUser()
+    }
+    this.user.steamId ||= 'debug-' + Math.random().toString(36).slice(2, 14)
+    this.user.name = this.user.name === 'Steam unavailable' ? 'DevPlayer_' + this.user.steamId.slice(-4) : this.user.name
     this.initialized = true
     this.setupLocalLobbyBus()
-    this.log('steam_init', `Local Steam Debug Mode active (AppID ${this.appId}, mock SteamID ${this.user.steamId})`)
-    return this.user
+    this.log('steam_init', `LOCAL SIMULATION ONLY (AppID ${this.appId}, identity ${this.user.steamId}). Nothing is stored on Steam.`, 'warn')
+    return this.getUser()
+  }
+
+  // Editor Preview iframes intentionally have opaque origins: their BroadcastChannel
+  // storage partitions and localStorage may be unavailable. Only explicit LOCAL DEBUG
+  // may route through the trusted editor parent; no exported Steam client uses this.
+  private attachParentDebugBridge() {
+    if (!this.opts.localDebug || this.parentDebugHandler || typeof window === 'undefined' ||
+        !window.parent || window.parent === window) return
+    this.parentDebugHandler = (event: MessageEvent) => {
+      if (event.source !== window.parent) return
+      const envelope = event.data
+      if (!envelope || envelope.__miniforgeSteam !== true || envelope.appId !== this.appId) return
+      if (envelope.channel === 'lobbies') this.receiveLocalLobbyMessage(envelope.message)
+      if (envelope.channel === 'p2p' && envelope.lobbyId === this.currentLobby?.id)
+        this.receiveLocalP2PMessage(envelope.message)
+    }
+    window.addEventListener('message', this.parentDebugHandler)
+  }
+
+  private sendLocalDebug(channel: 'lobbies' | 'p2p', message: any, lobbyId?: string) {
+    if (!this.opts.localDebug) return
+    const bc = channel === 'lobbies' ? this.lobbyChannel : this.p2pChannel
+    try { bc?.postMessage(message) } catch {}
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      try { window.parent.postMessage({ __miniforgeSteam: true, appId: this.appId, channel, lobbyId, message }, '*') } catch {}
+    }
+  }
+
+  private receiveLocalLobbyMessage(msg: any) {
+    if (!msg || typeof msg !== 'object') return
+    if (msg.type === 'lobby-announce' && msg.lobby && typeof msg.lobby.id === 'string') {
+      this.knownLobbies.set(msg.lobby.id, msg.lobby)
+      if (this.currentLobby?.id === msg.lobby.id) this.currentLobby = msg.lobby
+    } else if (msg.type === 'lobby-query' && this.currentLobby?.ownerId === this.user.steamId) {
+      this.sendLocalDebug('lobbies', { type: 'lobby-announce', lobby: this.currentLobby })
+    } else if (msg.type === 'lobby-remove' && typeof msg.lobbyId === 'string') {
+      this.knownLobbies.delete(msg.lobbyId)
+    }
   }
 
   private setupLocalLobbyBus() {
-    if (typeof BroadcastChannel === 'undefined' || this.lobbyChannel) return
-    this.lobbyChannel = new BroadcastChannel(`miniforge-steam-lobbies:${this.appId}`)
-    this.lobbyChannel.onmessage = (ev) => {
-      const msg = ev.data
-      if (!msg) return
-      if (msg.type === 'lobby-announce' && msg.lobby) {
-        this.knownLobbies.set(msg.lobby.id, msg.lobby)
-        if (this.currentLobby && this.currentLobby.id === msg.lobby.id) {
-          this.currentLobby = msg.lobby
-        }
-      } else if (msg.type === 'lobby-query' && this.currentLobby && this.currentLobby.ownerId === this.user.steamId) {
-        this.lobbyChannel?.postMessage({ type: 'lobby-announce', lobby: this.currentLobby })
-      } else if (msg.type === 'lobby-remove' && msg.lobbyId) {
-        this.knownLobbies.delete(msg.lobbyId)
-      }
+    if (!this.opts.localDebug) return
+    this.attachParentDebugBridge()
+    if (this.lobbyChannel) return
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        this.lobbyChannel = new BroadcastChannel(`miniforge-steam-lobbies:${this.appId}`)
+        this.lobbyChannel.onmessage = ev => this.receiveLocalLobbyMessage(ev.data)
+      } catch { this.lobbyChannel = null }
     }
-    this.lobbyChannel.postMessage({ type: 'lobby-query' })
+    this.sendLocalDebug('lobbies', { type: 'lobby-query' })
+  }
+
+  private receiveLocalP2PMessage(msg: any) {
+    if (!msg || msg.from === this.user.steamId) return
+    if (!this.currentLobby?.members.includes(msg.from)) return
+    if (msg.to && msg.to !== this.user.steamId) return
+    for (const fn of this.p2pHandlers) fn(msg.packet, msg.from)
   }
 
   private bindLocalP2PChannel(lobbyId: string) {
@@ -115,14 +176,12 @@ export class SteamManager {
       try { this.p2pChannel.close() } catch {}
       this.p2pChannel = null
     }
+    this.attachParentDebugBridge()
     if (typeof BroadcastChannel === 'undefined') return
-    this.p2pChannel = new BroadcastChannel(`miniforge-steam-p2p:${lobbyId}`)
-    this.p2pChannel.onmessage = (ev) => {
-      const msg = ev.data
-      if (!msg || msg.from === this.user.steamId) return
-      if (msg.to && msg.to !== this.user.steamId) return
-      for (const fn of this.p2pHandlers) fn(msg.packet, msg.from)
-    }
+    try {
+      this.p2pChannel = new BroadcastChannel(`miniforge-steam-p2p:${lobbyId}`)
+      this.p2pChannel.onmessage = ev => this.receiveLocalP2PMessage(ev.data)
+    } catch { this.p2pChannel = null }
   }
 
   private startNativeP2PPoll() {
@@ -141,7 +200,7 @@ export class SteamManager {
   }
 
   isAvailable(): boolean {
-    return this.initialized
+    return this.initialized && this.native
   }
 
   isNative(): boolean {
@@ -159,60 +218,64 @@ export class SteamManager {
 
   private readLocalAchievements(): string[] {
     try {
-      return JSON.parse(localStorage.getItem(this.achStorageKey()) || '[]')
-    } catch {
-      return []
-    }
+      return [...new Set([...JSON.parse(localStorage.getItem(this.achStorageKey()) || '[]'), ...this.localAchievementsFallback])]
+    } catch { return [...this.localAchievementsFallback] }
   }
 
   async unlockAchievement(id: string): Promise<boolean> {
-    if (!id) return false
+    if (!id || !this.initialized) return false
     if (this.native) {
       const ok = await invokeTauri<boolean>('steam_unlock_achievement', { id })
-      this.log('unlockAchievement', `${id} -> ${ok ? 'unlocked' : 'failed'}`)
+      if (ok) this.nativeAchievements.add(id)
+      this.log('unlockAchievement', `${id} -> ${ok ? 'unlocked' : 'failed'}`, ok ? 'info' : 'error')
       return Boolean(ok)
     }
     const list = new Set(this.readLocalAchievements())
     list.add(id)
+    this.localAchievementsFallback.add(id)
     try { localStorage.setItem(this.achStorageKey(), JSON.stringify([...list])) } catch {}
     this.log('unlockAchievement', `${id} (local debug)`)
     return true
   }
 
   async clearAchievement(id: string): Promise<boolean> {
-    if (!id) return false
+    if (!id || !this.initialized) return false
     if (this.native) {
-      await invokeTauri('steam_clear_achievement', { id })
-      this.log('clearAchievement', id)
-      return true
+      const ok = await invokeTauri<boolean>('steam_clear_achievement', { id })
+      if (ok) this.nativeAchievements.delete(id)
+      this.log('clearAchievement', `${id} -> ${Boolean(ok)}`, ok ? 'info' : 'error')
+      return Boolean(ok)
     }
     const list = this.readLocalAchievements().filter((x) => x !== id)
+    this.localAchievementsFallback.delete(id)
     try { localStorage.setItem(this.achStorageKey(), JSON.stringify(list)) } catch {}
     this.log('clearAchievement', `${id} (local debug)`)
     return true
   }
 
   hasAchievement(id: string): boolean {
-    return this.readLocalAchievements().includes(id)
+    return this.native ? this.nativeAchievements.has(id) : this.initialized && this.readLocalAchievements().includes(id)
   }
 
   listAchievements(): string[] {
-    return this.readLocalAchievements()
+    // Native achievements are only those confirmed in this session; reading the full
+    // native achievement list requires a separate SteamUserStats query bridge.
+    return this.native ? [...this.nativeAchievements] : this.initialized ? this.readLocalAchievements() : []
   }
 
   // ---- Rich Presence ----
   async setRichPresence(key: string, value: string): Promise<boolean> {
+    if (!this.initialized) return false
+    if (this.native && !await invokeTauri<boolean>('steam_set_rich_presence', { key, value })) return false
     this.richPresence[key] = value
-    if (this.native) {
-      await invokeTauri('steam_set_rich_presence', { key, value })
-    }
     this.log('setRichPresence', `${key} = "${value}"`)
     return true
   }
 
   async clearRichPresence(): Promise<void> {
+    if (!this.initialized) return
+    if (this.native && !await invokeTauri<boolean>('steam_clear_rich_presence')) return
     this.richPresence = {}
-    if (this.native) await invokeTauri('steam_clear_rich_presence')
     this.log('clearRichPresence', 'cleared')
   }
 
@@ -226,42 +289,49 @@ export class SteamManager {
   }
 
   async cloudWrite(filename: string, content: string): Promise<boolean> {
-    if (!filename) return false
+    if (!filename || !this.initialized) return false
     if (this.native) {
       const ok = await invokeTauri<boolean>('steam_cloud_write', { filename, content })
       this.log('cloudWrite', `${filename} (${content.length} bytes)`)
       return Boolean(ok)
     }
-    try {
-      localStorage.setItem(this.cloudPrefix() + filename, content)
-      this.log('cloudWrite', `${filename} (${content.length} bytes, local cloud)`)
-      return true
-    } catch {
-      return false
+    this.localCloudFallback.set(filename, content)
+    try { localStorage.setItem(this.cloudPrefix() + filename, content) } catch {
+      // Isolated editor previews have no localStorage; use volatile debug memory.
     }
+    this.log('cloudWrite', `${filename} (${content.length} bytes, local debug storage)`)
+    return true
   }
 
   async cloudRead(filename: string): Promise<string | null> {
-    if (!filename) return null
+    if (!filename || !this.initialized) return null
     if (this.native) {
       const res = await invokeTauri<string | null>('steam_cloud_read', { filename })
       this.log('cloudRead', `${filename} -> ${res ? res.length + ' bytes' : 'null'}`)
       return res
     }
-    const val = localStorage.getItem(this.cloudPrefix() + filename)
-    this.log('cloudRead', `${filename} -> ${val ? val.length + ' bytes' : 'null'} (local cloud)`)
+    let val: string | null = null
+    try { val = localStorage.getItem(this.cloudPrefix() + filename) } catch {}
+    val ??= this.localCloudFallback.get(filename) ?? null
+    this.log('cloudRead', `${filename} -> ${val ? val.length + ' bytes' : 'null'} (local debug storage)`)
     return val
   }
 
   async cloudDelete(filename: string): Promise<boolean> {
-    if (!filename) return false
-    if (this.native) await invokeTauri('steam_cloud_delete', { filename })
+    if (!filename || !this.initialized) return false
+    if (this.native) {
+      const ok = await invokeTauri<boolean>('steam_cloud_delete', { filename })
+      this.log('cloudDelete', `${filename} -> ${Boolean(ok)}`, ok ? 'info' : 'error')
+      return Boolean(ok)
+    }
+    this.localCloudFallback.delete(filename)
     try { localStorage.removeItem(this.cloudPrefix() + filename) } catch {}
     this.log('cloudDelete', filename)
     return true
   }
 
   cloudList(): string[] {
+    if (!this.initialized || this.native) return [] // native listing is not implemented, never substitute local files
     const pref = this.cloudPrefix()
     const files: string[] = []
     try {
@@ -270,12 +340,13 @@ export class SteamManager {
         if (k && k.startsWith(pref)) files.push(k.slice(pref.length))
       }
     } catch {}
-    return files
+    return [...new Set([...files, ...this.localCloudFallback.keys()])]
   }
 
   // ---- Steam Lobbies & P2P ----
   async createLobby(opts: { maxMembers?: number; type?: 'public' | 'friends' | 'private'; name?: string; data?: Record<string, string> } = {}): Promise<SteamLobby> {
     if (!this.initialized) await this.init(this.appId)
+    if (!this.initialized) throw new Error('Steamworks unavailable. Enable Local Debug explicitly for simulation.')
     const maxMembers = Math.max(2, Math.min(32, Number(opts.maxMembers) || 4))
     const lobbyType = opts.type || 'public'
     const name = (opts.name || `${this.user.name}'s Lobby`).trim()
@@ -286,6 +357,7 @@ export class SteamManager {
         this.log('createLobby', `Native lobby ${nativeLobby.id} (max ${maxMembers})`)
         return nativeLobby
       }
+      throw new Error('Native Steamworks failed to create lobby')
     }
     const lobby: SteamLobby = {
       id: 'steam-lobby-' + Math.random().toString(36).slice(2, 9),
@@ -301,22 +373,27 @@ export class SteamManager {
     this.knownLobbies.set(lobby.id, lobby)
     this.setupLocalLobbyBus()
     this.bindLocalP2PChannel(lobby.id)
-    this.lobbyChannel?.postMessage({ type: 'lobby-announce', lobby })
+    this.sendLocalDebug('lobbies', { type: 'lobby-announce', lobby })
     this.log('createLobby', `${lobby.id} ("${name}", max ${maxMembers})`)
     return lobby
   }
 
   async listLobbies(): Promise<SteamLobby[]> {
     if (!this.initialized) await this.init(this.appId)
+    if (!this.initialized) return []
     if (this.native) {
       const list = await invokeTauri<SteamLobby[]>('steam_list_lobbies')
       if (Array.isArray(list)) {
         this.log('listLobbies', `Found ${list.length} native lobbies`)
         return list
       }
+      this.log('listLobbies', 'Native Steamworks lobby discovery failed', 'error')
+      return []
     }
     this.setupLocalLobbyBus()
-    this.lobbyChannel?.postMessage({ type: 'lobby-query' })
+    this.sendLocalDebug('lobbies', { type: 'lobby-query' })
+    // BroadcastChannel announcements are asynchronous across tabs.
+    await new Promise<void>(resolve => setTimeout(resolve, 120))
     const list = [...this.knownLobbies.values()]
     this.log('listLobbies', `Found ${list.length} local lobbies`)
     return list
@@ -325,6 +402,7 @@ export class SteamManager {
   async joinLobby(lobbyId: string): Promise<SteamLobby | null> {
     if (!lobbyId) return null
     if (!this.initialized) await this.init(this.appId)
+    if (!this.initialized) return null
     if (this.native) {
       const joined = await invokeTauri<SteamLobby>('steam_join_lobby', { lobbyId })
       if (joined) {
@@ -332,22 +410,19 @@ export class SteamManager {
         this.log('joinLobby', `Joined native lobby ${lobbyId}`)
         return joined
       }
+      this.log('joinLobby', `Native join failed for ${lobbyId}`, 'error')
+      return null
     }
-    const existing = this.knownLobbies.get(lobbyId) || {
-      id: lobbyId,
-      name: lobbyId,
-      ownerId: lobbyId,
-      maxMembers: 4,
-      members: [],
-      type: 'public' as const,
-      data: {},
-      createdAt: Date.now(),
+    const existing = this.knownLobbies.get(lobbyId)
+    if (!existing || existing.members.length >= existing.maxMembers && !existing.members.includes(this.user.steamId)) {
+      this.log('joinLobby', `Lobby ${lobbyId} missing or full`, 'warn')
+      return null
     }
     if (!existing.members.includes(this.user.steamId)) existing.members.push(this.user.steamId)
     this.currentLobby = existing
     this.knownLobbies.set(lobbyId, existing)
     this.bindLocalP2PChannel(lobbyId)
-    this.lobbyChannel?.postMessage({ type: 'lobby-announce', lobby: existing })
+    this.sendLocalDebug('lobbies', { type: 'lobby-announce', lobby: existing })
     this.log('joinLobby', `Joined lobby ${lobbyId}`)
     return existing
   }
@@ -356,9 +431,16 @@ export class SteamManager {
     if (!this.currentLobby) return
     const id = this.currentLobby.id
     if (this.native) await invokeTauri('steam_leave_lobby', { lobbyId: id })
-    if (this.currentLobby.ownerId === this.user.steamId) {
-      this.knownLobbies.delete(id)
-      this.lobbyChannel?.postMessage({ type: 'lobby-remove', lobbyId: id })
+    if (!this.native) {
+      const lobby = this.currentLobby
+      lobby.members = lobby.members.filter(m => m !== this.user.steamId)
+      if (!lobby.members.length) {
+        this.knownLobbies.delete(id)
+        this.sendLocalDebug('lobbies', { type: 'lobby-remove', lobbyId: id })
+      } else {
+        if (lobby.ownerId === this.user.steamId) lobby.ownerId = lobby.members[0]
+        this.sendLocalDebug('lobbies', { type: 'lobby-announce', lobby })
+      }
     }
     if (this.p2pChannel) {
       try { this.p2pChannel.close() } catch {}
@@ -370,9 +452,12 @@ export class SteamManager {
 
   async setLobbyData(key: string, value: string): Promise<boolean> {
     if (!this.currentLobby || !key) return false
+    if (this.native && !await invokeTauri<boolean>('steam_set_lobby_data', { lobbyId: this.currentLobby.id, key, value })) {
+      this.log('setLobbyData', `Failed: ${key}`, 'error')
+      return false
+    }
     this.currentLobby.data[key] = value
-    if (this.native) await invokeTauri('steam_set_lobby_data', { lobbyId: this.currentLobby.id, key, value })
-    else this.lobbyChannel?.postMessage({ type: 'lobby-announce', lobby: this.currentLobby })
+    if (!this.native) this.sendLocalDebug('lobbies', { type: 'lobby-announce', lobby: this.currentLobby })
     this.log('setLobbyData', `${key} = "${value}"`)
     return true
   }
@@ -387,18 +472,19 @@ export class SteamManager {
   }
 
   sendP2P(packet: any, toSteamId?: string) {
+    if (!this.initialized || !this.currentLobby) return
     if (this.native) {
-      void invokeTauri('steam_send_p2p', {
-        to: toSteamId || '',
-        data: JSON.stringify(packet),
-      })
+      // Steam transport sends to actual peers, not an empty recipient ID.
+      const targets = toSteamId ? [toSteamId] : this.currentLobby.members.filter(m => m !== this.user.steamId)
+      for (const to of targets) {
+        if (!this.currentLobby.members.includes(to)) continue
+        void invokeTauri<boolean>('steam_send_p2p', { to, data: JSON.stringify(packet) }).then(ok => {
+          if (!ok) this.log('sendP2P', `Failed to send to ${to}`, 'error')
+        })
+      }
       return
     }
-    if (this.p2pChannel) {
-      try {
-        this.p2pChannel.postMessage({ from: this.user.steamId, to: toSteamId, packet })
-      } catch {}
-    }
+    this.sendLocalDebug('p2p', { from: this.user.steamId, to: toSteamId, packet }, this.currentLobby.id)
   }
 
   dispose() {
@@ -407,9 +493,16 @@ export class SteamManager {
       this.pollTimer = null
     }
     void this.leaveLobby()
+    this.initialized = false
     if (this.lobbyChannel) {
       try { this.lobbyChannel.close() } catch {}
       this.lobbyChannel = null
     }
+    if (this.parentDebugHandler && typeof window !== 'undefined') {
+      window.removeEventListener('message', this.parentDebugHandler)
+      this.parentDebugHandler = null
+    }
+    this.localCloudFallback.clear()
+    this.localAchievementsFallback.clear()
   }
 }

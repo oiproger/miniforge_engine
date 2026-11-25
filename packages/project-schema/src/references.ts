@@ -37,6 +37,7 @@ export function projectIssues(project: Project): ProjectIssue[] {
           asset(owner,'material',c.material,'material')
           if(c.shape==='model')asset(owner,'model',c.asset,'model',true)
         }
+        if(c.type==='decal'){asset(owner,'decal material',c.material,'material');asset(owner,'decal texture override',c.texture,'texture')}
         if(c.type==='script'){
           asset(owner,'script',c.asset,'script',true)
           for(const [key,type] of Object.entries(c.paramTypes??{})){
@@ -80,7 +81,7 @@ export function projectIssues(project: Project): ProjectIssue[] {
   for (const a of project.assets) {
     const owner={owner:a.name,assetId:a.id}
     if(a.type==='material'){
-      for(const key of ['map','normalMap','emissiveMap'])asset(owner,key,a.properties[key],'texture')
+      for(const key of ['map','normalMap','roughnessMap','metalnessMap','emissiveMap'])asset(owner,key,a.properties[key],'texture')
       asset(owner,'shader',a.properties.shader,'shader')
     }
     if(a.type==='prefab'){

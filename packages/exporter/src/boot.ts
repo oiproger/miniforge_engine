@@ -37,6 +37,7 @@ export async function boot(run: typeof startGame, platformFactory: (id: string) 
       scripts,
       physics,
       performance: !!preview,
+      preview: !!preview,
       onEvent: (name, data) => {
         if (preview && name.endsWith('.error')) parent.postMessage({ error: String(data) }, '*')
       },

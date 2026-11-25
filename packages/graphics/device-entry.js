@@ -13,6 +13,9 @@ export function mount(host) {
   return {
     r,
     canvas,
+    gl: glContext,
+    objectWorldMatrix(obj) { return render3DObjectMatrix(obj).m; },
+    InstancedMesh3D,
     vec2,
     vec3,
     Color,
@@ -60,9 +63,11 @@ export function mount(host) {
             .join('\n'),
         )
     },
-    triangles() {
+    triangles(hidden = () => false) {
       let total = 0
-      for (const o of engineObjects) if (!o.destroyed && o.mesh) total += (o.mesh.bufferCount || 0) / 3
+      for (const o of engineObjects)
+        if (!o.destroyed && o.mesh && !hidden(o))
+          total += ((o.mesh.bufferCount || 0) / 3) * (o instanceof InstancedMesh3D ? o.count : 1)
       return Math.round(total)
     },
     background(hex) {

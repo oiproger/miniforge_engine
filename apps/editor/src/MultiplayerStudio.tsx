@@ -85,12 +85,9 @@ export function MultiplayerStudio({
   }, [dualRunning])
 
   const launchHostAndClient = () => {
-    const effectiveCfg: MultiplayerSettings = {
-      ...cfg,
-      mode: cfg.mode === 'singleplayer' || cfg.mode === 'local-splitscreen' ? 'client-server-ws' : cfg.mode,
-    }
-    setCfg(effectiveCfg)
-    onSave(effectiveCfg)
+    // The two-pane debugger intentionally uses the local BroadcastChannel transport.
+    // Never persist its temporary override into the game project: doing so silently
+    // converted split-screen and Steam examples into client-server projects.
     setTab('debugger')
     setDualRunning(true)
   }
@@ -321,7 +318,7 @@ export function MultiplayerStudio({
                 </div>
               ) : (
                 <div style={{ padding: 20, borderRadius: 8, background: '#11161d', border: '1px dashed #2e3846', textAlign: 'center', color: 'var(--muted)', fontSize: 12.5 }}>
-                  Click <strong>Launch Host + Client</strong> above to spawn two live synchronized game instances side-by-side over local <code>BroadcastChannel</code> (no external server required). Add a <strong>Network Sync</strong> component to any entity to test transform/animation sync and RPCs!
+                  Click <strong>Launch Host + Client</strong> to test two game instances over the explicit local <code>BroadcastChannel</code> simulator. This does <strong>not</strong> verify a real WebSocket relay, WebRTC DataChannel or native Steamworks. The test does not modify the project's saved transport settings.
                 </div>
               )}
             </div>

@@ -16,7 +16,7 @@ Designed for solo indie developers, web portals, and game jams: model low-poly a
 - **Animation State Machine**: Visual pan/zoom transition graph (`Idle -> Walk -> Run -> Jump`) on top of Model Editor clips with `api.animation.setParam / setTrigger / playState / getCurrentState` and Event Graph nodes.
 - **Prop / Foliage Scatter Brush**: Standalone viewport tool (next to Transform/Snap) docked in the right sidebar; paints across both **Terrain** heightmaps and **3D Meshes** with automatic `staticBatch`.
 - **Unified Input, Gamepad & Touch Manager**: Rebindable Keyboard, Mouse, W3C Gamepad API, and Touch controls in one studio, plus Perspective view by default.
-- **Multiplayer & Steamworks SDK**: Local Split-Screen (2–4 players), WebSocket (`server/relay-server.mjs`), WebRTC P2P, and Steam P2P + Lobbies (`AppID 480` debug bridge + `steam_appid.txt` export), `Network Sync` component with `Sync Keys` delta variable sync, 1-click **Launch Host + Client** Net Debugger, **12 Starter Templates**, and **11 Examples**.
+- **Multiplayer & Steam API (native SDK pending)**: Local Split-Screen (2–4 players), WebSocket (`server/relay-server.mjs`), WebRTC P2P, and Steam P2P + Lobbies (`AppID 480` debug bridge + `steam_appid.txt` export), `Network Sync` component with `Sync Keys` delta variable sync, 1-click **Launch Host + Client** Net Debugger, **12 Starter Templates**, and **13 Examples**.
 
 ## Built-in Tools
 

@@ -452,6 +452,10 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
               ))}
             </select>
           </Field>
+          <Field label="Dynamic shadow budgets">
+            <Numeric label="Max spotlight shadows (auto-selected)" value={env.shadowSpotLimit ?? 4} min={0} max={4} step={1} change={(v) => patch('shadowSpotLimit', Math.round(v))} />
+            <Numeric label="Max point-light shadows (auto-selected, 6 passes each)" value={env.shadowPointLimit ?? 1} min={0} max={2} step={1} change={(v) => patch('shadowPointLimit', Math.round(v))} />
+          </Field>
           <Field label="Shadow range">
             <Numeric label="Shadow range" value={env.shadowRange ?? 40} min={5} max={200} step={5} change={(v) => patch('shadowRange', v)} />
           </Field>
@@ -500,7 +504,21 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
           <Field label="Bake static lighting">
             <input type="checkbox" checked={Boolean(env.bakedLighting)} onChange={(e) => patch('bakedLighting', e.target.checked)} />
           </Field>
-          <Field label="Run bake">
+          <Field label="GI lightmap resolution">
+            <select value={String(env.bakeResolution ?? 24)} onChange={(e) => patch('bakeResolution', Number(e.target.value))}>
+              <option value="16">16px (fast preview)</option>
+              <option value="24">24px (balanced)</option>
+              <option value="32">32px (detail)</option>
+              <option value="64">64px (slow, high detail)</option>
+            </select>
+          </Field>
+          <Field label="GI hemisphere samples">
+            <Numeric label="Rays per texel" value={env.bakeRays ?? 8} min={2} max={64} step={2} change={(v) => patch('bakeRays', v)} />
+          </Field>
+          <Field label="Diffuse bounces">
+            <Numeric label="Bounce depth" value={env.bakeBounces ?? 2} min={1} max={3} step={1} change={(v) => patch('bakeBounces', v)} />
+          </Field>
+          <Field label="Precompute GI on scene load">
             <button
               type="button"
               className="mf-secondary"
@@ -509,11 +527,10 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
                   const e = getScene(n).environment
                   e.bakedLighting = true
                   if (!e.reflectionMode || e.reflectionMode === 'off') e.reflectionMode = 'baked'
-                  e.lastBaked = new Date().toLocaleTimeString()
                 })
               }}
             >
-              Bake Lighting &amp; Reflections {env.lastBaked ? '(' + env.lastBaked + ')' : ''}
+              Enable GI &amp; Baked Reflections
             </button>
           </Field>
           <Field label="Global reflections">
@@ -530,6 +547,7 @@ function Settings({ p, edit }: { p: Project; edit: Edit }) {
                   <option value="64">64 px (Fast)</option>
                   <option value="128">128 px (Balanced)</option>
                   <option value="256">256 px (Crisp)</option>
+                  <option value="512">512 px (Sharper / costly)</option>
                 </select>
               </Field>
               {env.reflectionMode === 'realtime' && (
@@ -694,6 +712,8 @@ const DEFAULT_MATERIAL_PROPS: Record<string, any> = {
   alphaTest: 0,
   map: '',
   normalMap: '',
+  roughnessMap: '',
+  metalnessMap: '',
   emissiveMap: '',
   shader: '',
   doubleSided: false,
@@ -864,8 +884,8 @@ function MaterialForm({ a, p, patch, edit }: { a: Asset; p: Project; patch: (k: 
             />
           </Field>
         ))}
-        {(['map', 'normalMap', 'emissiveMap', 'shader'] as const).map((k, i) => (
-          <Field key={k} label={['Base color map', 'Normal map', 'Emissive map', 'Custom shader'][i]}>
+        {(['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'shader'] as const).map((k, i) => (
+          <Field key={k} label={['Base color map', 'Normal map', 'Roughness map (decal)', 'Metalness map (decal)', 'Emissive map', 'Custom shader'][i]}>
             <AssetSelect
               assets={p.assets}
               type={k === 'shader' ? 'shader' : 'texture'}

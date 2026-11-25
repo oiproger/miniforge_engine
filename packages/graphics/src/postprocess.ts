@@ -191,12 +191,14 @@ void main() {
   outColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`
 
-/** Isolated WebGL2 post-processing compositor layered over the LittleJS canvas. */
+/** Same-context WebGL2 compositor. Copies the default framebuffer to a GPU texture, then composites in place. */
 export class PostProcessor {
   private canvas: HTMLCanvasElement
   private gl: WebGL2RenderingContext | null = null
   private program: WebGLProgram | null = null
   private tex: WebGLTexture | null = null
+  private textureWidth = 0
+  private textureHeight = 0
   private vao: WebGLVertexArrayObject | null = null
   private uniforms: Record<string, WebGLUniformLocation | null> = {}
   private opts: Required<PostProcessOptions> = { ...defaultPostProcess }
@@ -213,15 +215,9 @@ export class PostProcessor {
     this.sunRayDecay = Math.max(0.8, Math.min(0.99, decay))
   }
 
-  constructor(container: HTMLElement) {
-    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
-      this.canvas = { style: {}, width: 0, height: 0, remove: () => {}, getContext: () => null } as any
-      return
-    }
-    this.canvas = document.createElement('canvas')
-    this.canvas.style.cssText =
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;z-index:1'
-    container.append?.(this.canvas)
+  constructor(sourceCanvas: HTMLCanvasElement, context: WebGL2RenderingContext | null) {
+    this.canvas = sourceCanvas
+    this.gl = context
   }
 
   get active(): boolean {
@@ -243,7 +239,6 @@ export class PostProcessor {
 
   setOptions(next: Partial<PostProcessOptions>) {
     Object.assign(this.opts, next)
-    if (!this.active) this.canvas.style.display = 'none'
   }
 
   getOptions(): Required<PostProcessOptions> {
@@ -252,7 +247,7 @@ export class PostProcessor {
 
   private init(): boolean {
     if (this.gl && this.program) return true
-    const gl = this.canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false })
+    const gl = this.gl
     if (!gl) return false
     const compile = (type: number, src: string) => {
       const s = gl.createShader(type)!
@@ -285,9 +280,7 @@ export class PostProcessor {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1)
 
-    this.gl = gl
     this.program = prog
     this.tex = tex
     this.vao = gl.createVertexArray()
@@ -320,27 +313,36 @@ export class PostProcessor {
   }
 
   render(sourceCanvas: HTMLCanvasElement) {
-    if (!this.active || !sourceCanvas.width || !sourceCanvas.height) {
-      this.canvas.style.display = 'none'
-      return
-    }
+    // The default framebuffer still holds the scene at this point in the same frame.
+    // No second WebGL context and no canvas-to-texture CPU copy are involved.
+    if (!this.active || !sourceCanvas.width || !sourceCanvas.height) return
     if (!this.init() || !this.gl || !this.program || !this.tex) return
-    this.canvas.style.display = 'block'
     const gl = this.gl
-    if (this.canvas.width !== sourceCanvas.width || this.canvas.height !== sourceCanvas.height) {
-      this.canvas.width = sourceCanvas.width
-      this.canvas.height = sourceCanvas.height
-    }
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height)
-    gl.useProgram(this.program)
+    const width = sourceCanvas.width, height = sourceCanvas.height
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null)
     gl.activeTexture(gl.TEXTURE0)
+    gl.bindSampler(0, null)
     gl.bindTexture(gl.TEXTURE_2D, this.tex)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceCanvas)
-
+    if (this.textureWidth !== width || this.textureHeight !== height) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+      this.textureWidth = width
+      this.textureHeight = height
+    }
+    gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height)
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null)
+    gl.viewport(0, 0, width, height)
+    gl.disable(gl.DEPTH_TEST)
+    gl.disable(gl.STENCIL_TEST)
+    gl.disable(gl.SCISSOR_TEST)
+    gl.disable(gl.CULL_FACE)
+    gl.disable(gl.BLEND)
+    gl.depthMask(false)
+    gl.colorMask(true, true, true, true)
+    gl.useProgram(this.program)
     const u = this.uniforms
     const o = this.opts
     gl.uniform1i(u.uScene, 0)
-    gl.uniform2f(u.uTexel, 1 / this.canvas.width, 1 / this.canvas.height)
+    gl.uniform2f(u.uTexel, 1 / width, 1 / height)
     gl.uniform1f(u.uTime, (performance.now() - this.startTime) / 1000)
     gl.uniform1f(u.uAO, o.ao)
     gl.uniform1f(u.uAORadius, o.aoRadius)
@@ -362,7 +364,14 @@ export class PostProcessor {
     gl.uniform1f(u.uSunRayDecay, this.sunRayDecay)
 
     gl.bindVertexArray(this.vao)
-    gl.drawArrays(gl.TRIANGLES, 0, 3)
+    try {
+      gl.drawArrays(gl.TRIANGLES, 0, 3)
+    } finally {
+      gl.bindVertexArray(null)
+      gl.useProgram(null)
+      gl.bindTexture(gl.TEXTURE_2D, null)
+      gl.depthMask(true)
+    }
   }
 
   dispose() {
@@ -370,9 +379,8 @@ export class PostProcessor {
       if (this.tex) this.gl.deleteTexture(this.tex)
       if (this.program) this.gl.deleteProgram(this.program)
       if (this.vao) this.gl.deleteVertexArray(this.vao)
-      this.gl.getExtension('WEBGL_lose_context')?.loseContext()
+      // The LittleJS device owns the shared context and destroys it later.
     }
-    this.canvas.remove()
     this.gl = null
     this.program = null
     this.tex = null

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, X } from 'lucide-react'
-import { getScene, type Project } from '../../../packages/project-schema/src'
+import { getScene, isEligibleForStaticBatch, type Project } from '../../../packages/project-schema/src'
+import { opaqueMaterialBatchKey, spatialBatchCell } from '../../../packages/graphics/src/batch-planning'
 
 function estimateShapeTriangles(shape: string | undefined): number {
   switch (shape) {
@@ -26,15 +27,19 @@ function estimateShapeTriangles(shape: string | undefined): number {
 export function SceneProfiler({
   p,
   onClose,
+  runtimeStats,
 }: {
   p: Project
   onClose: () => void
+  runtimeStats?: Record<string, number>
 }) {
   const [fps, setFps] = useState(60)
   const [frameMs, setFrameMs] = useState(16.6)
   const [history, setHistory] = useState<number[]>(() => Array(28).fill(60))
   const lastRef = useRef(performance.now())
   const framesRef = useRef(0)
+  const runtimeActive = useRef(false)
+  runtimeActive.current = Number.isFinite(runtimeStats?.fps)
 
   useEffect(() => {
     let raf = 0
@@ -47,7 +52,7 @@ export function SceneProfiler({
         const ms = Number((elapsed / Math.max(1, framesRef.current)).toFixed(1))
         setFps(curFps)
         setFrameMs(ms)
-        setHistory((prev) => [...prev.slice(1), Math.min(120, curFps)])
+        if (!runtimeActive.current) setHistory((prev) => [...prev.slice(1), Math.min(120, curFps)])
         framesRef.current = 0
         lastRef.current = now
       }
@@ -56,26 +61,62 @@ export function SceneProfiler({
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  useEffect(() => {
+    if (Number.isFinite(runtimeStats?.fps))
+      setHistory(prev => [...prev.slice(1), Math.min(120, runtimeStats!.fps)])
+  }, [runtimeStats?.fps])
+
   const stats = useMemo(() => {
     const scene = getScene(p)
     let activeEntities = 0
     let meshCount = 0
-    let staticBatched = 0
     let triangles = 0
     let lights = 0
     let particles = 0
-    const batchBuckets = new Set<string>()
+    const entityById=new Map(scene.entities.map(e=>[e.id,e]))
+    const isActive=(entity: typeof scene.entities[number])=>{
+      let current: typeof entity | undefined=entity
+      const seen=new Set<string>()
+      while(current && !seen.has(current.id)) {
+        if(current.active===false)return false
+        seen.add(current.id)
+        current=current.parent ? entityById.get(current.parent) : undefined
+      }
+      return true
+    }
+    const batchBuckets = new Map<string, number>()
+    const instanceBuckets = new Map<string, number>()
+    const batching = Boolean(p.settings?.performance?.staticBatching) &&
+      !Boolean(scene.environment.bakedLighting) && (scene.environment.reflectionMode ?? 'off') === 'off'
+    const propsOf = (id: string) => p.assets.find(a => a.type==='material' && a.id===id)?.properties || {}
+    const cell=(e: typeof scene.entities[number])=>spatialBatchCell(e.transform.position)
 
     for (const ent of scene.entities) {
-      if (ent.active !== false) activeEntities++
+      if (!isActive(ent)) continue
+      activeEntities++
       for (const c of ent.components) {
         if (c.enabled === false) continue
         if (c.type === 'mesh') {
           meshCount++
           triangles += estimateShapeTriangles(c.shape)
-          if (c.staticBatch && c.shape !== 'model') {
-            staticBatched++
-            batchBuckets.add(String(c.material || 'default'))
+          if (batching && Number(p.settings?.performance?.cullDistance??0) <= 0 &&
+              !Number(ent.properties?.cullDistance??0)) {
+            if (c.shape==='model') {
+              const dynamic=ent.components.some(x=>x.enabled!==false &&
+                ['animation','script','behavior','navAgent','particle','water','terrain'].includes(x.type))
+              if(!dynamic && ent.properties.instancing!==false) {
+                const asset=p.assets.find(a=>a.id===c.asset)
+                const key=cell(ent)+':gltf:'+String(c.asset)+JSON.stringify([asset?.properties.partMaterials,asset?.properties.partOverrides])
+                instanceBuckets.set(key,(instanceBuckets.get(key)||0)+1)
+              }
+            } else if (ent.properties.staticBatch===true && isEligibleForStaticBatch(ent)) {
+              const props=propsOf(String(c.material||''))
+              const signature=opaqueMaterialBatchKey(props,Boolean(props.doubleSided))
+              if(signature!==null) {
+                const key=cell(ent)+':primitive:'+signature
+                batchBuckets.set(key,(batchBuckets.get(key)||0)+1)
+              }
+            }
           }
         } else if (c.type === 'terrain') {
           const seg = Number(c.segments ?? 16)
@@ -89,13 +130,19 @@ export function SceneProfiler({
       }
     }
 
-    const unbatchedDraws = Math.max(0, meshCount - staticBatched)
-    const estimatedDrawCalls = unbatchedDraws + batchBuckets.size
+    const primitiveSaved=[...batchBuckets.values()].reduce((sum,n)=>sum+(n>=2?n-1:0),0)
+    const modelSaved=[...instanceBuckets.values()].reduce((sum,n)=>sum+(n>=2?n-1:0),0)
+    // Model draw calls depend on the number of glTF parts and render passes,
+    // which cannot be known from the scene JSON. The estimate counts a model
+    // as one draw; Preview supplies actual drawCount including shadow passes.
+    const estimatedDrawCalls=Math.max(0,meshCount-primitiveSaved-modelSaved)
 
     let assetBytes = 0
     const heaviest: Array<{ name: string; type: string; kb: number }> = []
     for (const a of p.assets) {
-      const sz = typeof a.data === 'string' ? a.data.length : 0
+      let sz = typeof a.data === 'string' ? a.data.length : 0
+      const match = typeof a.data === 'string' && a.data.match(/^data:[^,]*;base64,([\s\S]*)$/)
+      if(match)sz=Math.max(0,Math.floor(match[1].length*.75)-(match[1].endsWith('==')?2:match[1].endsWith('=')?1:0))
       assetBytes += sz
       heaviest.push({ name: a.name, type: a.type, kb: Math.round(sz / 1024) })
     }
@@ -106,7 +153,7 @@ export function SceneProfiler({
       activeEntities,
       meshCount,
       estimatedDrawCalls,
-      batchedSaved: Math.max(0, staticBatched - batchBuckets.size),
+      batchedSaved: primitiveSaved + modelSaved,
       triangles,
       lights,
       particles,
@@ -114,6 +161,12 @@ export function SceneProfiler({
       topAssets: heaviest.slice(0, 4),
     }
   }, [p])
+
+  const measured = Number.isFinite(runtimeStats?.drawCalls)
+  const displayFps = Number.isFinite(runtimeStats?.fps) ? runtimeStats!.fps : fps
+  const displayFrameMs = Number.isFinite(runtimeStats?.frameTime) ? runtimeStats!.frameTime : frameMs
+  const displayDraws = measured ? runtimeStats!.drawCalls : stats.estimatedDrawCalls
+  const displayTriangles = Number.isFinite(runtimeStats?.triangles) ? runtimeStats!.triangles : stats.triangles
 
   return (
     <div
@@ -145,11 +198,11 @@ export function SceneProfiler({
 
       <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 18, fontWeight: 700, color: fps >= 50 ? '#7ee787' : fps >= 30 ? '#f59e0b' : '#ff7b72' }}>
-            {fps} FPS
+          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 18, fontWeight: 700, color: displayFps >= 50 ? '#7ee787' : displayFps >= 30 ? '#f59e0b' : '#ff7b72' }}>
+            {displayFps} FPS
           </span>
           <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11.5, color: '#8b9bb0' }}>
-            {frameMs} ms / frame
+            {displayFrameMs.toFixed(1)} ms / frame
           </span>
         </div>
 
@@ -168,22 +221,23 @@ export function SceneProfiler({
           ))}
         </div>
 
+        {!measured && <div style={{ fontSize: 10, color: '#8b9bb0' }}>Estimated from scene metadata. Start Preview for actual renderer draw calls (including shadow passes).</div>}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11 }}>
           <div style={{ background: '#161d27', borderRadius: 6, padding: '6px 8px' }}>
-            <div style={{ color: '#8b9bb0' }}>Draw Calls</div>
-            <strong style={{ fontSize: 13 }}>{stats.estimatedDrawCalls}</strong>
+            <div style={{ color: '#8b9bb0' }}>{measured ? 'Draw Calls (runtime)' : 'Estimated draws'}</div>
+            <strong style={{ fontSize: 13 }}>{displayDraws}</strong>
             {stats.batchedSaved > 0 && <span style={{ color: '#7ee787', marginLeft: 4 }}>(-{stats.batchedSaved})</span>}
           </div>
           <div style={{ background: '#161d27', borderRadius: 6, padding: '6px 8px' }}>
-            <div style={{ color: '#8b9bb0' }}>Triangles</div>
-            <strong style={{ fontSize: 13 }}>{stats.triangles.toLocaleString()}</strong>
+            <div style={{ color: '#8b9bb0' }}>{measured ? 'Scene triangles' : 'Estimated triangles'}</div>
+            <strong style={{ fontSize: 13 }}>{displayTriangles.toLocaleString()}</strong>
           </div>
           <div style={{ background: '#161d27', borderRadius: 6, padding: '6px 8px' }}>
             <div style={{ color: '#8b9bb0' }}>Entities</div>
             <strong style={{ fontSize: 13 }}>{stats.activeEntities} / {stats.totalEntities}</strong>
           </div>
           <div style={{ background: '#161d27', borderRadius: 6, padding: '6px 8px' }}>
-            <div style={{ color: '#8b9bb0' }}>Assets Memory</div>
+            <div style={{ color: '#8b9bb0' }}>Asset payload</div>
             <strong style={{ fontSize: 13 }}>{stats.assetMb} MB</strong>
           </div>
         </div>

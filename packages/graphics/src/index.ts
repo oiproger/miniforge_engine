@@ -1,8 +1,12 @@
 import type * as L from 'littlejsengine'
+import { mat3, mat4, quat, vec3 } from 'gl-matrix'
+import { GIBaker, type GI3, type GI2, type GITriangle, type GILight, type GITexture, type GIMaterial } from './baked-gi'
 import { createDevice } from './device.generated'
 import { SceneNode, SceneCamera, Vector3, type Triangles } from './scene'
 import { terrainGeometry } from './terrain'
+import { ScreenSpaceDecals, type ScreenDecal, type DecalLight } from './screen-space-decals'
 import { PostProcessor, defaultPostProcess, type PostProcessOptions } from './postprocess'
+import { opaqueMaterialBatchKey, spatialBatchCell, SPATIAL_BATCH_CELL_SIZE } from './batch-planning'
 import { defaultParticleConfig, ensureTerrainLayers, isEligibleForStaticBatch, type Project, type Entity, type Component, type ParticleConfig, type Terrain, type Vec3 } from '../../project-schema/src'
 
 export type { PostProcessOptions } from './postprocess'
@@ -173,7 +177,8 @@ export function createWorld(
   canvas.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;outline:none'
   canvas.dataset.renderer = 'littlejs-render3d'
   if (typeof getComputedStyle === 'function' && getComputedStyle(container).position === 'static') container.style.position = 'relative'
-  const post = new PostProcessor(container)
+  const post = new PostProcessor(canvas, d.gl)
+  const projectedDecalPass = new ScreenSpaceDecals(d.gl)
   const objects = new Map<string, SceneNode>(),
     roots = new Map<string, L.EngineObject3D>(),
     renderables = new Map<string, L.EngineObject3D[]>()
@@ -181,6 +186,13 @@ export function createWorld(
     meshes = new Map<string, L.Mesh>()
   const sceneLights = new Map<string, Component>()
   const entityLights = new Map<string, L.Light3D>()
+  const shadowSpotSettings = new Map<string, { light: L.Light3D; priority: number; pinned?: boolean; mapSize?: number }>()
+  const shadowPointSettings = new Map<string, { light: L.Light3D; priority: number; pinned?: boolean; mapSize?: number }>()
+  const materialOfObject = new WeakMap<L.EngineObject3D, string>()
+  const bakedMaps = new Map<L.EngineObject3D, { texture: L.TextureInfo; originalTexture: L.TextureInfo | undefined; originalTint: L.Color; originalIntensity: number }>()
+  let bakeRevision = 0
+  let bakePending: Promise<void> | undefined
+  let batchPending: Promise<void> | undefined
   const activeFlares: any[] = []
   interface SunRaySource {
     id: string
@@ -199,6 +211,8 @@ export function createWorld(
     bounds?: { center: Vec3; half: Vec3 }
     bakeLight: boolean
     lightBounce: number
+    reflectionEnabled: boolean
+    captureOffsetY: number
   }
   const zoneProbes = new Map<string, ProbeRecord>()
   let globalProbe: ProbeRecord | undefined
@@ -217,7 +231,15 @@ export function createWorld(
   const entityCullDist = new Map<string, number>()
   const distanceCulled = new Set<string>()
   const entityLightBaseIntensity = new Map<string, number>()
-  const batchedMeshes: L.EngineObject3D[] = []
+  type BatchItem = { id: string; node: SceneNode; mesh: L.Mesh; obj: L.EngineObject3D; material: string; snapshot: Float32Array }
+  type MeshBatch = { items: BatchItem[]; render?: L.EngineObject3D; geometry?: L.Mesh; atlas?: L.TextureInfo; key: string; center: Vec3 }
+  type InstanceBatch = { ids: string[]; objects: L.InstancedMesh3D[]; assetId: string; snapshots: Map<string,Float32Array> }
+  const meshBatches: MeshBatch[] = []
+  const instanceBatches: InstanceBatch[] = []
+  const batchedEntityIds = new Set<string>()
+  // Spatial chunks are deliberately small so geometry outside the frustum is not
+  // submitted with a distant object that happens to share its material.
+  const STATIC_CHUNK_SIZE = SPATIAL_BATCH_CELL_SIZE
   const _tmpV1 = new Vector3()
   const _tmpV2 = new Vector3()
   const _tmpV3 = new Vector3()
@@ -258,6 +280,17 @@ export function createWorld(
     height: number
     normalOffset: number
     opacity: number
+    materialOpacity: number
+    materialId?: string
+    projection: 'plane' | 'surface'
+    depth: number
+    minFacing: number
+    darkBackgroundTransparent: boolean
+    darkThreshold: number
+    generated?: L.Mesh
+    roughnessTexture?: L.TextureInfo
+    metalnessTexture?: L.TextureInfo
+    snapshot?: Float32Array
   }
   interface DynamicDecal {
     obj: L.EngineObject3D
@@ -291,6 +324,8 @@ export function createWorld(
     "shadowParams", "fogFade", "materialParams", "emissiveTint",
     "skyTop", "skyHorizon", "skyBottom", "gelAxes", "premultipliedTexture",
     "tex", "normalTex", "emissiveTex", "gelTex", "envMap", "envParams", "shadowMap",
+    "mfShadowCount", "mfShadowSlots", "mfShadowMatrices", "mfShadowParameters", "mfGelAxes", "mfGelEnabled",
+    "mfShadow0", "mfShadow1", "mfShadow2", "mfShadow3", "mfGel0", "mfGel1", "mfGel2", "mfGel3",
   ])
 
   function parseHexToRgb(hex: string): [number, number, number] | null {
@@ -394,8 +429,13 @@ export function createWorld(
     globalProbe = undefined
     ;(r as any).environment = undefined
     ;(r as any).shadowLight = undefined
+    ;(r as any).multiShadowLights = []
+    ;(r as any).multiPointShadowLights = []
+    ;(r as any).mfPreviousShadowLights = new Set()
+    ;(r as any).mfPreviousPointLights = new Set()
     debugQueue.length = 0
   let project = initial,
+    currentSceneId = sceneId ?? initial.activeScene,
     pending: Promise<unknown>[] = [],
     generation = 0,
     ratio = 1,
@@ -412,7 +452,11 @@ export function createWorld(
       if (n) return n
     }
   }
-  const hidden = (o: L.EngineObject) => { const ow = owner(o); return !ow ? false : ow.active === false || distanceCulled.has(ow.id) }
+  const hidden = (o: L.EngineObject, forPick = false) => {
+    if (forPick && (meshBatches.some(b => b.render === o) || instanceBatches.some(b => b.objects.includes(o as L.InstancedMesh3D)))) return true
+    const ow = owner(o)
+    return !!ow && (ow.active === false || distanceCulled.has(ow.id) || (!forPick && batchedEntityIds.has(ow.id)))
+  }
   function hexToRgbTuple(hex: string): [number, number, number] {
     const clean = (hex || '#ffffff').replace('#', '')
     const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean.padEnd(6, 'f')
@@ -665,13 +709,16 @@ export function createWorld(
     const positions: number[] = [],
       indices: number[] = []
     if (mesh.vertexData) {
-      for (let i = 0; i < mesh.vertexCount; i++) {
+      for (let i = 0; i < (mesh.vertexDataCount || mesh.vertexCount); i++) {
         const k = i * 9
         positions.push(mesh.vertexData[k], mesh.vertexData[k + 1], mesh.vertexData[k + 2])
       }
       const packed = mesh.vertexIndices
-      if (packed)
+      if (packed?.length)
         for (let i = 0; i < packed.length; i += 3) indices.push(packed[i], packed[i + 2], packed[i + 1])
+      else
+        for (let i = 0; i + 2 < (mesh.vertexDataCount || mesh.vertexCount); i += 3)
+          indices.push(i, i + 2, i + 1)
     } else {
       for (const p of mesh.points) positions.push(p.x, p.y, p.z)
       const tri = mesh.getTriangles()
@@ -700,11 +747,11 @@ export function createWorld(
     }
     return promise
   }
-  function applySurface(mesh: L.Mesh, id: string) {
+  function applySurface(mesh: L.Mesh, id: string, preserveNormals = false) {
     const p = project.assets.find((a) => a.id === id)?.properties
     if (!p) return
     if (p.doubleSided) mesh.doubleSided = true
-    if (p.flatShading) mesh.computeNormals(false)
+    if (p.flatShading && !preserveNormals) mesh.computeNormals(false)
     if (p.tiling || p.offset) {
       const tx = p.tiling?.[0] ?? 1,
         ty = p.tiling?.[1] ?? 1,
@@ -713,7 +760,18 @@ export function createWorld(
       mesh.uvs = mesh.uvs.map((uv) => d.vec2(uv.x * tx + ox, uv.y * ty + oy))
     }
   }
-  function material(obj: L.EngineObject3D, id: string, fallback = '#a7adad') {
+  function restoreBakedObject(obj: L.EngineObject3D) {
+    const entry = bakedMaps.get(obj)
+    if (!entry) return
+    obj.emissiveMap = entry.originalTexture
+    obj.emissiveMapColor = entry.originalTint
+    obj.emissive = entry.originalIntensity
+    entry.texture.destroyWebGLTexture()
+    bakedMaps.delete(obj)
+  }
+  function material(obj: L.EngineObject3D, id: string, fallback = '#a7adad', mapOverride?: string) {
+    materialOfObject.set(obj, id)
+    restoreBakedObject(obj)
     const p = project.assets.find((a) => a.id === id)?.properties ?? {}
     obj.color = color(p.color ?? fallback, p.opacity ?? 1)
     obj.transparent = obj.color.a < 1
@@ -737,7 +795,7 @@ export function createWorld(
     if (p.depthTest === false) (obj as any).depthTest = false
     if (p.emissive && p.emissive !== '#000000' && !p.emissiveMap) obj.emissiveMap = d.whiteTexture()
     for (const key of ['map', 'normalMap', 'emissiveMap'] as const) {
-      const promise = texture(p[key])
+      const promise = texture(key === 'map' && mapOverride ? mapOverride : p[key])
       if (promise)
         pending.push(
           promise.then((t) => {
@@ -901,6 +959,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
 }
 
   function playAnimation(id: string, clip?: string, loop = true, speed = 1, blendTime = 0) {
+    releaseBatchMember(id)
     const model = players.get(id),
       a = model?.model.getAnimation(clip || 0)
     if (!model || !a) return false
@@ -1185,6 +1244,8 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
           obj.castShadow = false
           obj.receiveShadow = true
           obj.specular = 0.85
+          obj.reflectivity = Math.max(0, Math.min(1, Number(c.reflectionStrength ?? 0.75)))
+          ;(obj as any).shininess = Math.max(8, Number(c.reflectionSharpness ?? 256))
           const { vertex, fragment } = buildWaterShaders(c)
           const skey =
             'water:' +
@@ -1199,6 +1260,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
               c.opacity,
               c.fresnelPower,
               c.foamAmount,
+              c.reflectionStrength, c.reflectionSharpness,
             ])
           if (!shaders.has(skey)) shaders.set(skey, new d.Shader(fragment, vertex))
           obj.shader = shaders.get(skey)
@@ -1274,7 +1336,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
               root.addChild(obj)
               list.push(obj)
               players.set(e.id, obj)
-              if (e.components.some((c) => c.type === 'collider' && c.shape === 'mesh'))
+                    if (e.components.some((c) => c.type === 'collider' && c.shape === 'mesh'))
                 n.surfaces.push(surface(model.mesh))
               const anim = e.components.find((c) => c.type === 'animation' && c.enabled !== false)
               if (anim && anim.autoplay !== false)
@@ -1387,35 +1449,78 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
           })
         } else if (c.type === 'decal') {
           const qMesh = unitQuadMesh()
-          const obj = new d.EngineObject3D(d.vec3(0, 0, Number(c.normalOffset ?? 0.008)), qMesh)
+          const obj = new d.EngineObject3D(d.vec3(0, 0, 0), c.projection === 'plane' ? qMesh : new d.Mesh())
           const w = Math.max(0.05, Number(c.width ?? 1))
           const h = Math.max(0.05, Number(c.height ?? 1))
           obj.scale3D.set(w, h, 1)
-          obj.transparent = true
-          obj.castShadow = false
-          obj.receiveShadow = true
-          ;(obj as any).depthWrite = false
-          if (c.blendMode === 'additive') (obj as any).additive = true
-          if (c.pixelated) (obj as any).pixelated = true
+          if (c.projection === 'plane') obj.pos3D.z = Number(c.normalOffset ?? 0.008)
+
           const op = Math.max(0, Math.min(1, Number(c.opacity ?? 0.9)))
-          obj.color = color(c.color ?? '#ffffff', op)
-          const tex = c.texture ? texture(c.texture) : undefined
-          if (tex) {
-            pending.push(
-              tex.then((t) => {
-                if (!obj.destroyed) d.setTexture(obj, t)
-              }),
+          // A decal may render with a complete Miniforge material (base/normal/
+          // emissive maps, shader, roughness, metalness). Its separate texture,
+          // when provided, overrides only the material's base map.
+          const matAsset = project.assets.find(a => a.type === 'material' && a.id === c.material)
+          let matOpacity = 1
+          if (matAsset) {
+            material(obj, matAsset.id, '#ffffff', c.texture || undefined)
+            matOpacity = Math.max(0, Math.min(1, Number(matAsset.properties?.opacity ?? 1)))
+            const tint = color(c.color ?? '#ffffff')
+            // Keep the material's base colour and multiply by the decal tint,
+            // rather than discarding it when a decal supplies its own colour.
+            obj.color = new d.Color(
+              obj.color.r * tint.r,
+              obj.color.g * tint.g,
+              obj.color.b * tint.b,
+              matOpacity * op,
             )
           } else {
-            d.setWhiteSprite(obj)
+            obj.color = color(c.color ?? '#ffffff', op)
+            const tex = c.texture ? texture(c.texture) : undefined
+            if (tex) {
+              pending.push(tex.then(t => { if (!obj.destroyed) d.setTexture(obj, t) }))
+            } else {
+              d.setWhiteSprite(obj)
+            }
           }
+          // A plane decal is given its own mesh when using a material so
+          // texture tiling/offset never mutates the shared unit quad.
+          let planeMesh: L.Mesh | undefined
+          if (c.projection === 'plane' && matAsset) {
+            planeMesh = new d.Mesh().combine(qMesh)
+            applySurface(planeMesh, matAsset.id)
+            planeMesh.doubleSided = true
+            obj.mesh = planeMesh
+          }
+          // The projected overlay must always be alpha blended and never
+          // modify depth or cast shadows, regardless of the material defaults.
+          obj.transparent = true
+          obj.castShadow = false
+          ;(obj as any).depthWrite = false
+          ;(obj as any).depthTest = true
+          ;(obj as any).additive = c.blendMode === 'additive'
+          if (c.pixelated) (obj as any).pixelated = true
           root.addChild(obj)
           list.push(obj)
-          decals.set(e.id, { id: e.id, obj, width: w, height: h, normalOffset: Number(c.normalOffset ?? 0.008), opacity: op })
+          const decalState: DecalState = { id: e.id, obj, width: w, height: h, normalOffset: Number(c.normalOffset ?? 0.008),
+            opacity: op, materialOpacity: matOpacity, materialId: matAsset?.id, generated: planeMesh || (c.projection === 'plane' ? undefined : obj.mesh),
+            projection: c.projection === 'plane' ? 'plane' : 'surface',
+            depth: Math.max(0.01, Number(c.projectionDepth ?? 0.6)),
+            minFacing: Math.max(0, Math.min(0.95, Number(c.projectionFacing ?? 0.2))),
+            darkBackgroundTransparent: Boolean(c.darkBackgroundTransparent),
+            darkThreshold: Math.max(0, Math.min(.95, Number(c.darkThreshold ?? .08))) }
+          decals.set(e.id, decalState)
+          // Extra map inputs are sampled by the GPU decal pass (LittleJS does
+          // not expose roughness/metallic map slots on EngineObject3D).
+          for (const [key, target] of [['roughnessMap','roughnessTexture'], ['metalnessMap','metalnessTexture']] as const) {
+            const promise = texture(matAsset?.properties?.[key])
+            if (promise) pending.push(promise.then(t => {
+              if (!obj.destroyed) decalState[target] = t
+            }))
+          }
         } else if (c.type === 'bakeZone') {
           const pos = e.transform.position
           const sz = Array.isArray(c.size) ? c.size : [e.transform.scale[0] * 6, e.transform.scale[1] * 4, e.transform.scale[2] * 6]
-          const res = Math.max(32, Math.min(256, Number(c.reflectionResolution ?? 128)))
+          const res = Math.max(32, Math.min(512, Number(c.reflectionResolution ?? 256)))
           const probe: ProbeRecord = {
             id: e.id,
             cube: { size: res, capturePos: d.vec3(pos[0], pos[1], pos[2]) },
@@ -1424,6 +1529,8 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
             bounds: { center: [...pos], half: [Math.abs(sz[0]) / 2, Math.abs(sz[1]) / 2, Math.abs(sz[2]) / 2] },
             bakeLight: c.bakeLight !== false,
             lightBounce: Number(c.lightBounce ?? 0.65),
+            reflectionEnabled: c.bakeReflections !== false,
+            captureOffsetY: Number(c.reflectionCaptureOffsetY ?? 0),
           }
           zoneProbes.set(e.id, probe)
           if (c.bakeReflections !== false) {
@@ -1479,7 +1586,6 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
               }
             }
             if (c.gel && c.kind === 'spot') {
-              ;(r as any).shadowLight = light
               const gelTex = texture(c.gel)
               if (gelTex) {
                 pending.push(
@@ -1489,8 +1595,15 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
                 )
               }
             }
+            if (c.castShadow && c.kind === 'point') {
+              shadowPointSettings.set(e.id, {light, priority:Number(c.shadowPriority ?? 0), pinned:Boolean(c.shadowPinned),
+                mapSize:c.shadowResolution === 'high' ? 512 : c.shadowResolution === 'low' ? 128 : 256})
+            }
             if (c.castShadow && c.kind === 'spot') {
-              ;(r as any).shadowLight = light
+              shadowSpotSettings.set(e.id, {
+                light, priority: Number(c.shadowPriority ?? 0), pinned: Boolean(c.shadowPinned),
+                mapSize: c.shadowResolution === 'high' ? 2048 : c.shadowResolution === 'medium' ? 1024 : c.shadowResolution === 'low' ? 512 : undefined,
+              })
             }
             entityLights.set(e.id, light)
             entityLightBaseIntensity.set(e.id, light.intensity)
@@ -1507,6 +1620,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
   }
   function removeEntities(ids: string[]) {
     function remove(n: SceneNode) {
+      releaseBatchMember(n.id)
       for (const child of [...n.children]) remove(child)
       const root = roots.get(n.id)
       if (root) {
@@ -1520,6 +1634,8 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       }
       sceneLights.delete(n.id)
       entityLights.delete(n.id)
+      shadowSpotSettings.delete(n.id)
+      shadowPointSettings.delete(n.id)
       entityCullDist.delete(n.id)
       sunRaySources.delete(n.id)
       zoneProbes.delete(n.id)
@@ -1534,6 +1650,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
         owners.delete(bb.obj)
         billboards.delete(n.id)
       }
+      decals.get(n.id)?.generated?.dispose()
       decals.delete(n.id)
       renderables.delete(n.id)
       players.delete(n.id)
@@ -1558,12 +1675,22 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       owners.delete(bb.obj)
     }
     billboards.clear()
+    for (const decal of decals.values()) decal.generated?.dispose()
     decals.clear()
     for (const dd of dynamicDecals) dd.obj.destroy()
     dynamicDecals.length = 0
-    for (const bm of batchedMeshes) bm.destroy()
-    batchedMeshes.length = 0
+    bakeRevision++
+    bakePending = undefined
+    batchPending = undefined
+    for (const [obj] of bakedMaps) restoreBakedObject(obj)
+    clearBatches()
     entityLightBaseIntensity.clear()
+    shadowSpotSettings.clear()
+    shadowPointSettings.clear()
+    ;(r as any).multiShadowLights = []
+    ;(r as any).multiPointShadowLights = []
+    ;(r as any).mfPreviousShadowLights = new Set()
+    ;(r as any).mfPreviousPointLights = new Set()
     entityCullDist.clear()
     distanceCulled.clear()
     activeFlares.length = 0
@@ -1604,25 +1731,53 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       Math.abs(p.z - b.center[2]) <= b.half[2]
     )
   }
+  // Probe volumes describe nearby geometry, not an infinitely distant sky.
+  // Update both the capture origin and the parallax box for baked/realtime probes.
+  function updateLocalProbeBounds() {
+    for (const probe of zoneProbes.values()) {
+      const node = objects.get(probe.id)
+      if (!node || !probe.bounds) continue
+      const wp = node.getWorldPosition(new Vector3())
+      const scale = node.getWorldScale(new Vector3())
+      const entity = project.scenes.find(sc => sc.id === currentSceneId)?.entities.find(e => e.id === probe.id)
+      const zone = entity?.components.find(c => c.type === 'bakeZone' && c.enabled !== false)
+      const sz: number[] = Array.isArray(zone?.size) ? zone.size : [8,5,8]
+      probe.bounds.center = [wp.x,wp.y,wp.z]
+      probe.bounds.half = [0,1,2].map(i => Math.max(.01, Math.abs(sz[i] * [scale.x,scale.y,scale.z][i])/2)) as Vec3
+      const b = probe.bounds
+      ;(probe.cube as any).mfReflectionBox = {
+        min:[b.center[0]-b.half[0],b.center[1]-b.half[1],b.center[2]-b.half[2]],
+        max:[b.center[0]+b.half[0],b.center[1]+b.half[1],b.center[2]+b.half[2]],
+      }
+      probe.cube.capturePos.set(wp.x,wp.y+probe.captureOffsetY,wp.z)
+    }
+  }
   function assignReflectionMaps() {
+    updateLocalProbeBounds()
     const tmp = new Vector3()
     for (const [id, objs] of renderables) {
       const node = objects.get(id)
       if (!node) continue
       node.getWorldPosition(tmp)
       let matched: any = globalProbe?.cube
+      // More specific small zones override larger overlapping zones, regardless
+      // of entity ordering. Off zones must not override the global environment.
+      let bestVolume = Infinity
       for (const probe of zoneProbes.values()) {
-        if (probe.bounds && pointInBounds(tmp, probe.bounds)) {
-          matched = probe.cube
-          break
-        }
+        if (!probe.reflectionEnabled || !objects.get(probe.id)?.active || !probe.bounds || !pointInBounds(tmp, probe.bounds)) continue
+        const h = probe.bounds.half, volume = h[0]*h[1]*h[2]
+        if (volume < bestVolume) { matched = probe.cube; bestVolume = volume }
       }
-      for (const obj of objs) (obj as any).environment = matched
+      for (const obj of objs) {
+        ;(obj as any).environment = matched
+        const parts = (obj as any).parts as L.EngineObject3D[] | undefined
+        for (const part of parts ?? []) (part as any).environment = matched
+      }
     }
   }
   function setReflections(mode: 'off' | 'baked' | 'realtime', resolution = 128, interval = 4) {
     globalReflectionMode = mode
-    globalReflectionRes = Math.max(32, Math.min(256, resolution))
+    globalReflectionRes = Math.max(32, Math.min(512, resolution))
     globalReflectionInterval = Math.max(1, Math.floor(interval))
     if (mode === 'off') {
       globalProbe = undefined
@@ -1637,163 +1792,481 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       interval: globalReflectionInterval,
       bakeLight: false,
       lightBounce: 0,
+      reflectionEnabled: true,
+      captureOffsetY: 0,
     }
     ;(r as any).environment = globalProbe.cube
     ;(r as any).cubeCaptures?.add(globalProbe.cube)
     assignReflectionMaps()
   }
-  function bakeLighting(zoneId?: string) {
-    const scene = project.scenes.find((sc) => sc.id === project.activeScene) ?? project.scenes[0]
-    const lights: { pos: Vec3; color: [number, number, number]; intensity: number; range: number; sourceId?: string }[] = []
-    const emissiveOwners = new Set<string>()
+  // CPU GI is intentionally offline: only diffuse *indirect* light is baked so
+  // LittleJS's realtime directional/spot/point lights are never double-counted.
+  async function bakeLighting(zoneId?: string): Promise<void> {
+    const revision = ++bakeRevision
+    const gen = generation
+    const dependencies = [...pending]
+    // glTF's async partMaterials() can enqueue more texture loads after model loading.
+    await Promise.all(dependencies)
+    if (revision !== bakeRevision || gen !== generation || disposed) return
+    await Promise.all(pending.filter((p) => !dependencies.includes(p)))
+    if (revision !== bakeRevision || gen !== generation || disposed) return
+
+    const scene = project.scenes.find((sc) => sc.id === currentSceneId) ?? project.scenes[0]
+    const byId = new Map(scene.entities.map((entity) => [entity.id, entity]))
+    const dynamicEntity = (entity: Entity) => {
+      for (let current: Entity | undefined = entity; current; current = current.parent ? byId.get(current.parent) : undefined) {
+        if (current.components.some((c) => c.enabled !== false && (
+          ['script', 'behavior', 'animation', 'navAgent', 'eventGraph', 'sequencer'].includes(c.type) ||
+          (c.type === 'body' && (c.kind === 'dynamic' || c.kind === 'kinematic'))
+        ))) return true
+      }
+      return false
+    }
+    const selectedZones = zoneId ? (zoneProbes.has(zoneId) ? [zoneProbes.get(zoneId)!] : []) : [...zoneProbes.values()]
+    if (zoneId && !selectedZones.length) return
+    const useGlobal = !zoneId && (globalBakedLighting || selectedZones.length === 0)
+    const env = scene.environment
+    const resolution = Math.max(8, Math.min(64, Math.round(Number(env.bakeResolution ?? 24))))
+    const rays = Math.max(2, Math.min(64, Math.round(Number(env.bakeRays ?? 8))))
+    const bounces = Math.max(1, Math.min(3, Math.round(Number(env.bakeBounces ?? 2))))
+    const imageCache = new Map<object | string, Promise<GITexture | undefined>>()
+    const imagePixels = async (source: string | CanvasImageSource): Promise<GITexture | undefined> => {
+      if (!source) return undefined
+      if (!imageCache.has(source)) imageCache.set(source, (async () => {
+        try {
+          let img: CanvasImageSource
+          if (typeof source === 'string') {
+            const downloaded = new Image()
+            downloaded.src = source
+            await downloaded.decode()
+            img = downloaded
+          } else {
+            img = source
+            if (img instanceof HTMLImageElement && !img.complete) await img.decode()
+          }
+          const width = Number((img as HTMLImageElement).naturalWidth || (img as HTMLCanvasElement).width || 0)
+          const height = Number((img as HTMLImageElement).naturalHeight || (img as HTMLCanvasElement).height || 0)
+          const cvs = document.createElement('canvas')
+          cvs.width = Math.min(512, width)
+          cvs.height = Math.min(512, height)
+          if (!cvs.width || !cvs.height) return undefined
+          const ctx = cvs.getContext('2d', { willReadFrequently: true })
+          if (!ctx) return undefined
+          ctx.drawImage(img, 0, 0, cvs.width, cvs.height)
+          return { width: cvs.width, height: cvs.height, pixels: ctx.getImageData(0, 0, cvs.width, cvs.height).data }
+        } catch { return undefined }
+      })())
+      return imageCache.get(source)!
+    }
+    const assetImage = (id: string) => {
+      const asset = project.assets.find((a) => a.id === id && a.type === 'texture')
+      return asset?.data ? imagePixels(asset.data) : Promise.resolve(undefined)
+    }
+    const lightDefs: GILight[] = []
+    let bakeAmbientTint = hexToRgbTuple(ambientTint)
+    let bakeAmbientStrength = ambient*0.20
+    let sun: GILight = {
+      kind: 'directional', position: [0,0,0], direction: (() => {
+        const v = new Vector3().fromArray(sunDir); const k = Math.hypot(v.x,v.y,v.z)||1
+        return [v.x/k,v.y/k,v.z/k] as GI3
+      })(),
+      color: hexToRgbTuple(sunTint), intensity: sunIntensity * 0.6 * exposure, range: Infinity,
+    }
     for (const e of scene.entities) {
-      if (!e.active) continue
-      const node = objects.get(e.id)
-      const wp = node ? node.getWorldPosition(new Vector3()).toArray() : e.transform.position
+      const n = objects.get(e.id)
+      if (!n?.active) continue
+      const wp = n.getWorldPosition(new Vector3()).toArray()
       for (const c of e.components) {
-        if (c.enabled === false) continue
-        if (c.type === 'light' && c.kind !== 'ambient' && c.kind !== 'directional') {
-          const col = color(c.color || '#ffffff')
-          lights.push({
-            pos: wp,
-            color: [col.r, col.g, col.b],
-            intensity: Number(c.intensity ?? 1),
-            range: Math.max(1, Number(c.range ?? 12)),
-            sourceId: e.id,
-          })
-        } else if (c.type === 'mesh' && c.material) {
-          const mp = project.assets.find((a) => a.id === c.material && a.type === 'material')?.properties
-          if (!mp) continue
-          const emStrength = mp.unlit ? Math.max(0.6, Number(mp.emissiveIntensity ?? 1)) : Number(mp.emissiveIntensity ?? 0)
-          const emHex = mp.emissive && mp.emissive !== '#000000' ? mp.emissive : mp.unlit ? mp.color : ''
-          if (emStrength > 0.05 && emHex) {
-            emissiveOwners.add(e.id)
-            const col = color(emHex)
-            const sc = node ? node.getWorldScale(new Vector3()).toArray() : e.transform.scale
-            const sizeFactor = Math.max(0.5, Math.max(Math.abs(sc[0]), Math.abs(sc[1]), Math.abs(sc[2])))
-            lights.push({
-              pos: wp,
-              color: [col.r, col.g, col.b],
-              intensity: emStrength * Math.min(2.5, 0.7 + sizeFactor * 0.35),
-              range: Math.max(3, sizeFactor * 3.5 + emStrength * 4.5),
-              sourceId: e.id,
-            })
+        if (c.enabled === false || c.type !== 'light') continue
+        if (c.kind === 'ambient') {
+          if (!runtimeEnvOverride) {
+            bakeAmbientTint = hexToRgbTuple(c.color || '#ffffff')
+            bakeAmbientStrength = Number(c.intensity ?? 1)*ambient*0.26
           }
+          continue
         }
+        if (c.kind === 'directional') {
+          if (!runtimeEnvOverride) {
+            const l = Math.hypot(...wp)
+            sun = {kind: 'directional', position: [0,0,0], direction: l > 0.0001 ? [wp[0]/l,wp[1]/l,wp[2]/l] : sun.direction,
+              color: hexToRgbTuple(c.color ?? '#ffffff'), intensity: Number(c.intensity ?? 1) * 0.29 * exposure, range: Infinity}
+          }
+          continue
+        }
+        if (c.kind !== 'point' && c.kind !== 'spot') continue
+        const matrix = n.worldMatrix()
+        const worldDirection = vec3.transformMat4(vec3.create(), vec3.fromValues(0,0,-1), matrix)
+        const direction: GI3 = [worldDirection[0]-wp[0],worldDirection[1]-wp[1],worldDirection[2]-wp[2]]
+        lightDefs.push({kind: c.kind, position: wp, direction, color: hexToRgbTuple(c.color || '#ffffff'),
+          intensity: Number(entityLightBaseIntensity.get(e.id) ?? c.intensity ?? 1), range: Math.max(0.1, Number(c.range ?? 12)),
+          angle: Number(c.angle ?? 0.6), softness: Number(c.coneSoftness ?? 0.25)})
       }
     }
-    const targetZones = zoneId ? (zoneProbes.has(zoneId) ? [zoneProbes.get(zoneId)!] : []) : [...zoneProbes.values()]
-    const useGlobal = !zoneId && (globalBakedLighting || targetZones.length === 0)
-    const tmp = new Vector3()
-    const ambCol = color(ambientTint)
-    for (const [id, objs] of renderables) {
-      if (emissiveOwners.has(id)) continue
-      const node = objects.get(id)
-      if (!node) continue
-      node.getWorldPosition(tmp)
-      let bounce = useGlobal ? 0.55 : 0
-      for (const z of targetZones) {
-        if (z.bakeLight && z.bounds && pointInBounds(tmp, z.bounds)) {
-          bounce = Math.max(bounce, z.lightBounce)
-        }
+    if (sun.intensity > 0) lightDefs.push(sun)
+
+    const tris: GITriangle[] = []
+    const receivers = new Map<string, { obj: L.EngineObject3D; owner: string; haveEmission: boolean; nativeMap: boolean; originalEmission: number }>()
+    let totalTris = 0
+    for (const e of scene.entities) {
+      const node = objects.get(e.id)
+      // Only bake static geometry. Animated/moving parents and their children must not
+      // leave permanent shadows, emission or bounced light at their initial positions.
+      if (!node?.active || dynamicEntity(e)) continue
+      const list = renderables.get(e.id) || []
+      const entityRoot = roots.get(e.id)
+      const parts: L.EngineObject3D[] = []
+      for (const obj of list) {
+        const allParts = (obj as any).parts as L.EngineObject3D[] | undefined
+        if (allParts?.length) parts.push(...allParts.filter((part) => Boolean(part.mesh)))
+        else if (obj.mesh) parts.push(obj)
       }
-      if (bounce <= 0) continue
-      let lr = ambCol.r * ambient * 0.22 * bounce,
-        lg = ambCol.g * ambient * 0.22 * bounce,
-        lb = ambCol.b * ambient * 0.22 * bounce
-      for (const l of lights) {
-        const dist = Math.hypot(tmp.x - l.pos[0], tmp.y - l.pos[1], tmp.z - l.pos[2])
-        if (dist >= l.range) continue
-        const atten = Math.pow(1 - dist / l.range, 2) * l.intensity * bounce * 0.6
-        lr += l.color[0] * atten
-        lg += l.color[1] * atten
-        lb += l.color[2] * atten
-      }
-      const mag = Math.max(lr, lg, lb)
-      if (mag > 0.005) {
-        for (const obj of objs) {
-          // Physically multiply baked irradiance by the object's albedo color and keep it subtle (never normalize to 1.0 white!)
-          const br = Math.min(0.75, lr * obj.color.r * 0.45)
-          const bg = Math.min(0.75, lg * obj.color.g * 0.45)
-          const bb = Math.min(0.75, lb * obj.color.b * 0.45)
-          if (br + bg + bb > 0.01) {
-            obj.emissiveMapColor = new d.Color(br, bg, bb, 1)
-            if (!obj.emissiveMap) obj.emissiveMap = d.whiteTexture()
-          }
+      for (let pi=0;pi<parts.length;pi++) {
+        const obj = parts[pi]
+        const mesh = obj.mesh
+        if (!mesh || obj.destroyed || obj.transparent || obj.shader) continue
+        restoreBakedObject(obj)
+        // Packed glTF meshes cannot call getTriangles(): LittleJS asserts on vertexData.
+        // They expose their triangles in vertexIndices instead.
+        const vertexData = mesh.vertexData
+        const meshTriangles = vertexData
+          ? {vertices: Array.from({length: mesh.vertexDataCount}, (_,i) => i), indices: mesh.vertexIndices}
+          : mesh.getTriangles()
+        if (!meshTriangles?.indices) continue
+        const positions = mesh.points
+        const uvList = mesh.uvs
+        const matId = materialOfObject.get(obj)
+        const props = matId ? project.assets.find((a) => a.id === matId && a.type === 'material')?.properties : undefined
+        const rgb = obj.color
+        const tint = obj.emissiveMapColor
+        const originalEmission = Math.max(0, Number(obj.emissive) || 0)
+        const storedEmissiveTexture = obj.emissiveMap
+        const emissionColor: GI3 = [tint?.r ?? 1, tint?.g ?? 1, tint?.b ?? 1]
+        const materialDef: GIMaterial = {
+          albedo: [Math.max(0,rgb.r),Math.max(0,rgb.g),Math.max(0,rgb.b)],
+          emissive: emissionColor,
+          unlit: originalEmission,
+          opacity: rgb.a ?? 1, castShadow: obj.castShadow !== false, receiveShadow: obj.receiveShadow !== false,
         }
+        const matMap = props?.map ? await assetImage(String(props.map)) : undefined
+        const nativeMap = (obj as any).tileInfo?.textureInfo?.image as CanvasImageSource | undefined
+        const nativeEmission = (storedEmissiveTexture as any)?.image as CanvasImageSource | undefined
+        const emMap = props?.emissiveMap ? await assetImage(String(props.emissiveMap)) : undefined
+        if (matMap) materialDef.albedoMap = matMap
+        else if (nativeMap) materialDef.albedoMap = await imagePixels(nativeMap)
+        if (emMap) materialDef.emissiveMap = emMap
+        else if (nativeEmission) materialDef.emissiveMap = await imagePixels(nativeEmission)
+        // Keep original glTF emission untouched if its image cannot be read on the CPU.
+        const unreadableNativeEmissive = Boolean(storedEmissiveTexture && !materialDef.emissiveMap)
+        if (unreadableNativeEmissive) materialDef.emissive = [0,0,0]
+        const matrix = node.worldMatrix()
+        const chain: L.EngineObject3D[] = []
+        for (let cur: L.EngineObject | undefined = obj; cur && cur !== entityRoot; cur = cur.parent)
+          chain.unshift(cur as L.EngineObject3D)
+        for (const part of chain) {
+          const rot = part.rotation3D, pos = part.pos3D, size = part.scale3D
+          if (!rot || !pos || !size) continue
+          const q = quat.fromEuler(quat.create(), rot.x*180/Math.PI, rot.y*180/Math.PI, rot.z*180/Math.PI, 'yxz')
+          const local = mat4.fromRotationTranslationScale(mat4.create(), q, [pos.x,pos.y,pos.z], [size.x,size.y,size.z])
+          mat4.multiply(matrix, matrix, local)
+        }
+        const worldPos = (i: number): GI3 => {
+          const vv = vertexData ? [vertexData[i*9],vertexData[i*9+1],vertexData[i*9+2]] : [positions[i].x,positions[i].y,positions[i].z]
+          const result = vec3.transformMat4(vec3.create(), vec3.fromValues(vv[0], vv[1], vv[2]), matrix)
+          return [result[0],result[1],result[2]]
+        }
+        const uv = (i: number): GI2 => vertexData
+          ? [Number(vertexData[i*9+6]??0),Number(vertexData[i*9+7]??0)]
+          : [Number(uvList?.[i]?.x??0), Number(uvList?.[i]?.y??0)]
+        const owner = e.id + '#' + pi
+        let added = 0
+        for (let i=0;i<meshTriangles.indices.length;i+=3) {
+          if (totalTris >= 16000) break // Explicit upper bound prevents unbounded browser stalls.
+          const a=meshTriangles.vertices[meshTriangles.indices[i]]
+          const b=meshTriangles.vertices[meshTriangles.indices[i+1]]
+          const c=meshTriangles.vertices[meshTriangles.indices[i+2]]
+          if (![a,b,c].every((n)=>Number.isSafeInteger(n) && n>=0 && n < (vertexData ? mesh.vertexDataCount : positions.length)))continue
+          const ta=worldPos(a),tb=worldPos(b),tc=worldPos(c)
+          if (Math.hypot(tb[0]-ta[0],tb[1]-ta[1],tb[2]-ta[2])<1e-6) continue
+          tris.push({a:ta,b:tb,c:tc,uvA:uv(a),uvB:uv(b),uvC:uv(c),owner,material:materialDef})
+          totalTris++;added++
+        }
+        if (added) receivers.set(owner,{obj,owner,haveEmission: originalEmission>0,nativeMap: unreadableNativeEmissive,originalEmission})
       }
     }
-    if (globalProbe) { (r as any).cubeCaptures?.add(globalProbe.cube) }
-    for (const z of targetZones) { (r as any).cubeCaptures?.add(z.cube) }
+    if (revision !== bakeRevision || gen !== generation || disposed) return
+    const baker = new GIBaker(tris, lightDefs, {
+      resolution, rays, bounces, strength: 0.75,
+      ambient: bakeAmbientTint, ambientIntensity: bakeAmbientStrength,
+    })
+    for (const receiver of receivers.values()) {
+      if (revision !== bakeRevision || gen !== generation || disposed) return
+      const ownerTriangles = tris.filter(t=>t.owner===receiver.owner)
+      if (!ownerTriangles.length || !ownerTriangles[0].material.receiveShadow || receiver.nativeMap)continue
+      const boundsNode = objects.get(receiver.owner.split('#')[0])
+      if (!boundsNode)continue
+      const wp = boundsNode.getWorldPosition(new Vector3())
+      let influence = useGlobal ? 0.65 : 0
+      for (const z of selectedZones) if (z.bakeLight && z.bounds && pointInBounds(wp,z.bounds)) influence=Math.max(influence,z.lightBounce)
+      if (influence <= 0)continue
+      baker.settings.strength = Math.min(2, influence)
+      const output = baker.bake(receiver.owner, resolution)
+      if (output.populated === 0)continue
+      if (revision !== bakeRevision || gen !== generation || disposed) return
+      const cvs = document.createElement('canvas')
+      cvs.width = resolution; cvs.height = resolution
+      const ctx = cvs.getContext('2d')
+      if (!ctx)continue
+      const image = ctx.createImageData(resolution,resolution)
+      image.data.set(output.pixels)
+      ctx.putImageData(image,0,0)
+      const obj=receiver.obj
+      const tex=new d.TextureInfo(cvs,true,true,false)
+      bakedMaps.set(obj,{texture:tex,originalTexture:obj.emissiveMap,originalTint:obj.emissiveMapColor,originalIntensity:obj.emissive})
+      obj.emissiveMap=tex
+      obj.emissiveMapColor=new d.Color(1,1,1,1)
+      // Do NOT change obj.emissive: in LittleJS it blends away real-time lighting.
+      // The emissive map is independently ADDITIVE in the 3D fragment shader.
+      // Yield to the editor and keep the interface responsive during long bakes.
+      await new Promise<void>((resolve) => setTimeout(resolve,0))
+    }
+    if (revision !== bakeRevision || gen !== generation || disposed) return
+    if (globalProbe) (r as any).cubeCaptures?.add(globalProbe.cube)
+    for (const z of selectedZones) if (z.reflectionEnabled) (r as any).cubeCaptures?.add(z.cube)
     assignReflectionMaps()
   }
-  function buildStaticBatches(entities: Entity[]) {
-    if (options.editor || !staticBatching) return
-    const groups = new Map<string, { matId: string; items: { entity: Entity; mesh: L.Mesh; node: SceneNode }[] }>()
-    for (const e of entities) {
-      if (!e.active) continue
-      const wantBatch = e.properties.staticBatch === true
-      if (!wantBatch || !isEligibleForStaticBatch(e)) continue
-      const mc = e.components.find((c) => c.enabled !== false && c.type === 'mesh' && c.shape !== 'model')
-      const node = objects.get(e.id)
-      if (!mc || !node) continue
-      const matId = String(mc.material || '')
-      const matProps = project.assets.find((a) => a.id === matId)?.properties
-      // Skip transparent/additive/custom-shader materials from opaque static batching
-      if (matProps && ((matProps.opacity ?? 1) < 1 || matProps.additive || matProps.shader)) continue
-      const mesh = primitive(mc)
-      if (!mesh.points?.length) continue
-      let grp = groups.get(matId)
-      if (!grp) {
-        grp = { matId, items: [] }
-        groups.set(matId, grp)
-      }
-      grp.items.push({ entity: e, mesh, node })
+  function clearBatches() {
+    for (const b of meshBatches) {
+      b.render?.destroy()
+      b.geometry?.dispose()
+      b.atlas?.destroyWebGLTexture()
     }
-    for (const grp of groups.values()) {
-      if (grp.items.length < 2) continue
-      const allPts: L.Vector3[] = []
-      const allUvs: L.Vector2[] = []
-      const allIdx: number[] = []
-      let baseVertex = 0
-      for (const { entity, mesh, node } of grp.items) {
-        const tri = mesh.getTriangles()
-        const pts = mesh.points
-        const uvs = mesh.uvs
-        for (let i = 0; i < pts.length; i++) {
-          _tmpV1.set(pts[i].x, pts[i].y, pts[i].z)
-          node.localToWorld(_tmpV1)
-          allPts.push(d.vec3(_tmpV1.x, _tmpV1.y, _tmpV1.z))
-          const uv = uvs?.[i]
-          allUvs.push(uv ? d.vec2(uv.x, uv.y) : d.vec2(0, 0))
-        }
-        for (let i = 0; i < tri.indices.length; i++) {
-          allIdx.push(baseVertex + tri.vertices[tri.indices[i]])
-        }
-        baseVertex += pts.length
-        // Hide individual renderables since they are now drawn in 1 batched call
-        const objs = renderables.get(entity.id)
-        if (objs) {
-          for (const o of objs) {
-            o.destroy()
-          }
-          objs.length = 0
-        }
-      }
-      if (!allIdx.length) continue
-      const combined = new d.Mesh().addTriangles(allPts, allIdx, undefined, allUvs).computeNormals(false)
-      const key = '__batch:' + grp.matId + ':' + batchedMeshes.length
-      meshes.set(key, combined)
-      const bObj = new d.EngineObject3D(d.vec3(), combined)
-      material(bObj, grp.matId)
-      batchedMeshes.push(bObj)
+    for (const b of instanceBatches) for (const inst of b.objects) inst.destroy()
+    meshBatches.length = instanceBatches.length = 0
+    batchedEntityIds.clear()
+  }
+
+  // Return one member to normal draw/pick/update behavior. Other members of its
+  // spatial chunk remain batched; no original GLTFObject or primitive is destroyed.
+  function releaseBatchMember(id: string) {
+    if (!batchedEntityIds.delete(id)) return
+    for (const batch of meshBatches) {
+      if (!batch.items.some(item => item.id === id)) continue
+      batch.items = batch.items.filter(item => item.id !== id)
+      rebuildMeshBatch(batch)
+    }
+    for (const batch of instanceBatches) {
+      if (!batch.ids.includes(id)) continue
+      batch.ids = batch.ids.filter(x => x !== id)
+      rebuildInstanceBatch(batch)
     }
   }
+
+  function rebuildMeshBatch(group: MeshBatch) {
+    group.render?.destroy()
+    group.geometry?.dispose()
+    group.render = group.geometry = undefined
+    if (group.items.length < 2) {
+      for (const item of group.items) batchedEntityIds.delete(item.id)
+      group.atlas?.destroyWebGLTexture()
+      group.atlas=undefined
+      return
+    }
+    const positions: L.Vector3[] = [], normals: L.Vector3[] = [], uv: L.Vector2[] = [], colors: L.Color[] = [], indices: number[] = []
+    let offset = 0
+    const atlasRows = (group as any).atlasRows as Map<string, [number,number,number,number]> | undefined
+    for (const item of group.items) {
+      const mesh = item.mesh, node = item.node, matrix = node.worldMatrix()
+      const nmat = mat3.normalFromMat4(mat3.create(), matrix)
+      if (!nmat) continue
+      const tri = mesh.getTriangles()
+      const flip = mat4.determinant(matrix) < 0
+      for (let i = 0; i < mesh.points.length; i++) {
+        const pt = mesh.points[i], pn = mesh.normals?.[i], pv = mesh.uvs?.[i], pc = mesh.colors?.[i]
+        const pos = vec3.transformMat4(vec3.create(), [pt.x,pt.y,pt.z], matrix)
+        positions.push(d.vec3(pos[0]-group.center[0],pos[1]-group.center[1],pos[2]-group.center[2]))
+        const norm = pn ? vec3.transformMat3(vec3.create(), [pn.x,pn.y,pn.z], nmat) : vec3.fromValues(0,1,0)
+        vec3.normalize(norm,norm)
+        normals.push(d.vec3(norm[0],norm[1],norm[2]))
+        const rect=atlasRows?.get(item.material)
+        uv.push(rect ? d.vec2(rect[0]+(pv?.x??0)*rect[2],rect[1]+(pv?.y??0)*rect[3]) : d.vec2(pv?.x??0,pv?.y??0))
+        const tint=item.obj.color
+        colors.push(new d.Color((pc?.r??1)*tint.r,(pc?.g??1)*tint.g,(pc?.b??1)*tint.b,1))
+      }
+      for (let j=0;j<tri.indices.length;j+=3) {
+        const a=offset+tri.vertices[tri.indices[j]],b=offset+tri.vertices[tri.indices[j+1]],c=offset+tri.vertices[tri.indices[j+2]]
+        if (flip) indices.push(a,c,b)
+        else indices.push(a,b,c)
+      }
+      offset+=mesh.points.length
+    }
+    if (!indices.length) return
+    const merged = new d.Mesh().addTriangles(positions,indices,normals,uv,colors)
+    merged.doubleSided = group.items[0].mesh.doubleSided
+    const obj = new d.EngineObject3D(d.vec3(...group.center), merged)
+    const sample=group.items[0].obj
+    obj.color = new d.Color(1,1,1,1)
+    for (const field of ['specular','shininess','reflectivity','emissive','castShadow','receiveShadow','pixelated','depthWrite','depthTest','normalScale','roundLighting'] as const)
+      (obj as any)[field]=(sample as any)[field]
+    if (group.atlas) d.setTexture(obj,group.atlas)
+    group.render=obj
+    group.geometry=merged
+    for (const item of group.items) batchedEntityIds.add(item.id)
+  }
+
+  function rebuildInstanceBatch(group: InstanceBatch) {
+    for (const inst of group.objects) inst.destroy()
+    group.objects.length=0
+    if (group.ids.length < 2) {
+      for (const id of group.ids) batchedEntityIds.delete(id)
+      return
+    }
+    const first=players.get(group.ids[0]) as any
+    const parts: L.EngineObject3D[] = first?.parts || []
+    for(let pi=0;pi<parts.length;pi++) {
+      const firstPart=parts[pi]
+      if (!firstPart.mesh) continue
+      const inst = new d.InstancedMesh3D(firstPart.mesh,group.ids.length,firstPart.tileInfo,firstPart.color)
+      for (const field of ['specular','shininess','reflectivity','emissive','castShadow','receiveShadow','pixelated','depthWrite','depthTest','normalScale','roundLighting','normalMap','emissiveMap','emissiveMapColor','shader'] as const)
+        (inst as any)[field]=(firstPart as any)[field]
+      for(let j=0;j<group.ids.length;j++) {
+        const part=((players.get(group.ids[j]) as any)?.parts||[])[pi] as L.EngineObject3D | undefined
+        if(!part)continue
+        inst.matrixData.set(d.objectWorldMatrix(part),j*16)
+        inst.setColorAt(j,part.color)
+      }
+      inst.markDirtyRange(0,group.ids.length)
+      group.objects.push(inst)
+    }
+    group.snapshots.clear()
+    for(const id of group.ids) {
+      batchedEntityIds.add(id)
+      const node=objects.get(id)
+      if(node) group.snapshots.set(id,new Float32Array(node.worldMatrix()))
+    }
+  }
+
+  // An atlas is needed only when the chunk has base textures. Flat-color
+  // materials use vertex colors, so several *different* material assets can
+  // really share one GPU draw if their remaining shader states are compatible.
+  async function prepareBatchAtlas(group: MeshBatch) {
+    const matIds = [...new Set(group.items.map(i=>i.material))]
+    const props = matIds.map(id=>project.assets.find(a=>a.id===id && a.type==='material')?.properties || {})
+    if (!props.some(p=>p.map)) return
+    const cells=Math.ceil(Math.sqrt(matIds.length)), tile=256, pad=2, size=cells*tile
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=size
+    const ctx=canvas.getContext('2d')
+    if(!ctx) throw Error('Canvas2D is required for multi-material atlas')
+    ctx.clearRect(0,0,size,size)
+    const rects=new Map<string,[number,number,number,number]>()
+    for(let i=0;i<matIds.length;i++) {
+      const x=(i%cells)*tile,y=Math.floor(i/cells)*tile
+      const inner=tile-2*pad
+      rects.set(matIds[i],[(x+pad)/size,(y+pad)/size,inner/size,inner/size])
+      const texAsset=project.assets.find(a=>a.type==='texture' && a.id===props[i].map)
+      if (!texAsset) {
+        ctx.fillStyle='#fff';ctx.fillRect(x,y,tile,tile)
+        continue
+      }
+      const image=new Image();image.src=texAsset.data;await image.decode()
+      ctx.drawImage(image,x+pad,y+pad,inner,inner)
+      // Replicate edge pixels to avoid bilinear bleeding between atlas tiles.
+      ctx.drawImage(canvas,x+pad,y+pad,inner,1,x+pad,y,inner,pad)
+      ctx.drawImage(canvas,x+pad,y+pad+inner-1,inner,1,x+pad,y+pad+inner,inner,pad)
+      ctx.drawImage(canvas,x+pad,y+pad,1,inner,x,y+pad,pad,inner)
+      ctx.drawImage(canvas,x+pad+inner-1,y+pad,1,inner,x+pad+inner,y+pad,pad,inner)
+    }
+    if (disposed) return
+    group.atlas=new d.TextureInfo(canvas,true,true,false)
+    ;(group as any).atlasRows=rects
+  }
+
+  async function buildStaticBatches(entities: Entity[]) {
+    if (options.editor || !staticBatching || globalBakedLighting || zoneProbes.size > 0) return
+    // All model parts/material textures must exist before choosing GPU groups.
+    const deps=[...pending], gen=generation
+    await Promise.all(deps)
+    if(disposed || gen!==generation || !staticBatching)return
+    // GLTF partMaterials can enqueue additional texture loads while the model
+    // promise resolves. Do not include this batch promise in its own dependencies.
+    await Promise.all(pending.filter(p=>p!==batchPending && !deps.includes(p)))
+    if(disposed || gen!==generation || !staticBatching)return
+    sync()
+    const groups=new Map<string,MeshBatch>()
+    const instanceGroups=new Map<string,InstanceBatch>()
+    for(const e of entities) {
+      if(!e.active || !objects.get(e.id)?.active)continue
+      const node=objects.get(e.id)!
+      const c=e.components.find(c=>c.enabled!==false && c.type==='mesh')
+      if(!c)continue
+      // Do not batch anything with an explicitly animated/moving/interactive owner.
+      const movable=e.components.some(c=>c.enabled!==false &&
+        (['animation','script','behavior','navAgent','particle','water','terrain'].includes(c.type) ||
+        (c.type==='body' && c.kind!=='static') || (c.type==='collider'&&c.trigger)))
+      if(movable || e.components.some(c=>c.enabled!==false && !['mesh','collider'].includes(c.type)))continue
+      const pos=node.getWorldPosition(new Vector3())
+      const cell=[Math.floor(pos.x/STATIC_CHUNK_SIZE),Math.floor(pos.y/STATIC_CHUNK_SIZE),Math.floor(pos.z/STATIC_CHUNK_SIZE)]
+      const cellKey=spatialBatchCell([pos.x,pos.y,pos.z])
+      if(c.shape==='model') {
+        if(e.properties.instancing===false)continue
+        if(globalCullDist>0 || (entityCullDist.get(e.id)||0)>0)continue
+        if(c.skin || c.morphTargets)continue
+        const assetId=String(c.asset||'')
+        const player=players.get(e.id) as any
+        if(!player?.parts?.length || player.animationPlaying || player.model?.skins?.length || player.model?.nodeTree?.skins?.length)continue
+        if(player.parts.some((part:L.EngineObject3D)=>!part.mesh || part.transparent || part.shader))continue
+        const sig=assetId+':'+JSON.stringify([project.assets.find(a=>a.id===assetId)?.properties?.partMaterials,project.assets.find(a=>a.id===assetId)?.properties?.partOverrides])
+        const baseKey=cellKey+':model:'+sig
+        let shard=0,key=baseKey+':'+shard,g=instanceGroups.get(key)
+        while(g && g.ids.length>=128){key=baseKey+':'+(++shard);g=instanceGroups.get(key)}
+        if(!g){g={ids:[],objects:[],assetId,snapshots:new Map()};instanceGroups.set(key,g)}
+        g.ids.push(e.id)
+        continue
+      }
+      if(e.properties.staticBatch!==true || !isEligibleForStaticBatch(e))continue
+      // Per-entity distance culling cannot be represented by one chunk's bounds.
+      if(globalCullDist>0 || (entityCullDist.get(e.id)||0)>0)continue
+      const obj=renderables.get(e.id)?.find(o=>!!o.mesh)
+      const mesh=obj?.mesh
+      if(!obj || !mesh || !mesh.points?.length || obj.transparent || obj.shader || obj.additive)continue
+      const matId=String(c.material||'')
+      const props=project.assets.find(a=>a.id===matId&&a.type==='material')?.properties || {}
+      const materialKey=opaqueMaterialBatchKey(props,mesh.doubleSided)
+      if(materialKey===null)continue
+      if(mesh.uvs?.some(u=>u.x<0 || u.x>1 || u.y<0 || u.y>1))continue
+      const baseKey=cellKey+':mesh:'+materialKey
+      let shard=0, key=baseKey+':'+shard, g=groups.get(key)
+      while(g && (g.items.length>=128 ||
+           (new Set(g.items.map(i=>i.material)).size>=16 && !g.items.some(i=>i.material===matId)))) {
+        key=baseKey+':'+(++shard)
+        g=groups.get(key)
+      }
+      if(!g){g={key,items:[],center:[(cell[0]+.5)*STATIC_CHUNK_SIZE,(cell[1]+.5)*STATIC_CHUNK_SIZE,(cell[2]+.5)*STATIC_CHUNK_SIZE]};groups.set(key,g)}
+      g.items.push({id:e.id,node,mesh,obj,material:matId,snapshot:new Float32Array(node.worldMatrix())})
+    }
+    for(const group of groups.values()) {
+      // Limit UV atlas size and per-draw triangle count by splitting huge chunks.
+      if(group.items.length<2)continue
+      try {
+        await prepareBatchAtlas(group)
+        if(disposed || gen!==generation) {group.atlas?.destroyWebGLTexture();return}
+        meshBatches.push(group);rebuildMeshBatch(group)
+      }
+      catch(err){console.warn('Miniforge: batch atlas fallback:',err);group.atlas?.destroyWebGLTexture()}
+    }
+    for(const group of instanceGroups.values()) {
+      if(disposed || gen!==generation)return
+      if(group.ids.length<2)continue
+      instanceBatches.push(group)
+      rebuildInstanceBatch(group)
+    }
+  }
+
   function load(p: Project, id?: string) {
     clear()
     project = p
     const scene = p.scenes.find((s) => s.id === (id ?? p.activeScene)) ?? p.scenes[0],
       env = scene.environment
+    currentSceneId = scene.id
     exposure = env.exposure ?? 1
     ambient = env.ambient ?? 1
     ambientTint = env.ambientColor || '#c8cfda'
@@ -1834,6 +2307,8 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       ? color(ambientGroundTint).scale(ambientGroundIntensity * exposure)
       : undefined
     r.shadowMapSize = env.shadowQuality === 'high' ? 2048 : env.shadowQuality === 'low' ? 512 : 1024
+    ;(r as any).multiShadowMax = Math.max(0, Math.min(4, Math.floor(Number(env.shadowSpotLimit ?? 4))))
+    ;(r as any).multiPointShadowMax = Math.max(0, Math.min(2, Math.floor(Number(env.shadowPointLimit ?? 1))))
     r.setFog(0, env.fogDensity > 0 ? 1.8 / env.fogDensity : 0, color(env.fogColor || env.background))
     r.sunDirection = d.vec3(sunDir[0], sunDir[1], sunDir[2])
     r.sunColor = color(sunTint)
@@ -1883,11 +2358,26 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
     })
     ratio = Math.min(window.devicePixelRatio || 1, env.pixelRatioLimit ?? 1.6) * (env.resolutionScale ?? 1)
     addEntities(scene.entities)
-    buildStaticBatches(scene.entities)
     globalBakedLighting = Boolean(env.bakedLighting)
+    if (staticBatching && !options.editor) {
+      batchPending = buildStaticBatches(scene.entities)
+      pending.push(batchPending)
+    }
     const refMode = env.reflectionMode === 'realtime' || env.reflectionMode === 'baked' ? env.reflectionMode : 'off'
     setReflections(refMode, Number(env.reflectionResolution ?? 128), Number(env.reflectionInterval ?? 4))
-    if (globalBakedLighting || zoneProbes.size > 0) bakeLighting()
+    if (decals.size) {
+      const deps = [...pending], gen = generation
+      const task = Promise.all(deps).then(async () => {
+        await Promise.all(pending.filter(p => p !== task && !deps.includes(p)))
+        if (!disposed && generation === gen) sync()
+      })
+      pending.push(task)
+    }
+    if (globalBakedLighting || zoneProbes.size > 0) {
+      // Keep the bake separate from texture promises: otherwise the baker's
+      // second dependency pass would await its own promise forever.
+      bakePending = bakeLighting()
+    }
     if (!options.editor) {
       const entity = scene.entities.find(
         (e) => e.active && e.components.some((c) => c.type === 'camera' && c.enabled !== false),
@@ -1903,8 +2393,33 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       if (c?.target || !entity) camera.lookAt(new Vector3().fromArray(c?.target ?? [0, 0.25, 0]))
     }
   }
+  // Compare world matrices without allocating an intermediate array or relying on
+  // the callback types of gl-matrix's mat4 (which vary across its declarations).
+  // Invalid or missing snapshots must not leave stale GPU batches active.
+  function matrixChanged(current: ArrayLike<number>, previous?: ArrayLike<number>): boolean {
+    if (!previous || current.length !== previous.length) return true
+    for (let i = 0; i < current.length; i++) {
+      const delta = Math.abs(current[i] - previous[i])
+      if (!Number.isFinite(delta) || delta > 1e-6) return true
+    }
+    return false
+  }
+
   function sync() {
     distanceCulled.clear()
+    // An authoring script may mutate a SceneNode directly, bypassing public setters.
+    // Release such objects (and descendants) from a static batch before rendering.
+    if (batchedEntityIds.size) {
+      const dirty: string[] = []
+      for (const b of meshBatches) for (const item of b.items) {
+        if (!item.node.active || matrixChanged(item.node.worldMatrix(), item.snapshot)) dirty.push(item.id)
+      }
+      for (const b of instanceBatches) for (const id of b.ids) {
+        const node = objects.get(id)
+        if (!node?.active || matrixChanged(node.worldMatrix(), b.snapshots.get(id))) dirty.push(id)
+      }
+      for (const id of new Set(dirty)) releaseBatchMember(id)
+    }
     for (const [id, obj] of roots) {
       const n = objects.get(id)!
       obj.pos3D.set(n.position.x, n.position.y, n.position.z)
@@ -1942,14 +2457,9 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       }
     }
     if (lightCullDist > 0 && entityLights.size) {
-      const shLight = (r as any).shadowLight
       for (const [id, light] of entityLights) {
         const baseI = entityLightBaseIntensity.get(id)
         if (baseI === undefined) continue
-        if (light === shLight) {
-          light.intensity = baseI
-          continue
-        }
         const n = objects.get(id)
         if (!n?.active) { light.intensity = 0; continue }
         const wp = n.getWorldPosition(_tmpV3)
@@ -1958,6 +2468,11 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
         light.intensity = dSq <= maxD * maxD ? baseI : 0
       }
     }
+    // Automatically select the most relevant visible shadow-casting spotlights
+    // each frame. The extension applies a switching threshold to avoid flicker.
+    // A manually pinned spotlight takes precedence; all other selections are automatic.
+    ;(r as any).multiShadowLights = [...shadowSpotSettings.values()]
+    ;(r as any).multiPointShadowLights = [...shadowPointSettings.values()]
     if (shadowFollowCamera) { (r as any).shadowCenter = d.vec3(camera.position.x, 0, camera.position.z) }
     if (skyDome) skyDome.pos3D.set(camera.position.x, camera.position.y, camera.position.z)
     for (const face of skyCube) {
@@ -1995,12 +2510,14 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       globalProbe.cube.capturePos.set(camera.position.x, Math.max(1.0, camera.position.y), camera.position.z)
       ;(r as any).cubeCaptures?.add(globalProbe.cube)
     }
+    updateLocalProbeBounds()
+    if (renderFrameCount % 15 === 0) assignReflectionMaps()
     for (const probe of zoneProbes.values()) {
-      if (probe.mode === 'realtime' && renderFrameCount % probe.interval === 0) {
+      if (probe.reflectionEnabled && probe.mode === 'realtime' && renderFrameCount % probe.interval === 0) {
         const node = objects.get(probe.id)
         if (node?.active) {
           const wp = node.getWorldPosition(new Vector3())
-          probe.cube.capturePos.set(wp.x, wp.y, wp.z)
+          probe.cube.capturePos.set(wp.x, wp.y + probe.captureOffsetY, wp.z)
           ;(r as any).cubeCaptures?.add(probe.cube)
         }
       }
@@ -2022,12 +2539,81 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
     } else {
       ;(r as any).onRenderTransparent = undefined
     }
+    // Generate current-frame depth only while projected decals need it.
+    r.depthTexture = [...decals.values()].some(decal =>
+      decal.projection === 'surface' && !decal.obj.destroyed && objects.get(decal.id)?.active && !distanceCulled.has(decal.id))
     info.render.calls = d.render(
       Math.max(1, container.clientWidth),
       Math.max(1, container.clientHeight),
       ratio,
       hidden,
     )
+    // A surface decal is a screen-space projection onto the *visible* scene
+    // depth. No triangles are generated and no opaque plane is drawn.
+    const screenDecals: ScreenDecal[] = []
+    for (const decal of decals.values()) {
+      if (decal.projection !== 'surface' || decal.obj.destroyed) continue
+      if (!objects.get(decal.id)?.active || distanceCulled.has(decal.id)) continue
+      const obj = decal.obj
+      const material = decal.materialId ? project.assets.find(a => a.id === decal.materialId && a.type === 'material') : undefined
+      const p = material?.properties
+      const emissive = obj.emissiveMap as L.TextureInfo | undefined
+      const tint = obj.emissiveMapColor
+      screenDecals.push({
+        matrix: d.objectWorldMatrix(obj), depth: decal.depth, facing: decal.minFacing,
+        tint: [obj.color.r, obj.color.g, obj.color.b, obj.color.a],
+        blend: (obj as any).additive ? 'additive' : 'alpha',
+        darkBackgroundTransparent: decal.darkBackgroundTransparent, darkThreshold: decal.darkThreshold,
+        texture: (obj.tileInfo as L.TileInfo | undefined)?.textureInfo?.glTexture ??
+          (obj.tileInfo as L.TextureInfo | undefined)?.glTexture,
+        normalTexture: (obj.normalMap as L.TextureInfo | undefined)?.glTexture,
+        emissiveTexture: emissive?.glTexture,
+        roughnessTexture: decal.roughnessTexture?.glTexture,
+        metalnessTexture: decal.metalnessTexture?.glTexture,
+        emissiveColor: [tint.r, tint.g, tint.b],
+        emissiveStrength: Math.max(0, Number(p?.emissiveIntensity ?? 0)),
+        roughness: Math.max(0.035, Math.min(1, Number(p?.roughness ?? 0.8))),
+        metalness: Math.max(0, Math.min(1, Number(p?.metalness ?? 0))),
+        normalScale: Math.max(0, Number(p?.normalScale ?? 1)),
+        unlit: !material || Boolean(p?.unlit),
+        alphaCutoff: Math.max(0, Math.min(1, Number(p?.alphaTest ?? 0))),
+        uvTransform: [p?.tiling?.[0] ?? 1, p?.tiling?.[1] ?? 1, p?.offset?.[0] ?? 0, p?.offset?.[1] ?? 0],
+      })
+    }
+    const rp = r as unknown as { cameraDepthTexture?: WebGLTexture; viewProjection?: { m: ArrayLike<number> } }
+    if (screenDecals.length && rp.viewProjection?.m) {
+      // The forward decal overlay receives the same light list LittleJS used
+      // for the scene. Individual materials provide normal/metallic/roughness.
+      const lights = r as unknown as {
+        lightCount?: number
+        lightPositions?: ArrayLike<number>
+        lightColors?: ArrayLike<number>
+        lightCones?: ArrayLike<number>
+      }
+      const activeLights: DecalLight[] = []
+      const count = Math.min(8, lights.lightCount || 0)
+      for (let i = 0; i < count; i++) {
+        const k = i * 4, positions = lights.lightPositions, colors = lights.lightColors, cones = lights.lightCones
+        if (!positions || !colors) break
+        activeLights.push({
+          position: [positions[k], positions[k + 1], positions[k + 2]],
+          radius: positions[k + 3],
+          color: [colors[k], colors[k + 1], colors[k + 2]],
+          intensity: colors[k + 3],
+          cone: cones ? [cones[k], cones[k + 1], cones[k + 2], cones[k + 3]] : undefined,
+        })
+      }
+      const sun = r.sunDirection, sunColor = r.sunColor, amb = r.ambientColor, cameraPos = r.camera.pos
+      const sunLength = Math.hypot(sun.x, sun.y, sun.z) || 1
+      info.render.calls += projectedDecalPass.render(rp.cameraDepthTexture, rp.viewProjection.m,
+        screenDecals, canvas.width, canvas.height, {
+          ambient: [amb.r, amb.g, amb.b],
+          sunDirection: [sun.x / sunLength, sun.y / sunLength, sun.z / sunLength],
+          sunColor: [sunColor.r, sunColor.g, sunColor.b],
+          cameraPosition: [cameraPos.x, cameraPos.y, cameraPos.z],
+          lights: activeLights,
+        })
+    }
     for (const fl of activeFlares) {
       if (!fl.destroyed) {
         fl.visible = 1
@@ -2090,7 +2676,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
     else post.setSunRay([0.5, 0.5], 0)
     post.render(canvas)
     info.memory.textures = textures.size
-    info.render.triangles = d.triangles()
+    info.render.triangles = d.triangles(hidden)
   }
   load(initial, sceneId)
   return {
@@ -2101,8 +2687,14 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
     render,
     addEntities,
     removeEntities,
+    getBatchStats: () => ({
+      mergedChunks: meshBatches.filter(g=>!!g.render).length,
+      mergedEntities: meshBatches.reduce((n,g)=>n+(g.render?g.items.length:0),0),
+      instanceDraws: instanceBatches.reduce((n,g)=>n+g.objects.length,0),
+      instancedModels: instanceBatches.reduce((n,g)=>n+(g.objects.length?g.ids.length:0),0),
+    }),
     ready: () =>
-      Promise.all(pending).then(() => {
+      Promise.all([...pending, ...(bakePending ? [bakePending] : [])]).then(() => {
         if (globalProbe) { (r as any).cubeCaptures?.add(globalProbe.cube) }
         for (const z of zoneProbes.values()) { (r as any).cubeCaptures?.add(z.cube) }
         assignReflectionMaps()
@@ -2150,7 +2742,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
     setReflections,
     updateZoneProbe(zoneId: string) {
       const probe = zoneProbes.get(zoneId)
-      if (probe) { (r as any).cubeCaptures?.add(probe.cube) }
+      if (probe?.reflectionEnabled) { updateLocalProbeBounds(); (r as any).cubeCaptures?.add(probe.cube) }
     },
     setPostProcess(opts: PostProcessOptions) {
       post.setOptions(opts)
@@ -2196,7 +2788,12 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       if (falloff !== undefined) (light as any).glowFalloff = Math.max(0.1, falloff)
     },
     setShadowLight(id: string | null) {
-      ;(r as any).shadowLight = id ? entityLights.get(id) : undefined
+      // Backwards-compatible scripting API: enable an additional shadow caster
+      // instead of replacing the sun or the other spotlights.
+      if (!id) { shadowSpotSettings.clear(); return }
+      const light = entityLights.get(id)
+      if (light && light.coneAngle > 0)
+        shadowSpotSettings.set(id, {...shadowSpotSettings.get(id), light, pinned: true, priority: shadowSpotSettings.get(id)?.priority ?? 0})
     },
     setLightGel(id: string, textureAssetId: string | null) {
       const light = entityLights.get(id)
@@ -2205,7 +2802,10 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
         ;(light as any).gel = undefined
         return
       }
-      if (light.coneAngle > 0) (r as any).shadowLight = light
+      // A gel needs the spotlight's projection even if castShadow was not
+      // explicitly enabled in the original scene.
+      if (light.coneAngle > 0 && !shadowSpotSettings.has(id))
+        shadowSpotSettings.set(id, {light, priority: 0})
       const p = texture(textureAssetId)
       if (p) {
         void p.then((t) => {
@@ -2264,11 +2864,13 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       }
     },
     setEntityMaterial(id: string, materialAssetId: string) {
+      releaseBatchMember(id)
       const objs = renderables.get(id)
       if (!objs) return
       for (const obj of objs) material(obj, materialAssetId)
     },
     setEntityColor(id: string, hex: string, opacity?: number) {
+      releaseBatchMember(id)
       const objs = renderables.get(id)
       if (!objs) return
       for (const obj of objs) {
@@ -2277,15 +2879,18 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       }
     },
     setEntityEmissive(id: string, hex: string, intensity = 1) {
+      releaseBatchMember(id)
       const objs = renderables.get(id)
       if (!objs) return
       for (const obj of objs) {
+        restoreBakedObject(obj)
         obj.emissive = Math.max(0, intensity)
         obj.emissiveMapColor = color(hex)
         if (intensity > 0 && !obj.emissiveMap) obj.emissiveMap = d.whiteTexture()
       }
     },
     setEntityShader(id: string, shaderAssetId: string | null) {
+      releaseBatchMember(id)
       const objs = renderables.get(id)
       if (!objs) return
       if (!shaderAssetId) {
@@ -2350,19 +2955,23 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       grid.pos3D.y = height
     },
     setEntityActive(id: string, on: boolean) {
-      const n = objects.get(id)
-      if (n) n.visible = on
+      const n=objects.get(id)
+      if (n) {
+        const release=(node: SceneNode)=>{releaseBatchMember(node.id);for(const child of node.children)release(child)}
+        release(n)
+        n.visible=on
+      }
     },
     pick(x: number, y: number) {
       sync()
-      const hit = d.pick(d.vec2(x, y), (o) => o === grid || (o === skyDome || skyCube.includes(o as L.EngineObject3D)) || hidden(o))
+      const hit = d.pick(d.vec2(x, y), (o) => o === grid || (o === skyDome || skyCube.includes(o as L.EngineObject3D)) || hidden(o, true))
       return hit && owner(hit.object)?.id
     },
     screenToGround(x: number, y: number, planeY = 0): Vec3 {
       sync()
       const w = Math.max(1, container.clientWidth),
         h = Math.max(1, container.clientHeight)
-      const hit = d.pick(d.vec2(x, y), (o) => o === grid || (o === skyDome || skyCube.includes(o as L.EngineObject3D)) || hidden(o))
+      const hit = d.pick(d.vec2(x, y), (o) => o === grid || (o === skyDome || skyCube.includes(o as L.EngineObject3D)) || hidden(o, true))
       if (hit && 'point' in hit && (hit as any).point) {
         const pt = (hit as any).point
         return [Math.round(pt.x * 100) / 100, Math.round(pt.y * 100) / 100, Math.round(pt.z * 100) / 100]
@@ -2492,7 +3101,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       const dec = decals.get(id)
       if (!dec) return
       dec.opacity = Math.max(0, Math.min(1, opacity))
-      dec.obj.color.a = dec.opacity
+      dec.obj.color.a = dec.opacity * dec.materialOpacity
     },
     worldToScreen(pos: Vec3 | Vector3): { x: number; y: number; visible: boolean; depth: number } {
       const w = Math.max(1, container.clientWidth)
@@ -2557,7 +3166,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       sync()
       const hit = d.pick(
         new d.Ray3D(v(origin), v(dir).normalize()),
-        (o) => o === grid || (o === skyDome || skyCube.includes(o as L.EngineObject3D)) || hidden(o),
+        (o) => o === grid || (o === skyDome || skyCube.includes(o as L.EngineObject3D)) || hidden(o, true),
       )
       return hit && hit.distance <= max ? owner(hit.object)?.id : undefined
     },
@@ -2619,10 +3228,12 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       if (m) m.animationPlaying = false
     },
     resumeAnimation: (id: string) => {
+      releaseBatchMember(id)
       const m = players.get(id)
       if (m && m.animation) m.animationPlaying = true
     },
     setAnimationTime: (id: string, time: number) => {
+      releaseBatchMember(id)
       const m = players.get(id) as any
       if (m && typeof m.setAnimationTime === 'function') m.setAnimationTime(Math.max(0, time))
     },
@@ -2671,6 +3282,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       }
     },
     setEntityLiveCanvasTexture(id: string, canvas: HTMLCanvasElement): boolean {
+      releaseBatchMember(id)
       const player = players.get(id) as any
       if (!player) return false
       const parts: L.EngineObject3D[] = player.parts || []
@@ -2694,6 +3306,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       if (disposed) return
       disposed = true
       clear()
+      projectedDecalPass.dispose()
       post.dispose()
       d.dispose()
     },

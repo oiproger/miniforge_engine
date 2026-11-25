@@ -16,7 +16,7 @@
 - **Animation State Machine**: визуальный граф переходов (`Idle -> Walk -> Run -> Jump`) с панорамированием и зумом, параметрами (`float`/`bool`/`trigger`), `api.animation.setParam / setTrigger / playState / getCurrentState` и нодами Event Graph.
 - **Отдельная кисть Prop / Foliage Scatter Brush**: вынесена рядом с плашками Transform/Snap, открывается в правой панели вместо инспектора и работает как по **Terrain**, так и по **любым 3D-мешам** с авто-батчингом (`staticBatch`).
 - **Единый Input, Gamepad & Touch Manager**: переназначение клавиш, мыши, геймпадов (W3C Gamepad API) и сенсорных контролов в одном окне, а также перспективный вид по умолчанию.
-- **Мультиплеер и Steamworks SDK**: локальный Split-Screen (2–4 игрока), WebSocket (`server/relay-server.mjs`), WebRTC P2P и Steam P2P + лобби (`AppID 480` + авто-экспорт `steam_appid.txt`), компонент `Network Sync` с дельта-синхронизацией произвольных полей (`Sync Keys`), Net Debugger с запуском **Host + Client** в 1 клик, **12 стартовых шаблонов** и **11 примеров**.
+- **Мультиплеер и Steam API (нативный SDK ещё не подключён)**: локальный Split-Screen (2–4 игрока), WebSocket (`server/relay-server.mjs`), WebRTC P2P и Steam P2P + лобби (`AppID 480` + авто-экспорт `steam_appid.txt`), компонент `Network Sync` с дельта-синхронизацией произвольных полей (`Sync Keys`), Net Debugger с запуском **Host + Client** в 1 клик, **12 стартовых шаблонов** и **13 примеров**.
 
 ## Что внутри
 

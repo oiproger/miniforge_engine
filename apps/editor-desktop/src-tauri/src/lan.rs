@@ -159,125 +159,158 @@ fn encode_ws_text(text: &str) -> Vec<u8> {
     frame
 }
 
-fn read_ws_frame(stream: &mut TcpStream) -> Option<String> {
-    let mut header = [0u8; 2];
-    stream.read_exact(&mut header).ok()?;
-    let opcode = header[0] & 0x0f;
-    if opcode == 0x8 {
-        return None;
-    }
-    let masked = (header[1] & 0x80) != 0;
-    let mut len = (header[1] & 0x7f) as usize;
-    if len == 126 {
-        let mut ext = [0u8; 2];
-        stream.read_exact(&mut ext).ok()?;
-        len = u16::from_be_bytes(ext) as usize;
-    } else if len == 127 {
-        let mut ext = [0u8; 8];
-        stream.read_exact(&mut ext).ok()?;
-        len = u64::from_be_bytes(ext) as usize;
-    }
-    if len > 2 * 1024 * 1024 {
-        return None;
-    }
-    let mut mask = [0u8; 4];
-    if masked {
-        stream.read_exact(&mut mask).ok()?;
-    }
-    let mut data = vec![0u8; len];
-    stream.read_exact(&mut data).ok()?;
-    if masked {
-        for (i, b) in data.iter_mut().enumerate() {
-            *b ^= mask[i % 4];
-        }
-    }
-    if opcode == 0x9 {
-        let _ = stream.write_all(&[0x8a, 0x00]);
-        return Some(String::new());
-    }
-    if opcode != 0x1 {
-        return Some(String::new());
-    }
-    String::from_utf8(data).ok()
-}
-
-type ClientMap = Arc<Mutex<HashMap<usize, TcpStream>>>;
-
-fn handle_client(mut stream: TcpStream, id: usize, clients: ClientMap, running: Arc<AtomicBool>) {
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
-    let mut req_buf = [0u8; 4096];
-    let n = match stream.read(&mut req_buf) {
-        Ok(n) if n > 0 => n,
-        _ => return,
-    };
-    let req_str = String::from_utf8_lossy(&req_buf[..n]);
-    let key = req_str.lines().find_map(|line| {
-        let mut parts = line.splitn(2, ':');
-        let k = parts.next()?.trim();
-        let v = parts.next()?.trim();
-        if k.eq_ignore_ascii_case("Sec-WebSocket-Key") {
-            Some(v.to_string())
-        } else {
-            None
-        }
-    });
-    let Some(ws_key) = key else { return };
-    let accept_src = format!("{}258EAFA5-E914-47DA-95CA-C5AB0DC85B11", ws_key);
-    let accept = base64_encode(&sha1(accept_src.as_bytes()));
-    let resp = format!(
-        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {}\r\n\r\n",
-        accept
-    );
-    if stream.write_all(resp.as_bytes()).is_err() {
-        return;
-    }
-
-    if let Ok(cloned) = stream.try_clone() {
-        if let Ok(mut map) = clients.lock() {
-            map.insert(id, cloned);
-        }
-    }
-
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
-    while running.load(Ordering::Relaxed) {
-        match read_ws_frame(&mut stream) {
-            Some(msg) => {
-                if msg.is_empty() {
+/// Parse one RFC6455 frame from a buffered TCP stream. Retains incomplete
+/// frames across socket read timeouts instead of desynchronizing the stream.
+fn read_ws_frame(stream: &mut TcpStream, buffer: &mut Vec<u8>) -> Result<Option<String>, ()> {
+    loop {
+        if buffer.len() >= 2 {
+            let first = buffer[0];
+            let opcode = first & 0x0f;
+            if first & 0x80 == 0 || buffer[1] & 0x80 == 0 { return Err(()); }
+            if !matches!(opcode, 1 | 8 | 9 | 10) { return Err(()); }
+            let mut len = (buffer[1] & 0x7f) as usize;
+            let mut offset = 2;
+            if len == 126 {
+                if buffer.len() < 4 { /* need more data */ }
+                else { len = u16::from_be_bytes([buffer[2], buffer[3]]) as usize; offset = 4; }
+            } else if len == 127 {
+                if buffer.len() < 10 { /* need more data */ }
+                else {
+                    let bytes: [u8; 8] = buffer[2..10].try_into().map_err(|_| ())?;
+                    let wide = u64::from_be_bytes(bytes);
+                    if wide > 256 * 1024 { return Err(()); }
+                    len = wide as usize;
+                    offset = 10;
+                }
+            }
+            if len > 256 * 1024 || matches!(opcode, 8 | 9 | 10) && len > 125 { return Err(()); }
+            let header_ready = (buffer[1] & 0x7f) < 126 || (buffer[1] & 0x7f) == 126 && buffer.len() >= 4 || buffer.len() >= 10;
+            if header_ready && buffer.len() >= offset + 4 + len {
+                let mask = [buffer[offset], buffer[offset+1], buffer[offset+2], buffer[offset+3]];
+                let mut bytes = buffer[offset+4..offset+4+len].to_vec();
+                buffer.drain(..offset+4+len);
+                for (i, byte) in bytes.iter_mut().enumerate() { *byte ^= mask[i % 4]; }
+                if opcode == 8 { return Err(()); }
+                if opcode == 9 {
+                    let mut pong = Vec::with_capacity(bytes.len() + 2);
+                    pong.extend_from_slice(&[0x8a, bytes.len() as u8]);
+                    pong.extend_from_slice(&bytes);
+                    let _ = stream.write_all(&pong);
                     continue;
                 }
-                let frame = encode_ws_text(&msg);
-                if let Ok(mut map) = clients.lock() {
-                    let mut dead = Vec::new();
-                    for (&cid, sock) in map.iter_mut() {
-                        if cid == id {
-                            continue;
-                        }
-                        if sock.write_all(&frame).is_err() {
-                            dead.push(cid);
-                        }
-                    }
-                    for d in dead {
-                        map.remove(&d);
-                    }
-                }
+                if opcode == 10 { continue; }
+                return String::from_utf8(bytes).map(Some).map_err(|_| ());
             }
-            None => {
-                let mut peek = [0u8; 1];
-                match stream.peek(&mut peek) {
-                    Err(ref e)
-                        if e.kind() == std::io::ErrorKind::WouldBlock
-                            || e.kind() == std::io::ErrorKind::TimedOut =>
-                    {
-                        continue
-                    }
-                    _ => break,
-                }
+        }
+        if buffer.len() > 256 * 1024 + 32 { return Err(()); }
+        let mut chunk = [0u8; 8192];
+        match stream.read(&mut chunk) {
+            Ok(0) => return Err(()),
+            Ok(n) => buffer.extend_from_slice(&chunk[..n]),
+            Err(ref err) if matches!(err.kind(), std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock) => return Ok(None),
+            Err(_) => return Err(()),
+        }
+    }
+}
+
+struct ClientEntry {
+    socket: TcpStream,
+    peer_id: String,
+    room: String,
+    name: String,
+}
+type ClientMap = Arc<Mutex<HashMap<usize, ClientEntry>>>;
+fn valid_id(s: &str, max: usize) -> bool {
+    !s.is_empty() && s.len() <= max && s.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b':'))
+}
+fn broadcast_to_room(map: &mut HashMap<usize, ClientEntry>, room: &str, message: &str, exclude: usize, to: Option<&str>) {
+    let frame = encode_ws_text(message);
+    for (id, peer) in map.iter_mut() {
+        if *id != exclude && peer.room == room && (to.is_none() || to == Some(peer.peer_id.as_str())) {
+            let _ = peer.socket.write_all(&frame);
+        }
+    }
+}
+fn send_roster(map: &mut HashMap<usize, ClientEntry>, room: &str) {
+    let members: Vec<serde_json::Value> = map.values().filter(|c| c.room == room).map(|c| serde_json::json!({"id": c.peer_id, "name": c.name})).collect();
+    let ids: Vec<String> = map.values().filter(|c| c.room == room).map(|c| c.peer_id.clone()).collect();
+    let pkt = serde_json::json!({"type":"peer-list","from":"server","room":room,"ts":0,"payload":{"peers":ids,"members":members}}).to_string();
+    broadcast_to_room(map, room, &pkt, usize::MAX, None);
+}
+fn remove_client(id: usize, clients: &ClientMap) {
+    if let Ok(mut map) = clients.lock() {
+        if let Some(removed) = map.remove(&id) {
+            if !removed.room.is_empty() {
+                let message = serde_json::json!({"type":"leave","from":removed.peer_id,"room":removed.room,"ts":0}).to_string();
+                broadcast_to_room(&mut map, &removed.room, &message, id, None);
+                send_roster(&mut map, &removed.room);
             }
         }
     }
-    if let Ok(mut map) = clients.lock() {
-        map.remove(&id);
+}
+fn handle_client(mut stream: TcpStream, id: usize, clients: ClientMap, running: Arc<AtomicBool>) {
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(3)));
+    let mut req_buf = Vec::<u8>::new();
+    while !req_buf.windows(4).any(|w| w == b"\r\n\r\n") {
+        if req_buf.len() > 8192 { return; }
+        let mut chunk = [0u8; 2048];
+        match stream.read(&mut chunk) { Ok(n) if n > 0 => req_buf.extend_from_slice(&chunk[..n]), _ => return }
     }
+    let end = match req_buf.windows(4).position(|w| w == b"\r\n\r\n") { Some(n) => n + 4, None => return };
+    let request = String::from_utf8_lossy(&req_buf[..end]);
+    if !request.starts_with("GET ") || !request.to_ascii_lowercase().contains("upgrade: websocket") { return; }
+    let key = request.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        if name.eq_ignore_ascii_case("Sec-WebSocket-Key") { Some(value.trim().to_string()) } else { None }
+    });
+    let Some(ws_key) = key else { return };
+    if ws_key.len() != 24 || !ws_key.ends_with("==") { return; }
+    let accept = base64_encode(&sha1(format!("{}258EAFA5-E914-47DA-95CA-C5AB0DC85B11", ws_key).as_bytes()));
+    let response = format!("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {}\r\n\r\n", accept);
+    if stream.write_all(response.as_bytes()).is_err() { return; }
+    if let Ok(cloned) = stream.try_clone() {
+        let _ = cloned.set_write_timeout(Some(Duration::from_millis(300)));
+        if let Ok(mut map) = clients.lock() {
+            map.insert(id, ClientEntry { socket: cloned, peer_id: String::new(), room: String::new(), name: String::new() });
+        }
+    }
+    let mut frame_buffer = req_buf[end..].to_vec();
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(350)));
+    let mut rate_started = std::time::Instant::now();
+    let mut rate_count = 0u32;
+    while running.load(Ordering::Relaxed) {
+        let msg = match read_ws_frame(&mut stream, &mut frame_buffer) {
+            Ok(Some(msg)) => msg,
+            Ok(None) => continue,
+            Err(_) => break,
+        };
+        if rate_started.elapsed() >= Duration::from_secs(1) { rate_started = std::time::Instant::now(); rate_count = 0; }
+        rate_count += 1;
+        if rate_count > 180 { break; }
+        let Ok(pkt) = serde_json::from_str::<serde_json::Value>(&msg) else { break };
+        let Some(ty) = pkt.get("type").and_then(|v| v.as_str()) else { break };
+        let from = pkt.get("from").and_then(|v| v.as_str()).unwrap_or("");
+        let room = pkt.get("room").and_then(|v| v.as_str()).unwrap_or("");
+        if let Ok(mut map) = clients.lock() {
+            if ty == "join" {
+                if !valid_id(from, 100) || !valid_id(room, 80) || map.get(&id).is_some_and(|c| !c.room.is_empty()) || map.values().any(|c| c.room == room && c.peer_id == from) { break; }
+                if map.values().filter(|c| c.room == room).count() >= 32 { break; }
+                let name = pkt.pointer("/payload/name").and_then(|v| v.as_str()).unwrap_or(from).chars().take(60).collect::<String>();
+                if let Some(client) = map.get_mut(&id) { client.peer_id = from.into(); client.room = room.into(); client.name = name; }
+                let announced = serde_json::json!({"type":"join","from":from,"room":room,"ts":0,"payload":{"name":map.get(&id).map(|c| c.name.as_str()).unwrap_or(from),"webrtc":pkt.pointer("/payload/webrtc").and_then(|v| v.as_bool()).unwrap_or(false)}}).to_string();
+                broadcast_to_room(&mut map, room, &announced, id, None);
+                send_roster(&mut map, room);
+                continue;
+            }
+            let registered = map.get(&id).is_some_and(|c| !c.room.is_empty() && c.peer_id == from && c.room == room);
+            if !registered || !matches!(ty, "leave" | "ping" | "pong" | "rpc" | "snapshot" | "world-state" | "chat" | "signal") { break; }
+            if ty == "leave" { break; }
+            let to = pkt.get("to").and_then(|v| v.as_str());
+            let outgoing = pkt.to_string();
+            broadcast_to_room(&mut map, room, &outgoing, id, to);
+        } else { break; }
+    }
+    remove_client(id, &clients);
 }
 
 #[command]

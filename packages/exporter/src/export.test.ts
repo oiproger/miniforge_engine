@@ -42,3 +42,17 @@ test('rejects corrupt archives and TypeScript syntax errors', async () => {
   p.scenes[0].entities.push(e)
   await expect(buildGame(p, 'web', async () => '')).rejects.toThrow(/bad.ts/)
 })
+
+test('export retains a material referenced only by a 3D decal', async () => {
+  const project = makeProject('Decal Materials')
+  const material = { id: 'decal-material', name: 'Puddle', type: 'material' as const, data: '',
+    properties: { color: '#556677', roughness: 0.2, metalness: 0.8 } }
+  project.assets.push(material)
+  const decal = makeEntity('Puddle decal')
+  decal.components = [{ type: 'decal', material: material.id, projection: 'surface', projectionDepth: 0.6 }]
+  project.scenes[0].entities.push(decal)
+  const result = await buildGame(project, 'web', async file => '// fixture: ' + file)
+  const zip = unzipSync(new Uint8Array(await result.blob.arrayBuffer()))
+  const config = JSON.parse(strFromU8(zip['project.json']))
+  expect(config.assets.map((a: { id: string }) => a.id)).toContain(material.id)
+})

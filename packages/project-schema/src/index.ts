@@ -755,6 +755,7 @@ export interface SteamAchievementDef {
 }
 export interface SteamSettings {
   enabled: boolean
+  localDebug?: boolean
   appId: number
   cloudSaves?: boolean
   richPresence?: string

@@ -10,6 +10,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+serde_json = "1"
 rfd = { version = "0.15", optional = true, default-features = false, features = ["gtk3"] }
 
 [features]

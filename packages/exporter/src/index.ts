@@ -196,13 +196,32 @@ export async function previewGame(project: Project, frame: HTMLIFrameElement) {
     /* storage unavailable */
   }
   const values = new Map(progress)
+  // Steam LOCAL DEBUG is carried across sandboxed opaque-origin previews by
+  // the trusted editor window. Never grant iframe same-origin privileges.
+  const steamCfg = project.settings.steam
+  const steamAppId = Number(steamCfg?.appId || 480)
+  const steamDebug = Boolean(steamCfg?.enabled && steamCfg?.localDebug)
+  let steamBus: BroadcastChannel | null = null
+  if (steamDebug && typeof BroadcastChannel !== 'undefined') {
+    try { steamBus = new BroadcastChannel(`miniforge-editor-steam-debug:${steamAppId}`) } catch {}
+  }
+  if (steamBus) steamBus.onmessage = event => {
+    const message = event.data
+    if (!message || message.__miniforgeSteam !== true || message.appId !== steamAppId ||
+        (message.channel !== 'lobbies' && message.channel !== 'p2p')) return
+    frame.contentWindow?.postMessage(message, '*')
+  }
   const onMessage = (event: MessageEvent) => {
-    if (
-      event.source !== frame.contentWindow ||
-      event.origin !== 'null' ||
-      event.data?.type !== 'miniforge:progress'
-    )
+    if (event.source !== frame.contentWindow || event.origin !== 'null') return
+    if (steamDebug && event.data?.__miniforgeSteam === true &&
+        event.data?.appId === steamAppId &&
+        (event.data.channel === 'lobbies' || event.data.channel === 'p2p')) {
+      // The source window is verified above. Do not re-broadcast responses
+      // received from the editor: only frames can originate this path.
+      try { steamBus?.postMessage(event.data) } catch {}
       return
+    }
+    if (event.data?.type !== 'miniforge:progress') return
     if (typeof event.data.key !== 'string' || event.data.key.length > 256) return
     try {
       const next = new Map(values).set(event.data.key, event.data.value)
@@ -210,9 +229,7 @@ export async function previewGame(project: Project, frame: HTMLIFrameElement) {
       if (json.length > 256 * 1024) return
       localStorage.setItem(key, json)
       values.set(event.data.key, event.data.value)
-    } catch {
-      /* storage unavailable */
-    }
+    } catch { /* storage unavailable */ }
   }
   window.addEventListener('message', onMessage)
   frame.setAttribute('sandbox', 'allow-scripts allow-pointer-lock')
@@ -228,6 +245,7 @@ export async function previewGame(project: Project, frame: HTMLIFrameElement) {
     '</script></body></html>'
   return () => {
     window.removeEventListener('message', onMessage)
+    try { steamBus?.close() } catch {}
     frame.removeAttribute('srcdoc')
   }
 }

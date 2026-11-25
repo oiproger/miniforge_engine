@@ -10,11 +10,15 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "node packages/graphics/device.mjs && vitest run",
+    "test:gi": "vitest run tests/baked-gi.test.mjs",
     "test:e2e": "playwright test",
     "export:demo": "pnpm prepare:runtime && tsx packages/exporter/cli.ts",
     "desktop:editor": "node apps/editor-desktop/build.mjs editor",
     "desktop:game": "node apps/editor-desktop/build.mjs game",
-    "build:site": "node scripts/build-site.mjs"
+    "build:site": "node scripts/build-site.mjs",
+    "test:network": "node --experimental-strip-types --test tests/network-steam.check.mjs tests/steam-preview-bridge.check.mjs",
+    "test:examples": "node --test tests/network-examples.check.mjs",
+    "test:network-sync": "node --experimental-strip-types --test tests/network-sync-fields.check.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",

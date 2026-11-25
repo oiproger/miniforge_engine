@@ -92,13 +92,40 @@ const COMPONENT_CATALOG: ComponentMeta[] = [
   { type: 'audio', name: 'Audio Source', category: 'Audio', desc: '3D spatial or ambient sound emitter', icon: AudioLines, keywords: 'sound music sfx hrtf' },
   { type: 'animation', name: 'Animation Player', category: 'Animation', desc: 'Play glTF skeletal / transform clips', icon: Film, keywords: 'clip gltf keyframe' },
   { type: 'navZone', name: 'NavGrid Zone', category: 'Navigation', desc: 'Bakeable A* pathfinding grid + Off-Mesh Links', icon: Compass, keywords: 'navmesh pathfinding astar npc walk' },
-  { type: 'networkSync', name: 'Network Sync', category: 'Logic', desc: 'Synchronize Transform, Animation & WorldState over multiplayer', icon: Wifi, keywords: 'multiplayer network sync rpc webrtc websocket' },
+  { type: 'networkSync', name: 'Network Sync', category: 'Logic', desc: 'Replicate transforms, visibility, lifecycle and selected component/property fields', icon: Wifi, keywords: 'multiplayer network sync rpc webrtc websocket' },
   { type: 'navAgent', name: 'Nav Agent (NPC)', category: 'Navigation', desc: 'Autonomous A* steering + walk/idle crossfade', icon: Route, keywords: 'npc ai pathfinding follow move' },
   { type: 'sprite', name: 'Legacy Sprite', category: 'Effects', desc: 'Simple 3D sprite quad', icon: Square, keywords: '2d quad' },
 ]
 const names: Record<string, string> = Object.fromEntries(COMPONENT_CATALOG.map((c) => [c.type, c.name]))
 const icons: Record<string, typeof Box> = Object.fromEntries(COMPONENT_CATALOG.map((c) => [c.type, c.icon]))
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+const networkFieldOptions = (entity?: { properties: Record<string, any>; components: Component[] }): string[] => {
+  if (!entity) return []
+  const result: string[] = []
+  const omit = new Set(['__proto__', 'prototype', 'constructor', 'type', 'id', 'enabled', 'asset', 'code', 'data', 'script', 'shader'])
+  const valid = (key: string) => /^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/.test(key) && !omit.has(key)
+  const visit = (value: unknown, prefix: string, depth: number) => {
+    if (result.length >= 100) return
+    if (depth > 0) result.push(prefix)
+    if (depth >= 3 || !value || Array.isArray(value) || typeof value !== 'object') return
+    for (const [key, child] of Object.entries(value)) {
+      if (valid(key)) visit(child, prefix + '.' + key, depth + 1)
+    }
+  }
+  visit(entity.properties || {}, 'properties', 0)
+  const seen = new Map<string, number>()
+  for (const c of entity.components) {
+    if (['networkSync', 'script', 'eventGraph', 'rule'].includes(c.type)) continue
+    const idx = seen.get(c.type) || 0
+    seen.set(c.type, idx + 1)
+    for (const [key, value] of Object.entries(c)) {
+      if (!valid(key)) continue
+      const prefix = `components.${c.type}${idx ? `[${idx}]` : ''}.${key}`
+      visit(value, prefix, 1)
+    }
+  }
+  return result
+}
 export function AssetSelect({
   assets,
   type,
@@ -335,6 +362,7 @@ export function Inspector({
           opacity: 0.82,
           fresnelPower: 2.6,
           foamAmount: 0.35,
+          reflectionStrength: 0.75, reflectionSharpness: 256,
         })
         break
       case 'bakeZone':
@@ -344,7 +372,7 @@ export function Inspector({
           lightBounce: 0.65,
           bakeReflections: true,
           reflectionMode: 'baked',
-          reflectionResolution: 128,
+          reflectionResolution: 256,
           updateInterval: 4,
         })
         break
@@ -458,10 +486,13 @@ export function Inspector({
         Object.assign(item, {
           owner: 'host',
           syncTransform: true,
+          syncActive: true,
+          syncLifecycle: false,
           syncAnimation: true,
           syncVariables: false,
           interpolate: true,
-          syncKeys: 'hp, ammo',
+          syncKeys: '',
+          syncPaths: '',
         })
         break
       case 'navAgent':
@@ -564,6 +595,8 @@ export function Inspector({
               {num('Opacity', 'opacity', 0.82, 0.05, 1, 0.05)}
               {num('Fresnel power', 'fresnelPower', 2.6, 0.5, 8, 0.1)}
               {num('Foam amount', 'foamAmount', 0.35, 0, 1, 0.05)}
+              {num('Reflection strength', 'reflectionStrength', 0.75, 0, 1, 0.05)}
+              {num('Reflection sharpness', 'reflectionSharpness', 256, 8, 1024, 16)}
             </>
           )}
           {c.type === 'bakeZone' && (
@@ -594,7 +627,7 @@ export function Inspector({
                 <input type="checkbox" checked={c.bakeReflections !== false} onChange={(e) => prop('bakeReflections', e.target.checked)} />
               </Field>
               {select('Reflection mode', ['baked', 'realtime'], c.reflectionMode ?? 'baked', (v) => prop('reflectionMode', v))}
-              {select('Cubemap size', ['64', '128', '256'], String(c.reflectionResolution ?? 128), (v) => prop('reflectionResolution', Number(v)))}
+              {select('Cubemap size', ['64', '128', '256', '512'], String(c.reflectionResolution ?? 128), (v) => prop('reflectionResolution', Number(v)))}
               {c.reflectionMode === 'realtime' && num('Update every N frames', 'updateInterval', 4, 1, 60, 1)}
               <button
                 type="button"
@@ -724,9 +757,77 @@ export function Inspector({
         )}
         {c.type === 'decal' && (
           <>
-            <Field label="Texture">
-              <AssetSelect label="Decal texture" assets={project.assets} type="texture" value={c.texture || ''} change={(id) => prop('texture', id)} />
+            <Field label="Projection mode">
+              <select
+                aria-label="Decal projection mode"
+                value={c.projection ?? 'surface'}
+                onChange={(e) => prop('projection', e.target.value)}
+              >
+                <option value="surface">Surface Projection (GPU / depth)</option>
+                <option value="plane">Plane (flat quad)</option>
+              </select>
             </Field>
+            {(c.projection ?? 'surface') === 'surface' && (
+              <>
+                {num('Projection depth', 'projectionDepth', 0.6, 0.01, 50, 0.05)}
+                {num('Minimum surface facing', 'projectionFacing', 0.2, 0, 0.95, 0.05)}
+                <Field label="Dark background transparent">
+                  <input type="checkbox" checked={Boolean(c.darkBackgroundTransparent)} onChange={(e) => prop('darkBackgroundTransparent', e.target.checked)} />
+                </Field>
+                {c.darkBackgroundTransparent && num('Dark pixel threshold', 'darkThreshold', 0.08, 0, 0.95, 0.02)}
+                <small className="mf-muted" style={{ display: 'block', marginBottom: 8 }}>
+                  Project the material onto visible surfaces using the scene depth buffer — no overlay polygons.
+                  The volume extends half the depth on each side. Aim the local Z axis into the target surface.
+                  Transparent surfaces without depth are not receivers. Use a texture with an alpha channel to avoid a solid rectangle.
+                </small>
+              </>
+            )}
+            {link('Material', 'material', 'material')}
+            {mat?.type === 'material' && (
+              <>
+                <MaterialPreview p={project} a={mat} compact />
+                <button className="mf-secondary" type="button" onClick={() => onEditAsset?.(mat.id)}>
+                  <SlidersHorizontal size={12} /> Edit decal material <ChevronRight size={12} />
+                </button>
+              </>
+            )}
+            {!c.material && (
+              <button
+                className="mf-secondary"
+                type="button"
+                onClick={() => {
+                  const id = uid('asset')
+                  edit((p) => {
+                    p.assets.push({
+                      id,
+                      name: (entity?.name || 'Decal') + ' material',
+                      type: 'material',
+                      data: '',
+                      properties: { color: '#ffffff', opacity: 1, roughness: 0.85, metalness: 0 },
+                    })
+                    const target = getScene(p).entities.find((e) => e.id === entityId)
+                    if (target?.components[i]) target.components[i].material = id
+                  })
+                  onEditAsset?.(id)
+                }}
+              >
+                <Plus size={12} /> Create decal material
+              </button>
+            )}
+            <Field label={c.material ? 'Texture override (optional)' : 'Texture'}>
+              <AssetSelect
+                label="Decal texture override"
+                assets={project.assets}
+                type="texture"
+                value={c.texture || ''}
+                change={(id) => prop('texture', id)}
+              />
+            </Field>
+            {c.material && c.texture && (
+              <small style={{ display: 'block', marginBottom: 8 }}>
+                The texture override replaces the material’s base map. Clear it to use the material’s own texture.
+              </small>
+            )}
             <Field label="Tint color">
               <Color label="Decal color" value={c.color || '#ffffff'} change={(v) => prop('color', v)} />
             </Field>
@@ -739,9 +840,11 @@ export function Inspector({
             <Field label="Opacity">
               <Numeric label="Decal opacity" value={c.opacity ?? 0.9} min={0} max={1} step={0.05} change={(n) => prop('opacity', n)} />
             </Field>
-            <Field label="Normal offset">
-              <Numeric label="Normal offset" value={c.normalOffset ?? 0.008} min={0.001} max={0.2} step={0.002} change={(n) => prop('normalOffset', n)} />
-            </Field>
+            {(c.projection ?? 'surface') === 'plane' && (
+              <Field label="Plane offset">
+                <Numeric label="Plane offset" value={c.normalOffset ?? 0.008} min={0.001} max={0.2} step={0.002} change={(n) => prop('normalOffset', n)} />
+              </Field>
+            )}
             <Field label="Blend mode">
               <select value={c.blendMode || 'alpha'} onChange={(e) => prop('blendMode', e.target.value)}>
                 <option value="alpha">Alpha (Standard)</option>
@@ -907,6 +1010,12 @@ export function Inspector({
             <Field label="Sync Transform">
               <input type="checkbox" checked={c.syncTransform !== false} onChange={(e) => prop('syncTransform', e.target.checked)} />
             </Field>
+            <Field label="Sync Active / Visibility">
+              <input type="checkbox" checked={Boolean(c.syncActive)} onChange={(e) => prop('syncActive', e.target.checked)} />
+            </Field>
+            <Field label="Sync Spawn / Despawn">
+              <input type="checkbox" checked={Boolean(c.syncLifecycle)} onChange={(e) => prop('syncLifecycle', e.target.checked)} />
+            </Field>
             <Field label="Sync Animation">
               <input type="checkbox" checked={Boolean(c.syncAnimation)} onChange={(e) => prop('syncAnimation', e.target.checked)} />
             </Field>
@@ -916,13 +1025,26 @@ export function Inspector({
             <Field label="Interpolate">
               <input type="checkbox" checked={c.interpolate !== false} onChange={(e) => prop('interpolate', e.target.checked)} />
             </Field>
-            <Field label="Sync Keys (comma)">
-              <input
-                value={String(c.syncKeys ?? '')}
-                placeholder="hp, ammo, stamina"
-                onChange={(e) => prop('syncKeys', e.target.value)}
+            <Field label="Sync Paths (comma-separated)">
+              <textarea
+                rows={3}
+                value={String(c.syncPaths ?? '')}
+                placeholder="properties.hp, components.light.intensity, components.behavior.params.speed"
+                onChange={(e) => prop('syncPaths', e.target.value)}
               />
+              <small>Declarative fields only. Nested paths: properties.*, components.TYPE.field, components.TYPE[1].field. Changes replicate at the network tick; custom render parameters may require a script to apply them.</small>
+              <select value="" aria-label="Add Network Sync field" onChange={(e) => {
+                if (!e.target.value) return
+                const paths = String(c.syncPaths || '').split(',').map((v: string) => v.trim()).filter(Boolean)
+                if (!paths.includes(e.target.value)) prop('syncPaths', [...paths, e.target.value].join(', '))
+              }}>
+                <option value="">+ Add entity field…</option>
+                {networkFieldOptions(entity).map(path => <option key={path} value={path}>{path}</option>)}
+              </select>
             </Field>
+            {Boolean(c.syncKeys) && <Field label="Legacy Sync Keys (properties)">
+              <input value={String(c.syncKeys || '')} placeholder="hp, ammo" onChange={(e) => prop('syncKeys', e.target.value)} />
+            </Field>}
           </>
         )}
         {(c.type === 'animation' || c.type === 'sprite') && (
@@ -1004,14 +1126,24 @@ export function Inspector({
                   )}
                 </>
               )}
-              {c.kind === 'spot' && (
+              {(c.kind === 'spot' || c.kind === 'point') && (
                 <>
-                  {num('Cone angle (rad)', 'angle', 0.6, 0.05, 1.5, 0.05)}
-                  {num('Cone softness', 'coneSoftness', 0.25, 0, 1, 0.05)}
+                  {c.kind === 'spot' && num('Cone angle (rad)', 'angle', 0.6, 0.05, 1.5, 0.05)}
+                  {c.kind === 'spot' && num('Cone softness', 'coneSoftness', 0.25, 0, 1, 0.05)}
                   <Field label="Cast shadow (active)">
                     <input type="checkbox" checked={Boolean(c.castShadow)} onChange={(e) => prop('castShadow', e.target.checked)} />
                   </Field>
-                  <Field label="Gel texture (Gobo)">
+                  {c.castShadow && (
+                    <>
+                      <Field label="Pin shadow slot">
+                        <input type="checkbox" checked={Boolean(c.shadowPinned)} onChange={(e) => prop('shadowPinned', e.target.checked)} />
+                      </Field>
+                      {num('Shadow priority adjustment', 'shadowPriority', 0, -40, 40, 1)}
+                      {select('Shadow resolution', ['inherit', 'low', 'medium', 'high'],
+                        c.shadowResolution || 'inherit', (v) => prop('shadowResolution', v))}
+                    </>
+                  )}
+                  {c.kind === 'spot' && <Field label="Gel texture (Gobo)">
                     <AssetSelect
                       label="Gel texture (Gobo)"
                       assets={project.assets}
@@ -1019,7 +1151,7 @@ export function Inspector({
                       value={c.gel || ''}
                       change={(id) => patch(i, { gel: id, castShadow: id ? true : c.castShadow })}
                     />
-                  </Field>
+                  </Field>}
                 </>
               )}
             </>

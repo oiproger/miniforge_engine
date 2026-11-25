@@ -1,8 +1,8 @@
 {
   "version": 1,
   "id": "example-multiplayer-arena",
-  "name": "Multiplayer Arena 3D",
-  "description": "Online multiplayer 3D arena with auto-spawned remote player avatars, NetworkSync (transform + hp/score), RPC pulses, and live network HUD. Test instantly via Multiplayer & Net Debugger -> Launch Host + Client.",
+  "name": "Multiplayer Arena 3D (WebSocket)",
+  "description": "Authoritative room admission over WebSocket relay, NetworkSync player proxies and HP, RPC pulses, peer join/leave, reconnect state and a truthful status HUD. Use Multiplayer Studio > Launch Host + Client for explicit local preview; exported builds require a running relay. Energy Beacon uses host-authoritative Network Sync active state: clients request pickup; host verifies position, awards score and replicates the disappearance, including late joiners.",
   "activeScene": "scene-main",
   "scenes": [
     {
@@ -185,9 +185,10 @@
               "owner": "local",
               "syncTransform": true,
               "syncAnimation": true,
-              "syncVariables": true,
+              "syncVariables": false,
               "interpolate": true,
-              "syncKeys": "hp, score"
+              "syncKeys": "hp, score",
+              "syncPaths": "properties.hp, properties.score"
             },
             {
               "type": "script",
@@ -371,6 +372,15 @@
                 "value": 1,
                 "radius": 0.9
               }
+            },
+            {
+              "type": "networkSync",
+              "owner": "host",
+              "syncTransform": false,
+              "syncAnimation": false,
+              "syncActive": true,
+              "syncLifecycle": true,
+              "syncPaths": ""
             }
           ],
           "properties": {
@@ -736,10 +746,10 @@
     },
     {
       "id": "script-mp-arena",
-      "name": "MultiplayerArena.ts",
+      "name": "MultiplayerArenaWebSocket.ts",
       "type": "script",
       "properties": {},
-      "data": "export default function createBehavior(api) {\n  let hudEl = null\n  let pulses = 0\n  let hp = 100\n  let remoteHp = {}\n  let lastBanner = \"\"\n  let bannerTimer = 0\n  let spaceWasDown = false\n  let interactWasDown = false\n  let positioned = false\n\n  function updateHud() {\n    if (!hudEl) return\n    const st = api.net.getStats()\n    const role = st.isHost ? \"HOST\" : \"CLIENT\"\n    const roleColor = st.isHost ? \"#38bdf8\" : \"#f59e0b\"\n    const status = st.connected ? \"ONLINE\" : \"CONNECTING...\"\n    const peerHpStr = Object.entries(remoteHp).map(([id, val]) => \"Peer \" + id.slice(-4) + \": \" + val + \" HP\").join(\" · \")\n    hudEl.innerHTML = `\n      <div style=\"display:flex;align-items:center;gap:8px;margin-bottom:4px\">\n        <span style=\"background:${roleColor};color:#090d16;font-weight:700;padding:1px 6px;border-radius:4px;font-size:11px\">${role}</span>\n        <span style=\"color:#e2e8f0;font-weight:600\">${status}</span>\n        <span style=\"color:#94a3b8;margin-left:auto\">${st.rttMs} ms</span>\n      </div>\n      <div style=\"color:#cbd5e1;font-size:12px\">Players: <b style=\"color:#fff\">${st.peerCount}</b> · Your HP: <b style=\"color:#4ade80\">${hp}</b> · Pulses: <b style=\"color:#fbbf24\">${pulses}</b></div>\n      ${peerHpStr ? `<div style=\"color:#f59e0b;font-size:11px;margin-top:2px\">${peerHpStr}</div>` : \"\"}\n      <div style=\"color:#94a3b8;font-size:11px;margin-top:4px\">WASD Move · Space RPC · E (-10 HP sync)</div>\n      ${bannerTimer > 0 ? `<div style=\"margin-top:6px;padding:4px 6px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.45);border-radius:4px;color:#7dd3fc;font-size:11px\">${lastBanner}</div>` : \"\"}\n    `\n  }\n\n  return {\n    onStart() {\n      api.net.setEntityVar(api.entity.id, \"hp\", hp)\n      api.net.setEntityVar(api.entity.id, \"score\", 0)\n      hudEl = document.createElement(\"div\")\n      hudEl.style.cssText = \"position:fixed;top:12px;right:12px;z-index:20;min-width:230px;padding:10px 12px;border-radius:8px;background:rgba(15,23,42,0.82);border:1px solid rgba(148,163,184,0.28);font-family:system-ui,sans-serif;font-size:12px;pointer-events:none;backdrop-filter:blur(6px);\"\n      document.body.appendChild(hudEl)\n\n      api.events.on(\"net.entityVarChanged\", (ev) => {\n        if (ev && ev.key === \"hp\" && ev.peerId && ev.peerId !== api.net.peerId()) {\n          remoteHp[ev.peerId] = ev.value\n          updateHud()\n        }\n      })\n      api.net.onRpc(\"arena:pulse\", (payload, sender) => {\n        pulses++\n        api.vars.score = pulses\n        api.net.setEntityVar(api.entity.id, \"score\", pulses)\n        const tag = sender === api.net.peerId() ? \"You\" : \"Peer \" + String(sender).slice(-4)\n        lastBanner = \"RPC Pulse from \" + tag + \"!\"\n        bannerTimer = 2.0\n        updateHud()\n      })\n      api.net.onPeerJoin((pid) => {\n        lastBanner = \"Player joined (\" + String(pid).slice(-4) + \")\"\n        bannerTimer = 2.5\n        updateHud()\n      })\n      api.net.onPeerLeave((pid) => {\n        delete remoteHp[pid]\n        lastBanner = \"Player left (\" + String(pid).slice(-4) + \")\"\n        bannerTimer = 2.5\n        updateHud()\n      })\n      updateHud()\n    },\n    onUpdate(dt) {\n      if (!positioned && api.net.getStats().connected) {\n        positioned = true\n        const x = api.net.isHost() ? -2.0 : 2.0\n        api.transform.position.set(x, 0.8, 2.0)\n      }\n      if (bannerTimer > 0) bannerTimer = Math.max(0, bannerTimer - dt)\n      const jumpDown = api.input.pressed(\"Jump\")\n      if (jumpDown && !spaceWasDown) {\n        const p = api.transform.position\n        api.net.rpc(\"arena:pulse\", { pos: [p.x, p.y, p.z] }, \"all\")\n      }\n      spaceWasDown = jumpDown\n      const interactDown = api.input.pressed(\"Interact\")\n      if (interactDown && !interactWasDown) {\n        hp = hp <= 10 ? 100 : hp - 10\n        api.net.setEntityVar(api.entity.id, \"hp\", hp)\n      }\n      interactWasDown = interactDown\n      updateHud()\n    },\n    onDestroy() {\n      if (hudEl && hudEl.parentNode) hudEl.parentNode.removeChild(hudEl)\n      hudEl = null\n    },\n  }\n}\n"
+      "data": "export default function createBehavior(api) {\n  let hudEl = null\n  let pulses = 0\n  let hp = 100\n  let remoteHp = {}\n  let lastBanner = ''\n  let bannerTimer = 0\n  let spaceWasDown = false\n  let interactWasDown = false\n  let positioned = false\n  let uiElapsed = 0\n  const unsubscribers = []\n\n  const escapeHtml = value => String(value).replace(/[&<>\"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', \"'\":'&#39;'}[ch]))\n\n  function banner(text, duration = 2.5) {\n    lastBanner = text\n    bannerTimer = duration\n    uiElapsed = 1\n  }\n\n  function updateHud() {\n    if (!hudEl) return\n    const st = api.net.getStats()\n    const role = st.isHost ? 'HOST' : 'CLIENT'\n    const roleColor = st.isHost ? '#38bdf8' : '#f59e0b'\n    const online = st.connected\n    const peers = Object.entries(remoteHp).map(([id, val]) => 'Peer ' + escapeHtml(id.slice(-4)) + ': ' + escapeHtml(val) + ' HP').join(' · ')\n    const cfg = api.project.settings.multiplayer || {}\n    // The exported project connects to a REAL relay. The editor's Host + Client preview\n    // explicitly overrides the URL to 'local' for a two-iframe BroadcastChannel test.\n    const transport = st.mode === 'client-server-ws' ? (cfg.serverUrl || 'no relay') : st.mode\n    hudEl.innerHTML = `\n      <div style=\"display:flex;gap:8px;align-items:center;margin-bottom:5px\">\n        <strong style=\"background:${roleColor};color:#101827;padding:2px 6px;border-radius:4px\">${role}</strong>\n        <strong style=\"color:${online ? '#4ade80' : '#fca5a5'}\">${online ? 'CONNECTED' : 'DISCONNECTED'}</strong>\n        <span style=\"margin-left:auto;color:#94a3b8\">${st.rttMs} ms</span>\n      </div>\n      <div>Room: <b>${escapeHtml(st.room)}</b> · Players: <b>${st.peerCount}</b></div>\n      <div>You: ${escapeHtml(st.peerId.slice(-8))} · HP: <b>${hp}</b> · Beacon score: <b>${Number(api.vars.score || 0)}</b> · RPC pulses: <b>${pulses}</b></div>\n      ${peers ? `<div style=\"color:#f59e0b\">${peers}</div>` : ''}\n      <div style=\"color:#94a3b8\">WASD move · Space RPC pulse · E update synced HP</div>\n      ${!online ? `<div style=\"color:#fca5a5\">${escapeHtml(st.lastError || 'Waiting for room admission')}</div>` : ''}\n      <div style=\"color:#64748b;font-size:10px\">Configured transport: ${escapeHtml(transport)}</div>\n      ${bannerTimer > 0 ? `<div style=\"color:#7dd3fc;margin-top:5px\">${escapeHtml(lastBanner)}</div>` : ''}\n    `\n  }\n\n  return {\n    onStart() {\n      hp = Number(api.entity.properties?.hp) || 100\n      api.net.setEntityVar(api.entity.id, 'hp', hp)\n      api.net.setEntityVar(api.entity.id, 'score', 0)\n      hudEl = document.createElement('div')\n      hudEl.style.cssText = 'position:fixed;top:12px;right:12px;z-index:20;max-width:340px;min-width:250px;padding:10px 12px;border-radius:8px;background:rgba(15,23,42,.88);border:1px solid #334155;color:#e2e8f0;font:12px/1.65 system-ui,sans-serif;pointer-events:none;white-space:normal;'\n      document.body.appendChild(hudEl)\n\n      unsubscribers.push(api.events.on('net.entityVarChanged', (ev) => {\n        if (ev?.key === 'hp' && ev.peerId && ev.peerId !== api.net.peerId()) {\n          remoteHp[ev.peerId] = ev.value\n          uiElapsed = 1\n        }\n      }))\n      unsubscribers.push(api.net.onRpc('arena:pulse', (_payload, sender) => {\n        pulses++\n        api.vars.score = pulses\n        // Keep local score local; only the owning player broadcasts its NetworkSync vars.\n        api.net.setEntityVar(api.entity.id, 'score', pulses)\n        banner('RPC pulse from ' + (sender === api.net.peerId() ? 'you' : 'peer ' + String(sender).slice(-4)))\n      }))\n      unsubscribers.push(api.net.onPeerJoin(pid => banner('Player joined: ' + String(pid).slice(-4))))\n      unsubscribers.push(api.net.onPeerLeave(pid => {\n        delete remoteHp[pid]\n        banner('Player left: ' + String(pid).slice(-4))\n      }))\n      updateHud()\n    },\n    onUpdate(dt) {\n      const st = api.net.getStats()\n      if (!positioned && st.connected) {\n        positioned = true\n        api.transform.position.set(st.isHost ? -2 : 2, 0.8, 2)\n      }\n      bannerTimer = Math.max(0, bannerTimer - dt)\n      // Do not send RPCs before server room admission; NetManager intentionally\n      // runs local 'all' handlers even when offline.\n      const spaceDown = api.input.pressed('Jump')\n      if (spaceDown && !spaceWasDown && st.connected) {\n        const p = api.transform.position\n        api.net.rpc('arena:pulse', { pos: [p.x, p.y, p.z] }, 'all')\n      }\n      spaceWasDown = spaceDown\n      const interactDown = api.input.pressed('Interact')\n      if (interactDown && !interactWasDown && st.connected) {\n        hp = hp <= 10 ? 100 : hp - 10\n        api.net.setEntityVar(api.entity.id, 'hp', hp)\n        banner('Local HP is now ' + hp)\n      }\n      interactWasDown = interactDown\n      uiElapsed += dt\n      if (uiElapsed > 0.2) { uiElapsed = 0; updateHud() }\n    },\n    onDestroy() {\n      for (const unsubscribe of unsubscribers.splice(0)) {\n        if (typeof unsubscribe === 'function') unsubscribe()\n      }\n      hudEl?.remove()\n      hudEl = null\n    },\n  }\n}"
     }
   ],
   "ui": [
@@ -791,7 +801,7 @@
     "multiplayer": {
       "mode": "client-server-ws",
       "maxPlayers": 4,
-      "serverUrl": "local",
+      "serverUrl": "ws://127.0.0.1:8765",
       "roomCode": "arena-1",
       "tickRate": 20,
       "interpolationDelayMs": 60,
@@ -801,18 +811,13 @@
       "lanPort": 8765
     },
     "steam": {
-      "enabled": true,
+      "enabled": false,
+      "localDebug": false,
       "appId": 480,
-      "cloudSaves": true,
-      "richPresence": "In Multiplayer Arena",
+      "cloudSaves": false,
+      "richPresence": "",
       "lobbyMaxMembers": 4,
-      "achievements": [
-        {
-          "id": "ACH_FIRST_MATCH",
-          "name": "Arena Contender",
-          "description": "Join your first multiplayer match"
-        }
-      ]
+      "achievements": []
     }
   }
 }

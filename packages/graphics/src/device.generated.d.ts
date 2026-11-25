@@ -21,8 +21,11 @@ type Library = Pick<
 export interface Device extends Library {
   r: L.Render3DPlugin
   canvas: HTMLCanvasElement
+  gl: WebGL2RenderingContext | null
+  InstancedMesh3D: typeof L.InstancedMesh3D
+  objectWorldMatrix(obj: L.EngineObject3D): Float32Array
   checkShader(vertex: string, fragment: string): void
-  triangles(): number
+  triangles(hidden?: (o: L.EngineObject) => boolean): number
   whiteTexture(): L.TextureInfo
   setWhiteSprite(obj: L.EngineObject3D): void
   setTexture(obj: L.EngineObject3D, texture: L.TextureInfo): void
