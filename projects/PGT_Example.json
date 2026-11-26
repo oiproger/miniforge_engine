@@ -1240,16 +1240,6 @@
       "visible": true
     },
     {
-      "id": "screen-41752949-ac69-41ec-a427-078aacf54cd8-control-0",
-      "type": "text",
-      "text": "Phone",
-      "screen": "screen-41752949-ac69-41ec-a427-078aacf54cd8",
-      "x": 0,
-      "y": -10,
-      "anchor": "center",
-      "fontSize": 26
-    },
-    {
       "id": "screen-41752949-ac69-41ec-a427-078aacf54cd8-control-1",
       "type": "button",
       "text": "‹",
@@ -1295,6 +1285,22 @@
       "color": "#ffffff",
       "fontSize": 18,
       "visible": true
+    },
+    {
+      "id": "ui-e05e8cde-6bcc-4b72-9b54-b09039edd5aa",
+      "screen": "screen-41752949-ac69-41ec-a427-078aacf54cd8",
+      "type": "html",
+      "text": "",
+      "x": 17.31,
+      "y": 11.26,
+      "anchor": "top-left",
+      "color": "#ffffff",
+      "fontSize": 18,
+      "visible": true,
+      "width": 64,
+      "height": 65,
+      "interactive": true,
+      "asset": "asset-c0f11f6f-98a1-46a3-8504-b7843a57ad6c"
     }
   ],
   "locales": {
