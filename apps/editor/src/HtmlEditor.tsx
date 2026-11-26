@@ -4,7 +4,7 @@ import type { editor } from 'monaco-editor/esm/vs/editor/editor.api.js'
 import CodeEditor from './CodeEditor'
 import { widgetLanguages, widgetSnippets, type WidgetTab } from './widgetStudioLanguage'
 import { HTML_WIDGET_TEMPLATES, type Asset } from '../../../packages/project-schema/src'
-import { buildHtmlWidgetSrcdoc } from '../../../packages/runtime/src/overlay'
+import { buildHtmlWidgetSrcdoc, HTML_WIDGET_GAME_ACTIONS } from '../../../packages/runtime/src/overlay'
 
 interface EventLogEntry {
   id: number
@@ -62,13 +62,19 @@ export default function HtmlEditor({
       if (ev.source !== iframeRef.current?.contentWindow || !d?.__mfHtml || d.frameId !== frameId) return
       if (!['emit', 'action', 'setVar', 'console'].includes(d.kind)) return
       const now = new Date().toLocaleTimeString('en-GB', { hour12: false })
+      const name = d.payload?.name
+      const builtinAction = d.kind === 'action' && HTML_WIDGET_GAME_ACTIONS.some((action) => action === name)
+      // Game emits custom events back to mounted widgets. Preview mirrors that bus locally.
+      if (typeof name === 'string' && name && (d.kind === 'emit' || (d.kind === 'action' && !builtinAction))) {
+        iframeRef.current?.contentWindow?.postMessage({ __mfToHtml: true, name, data: d.payload.data }, '*')
+      }
       let title = String(d.kind)
       let detail = ''
       if (d.kind === 'emit') {
         title = `emit("${d.payload?.name || ''}")`
         detail = d.payload?.data !== undefined ? JSON.stringify(d.payload.data) : ''
       } else if (d.kind === 'action') {
-        title = `action("${d.payload?.name || ''}")`
+        title = `action("${name || ''}")${builtinAction ? ' · game only' : ''}`
         detail = d.payload?.data !== undefined ? JSON.stringify(d.payload.data) : ''
       } else if (d.kind === 'setVar') {
         title = `setVar("${d.payload?.key || ''}")`
@@ -236,7 +242,7 @@ export default function HtmlEditor({
           <div className="mf-html-logs">
             {!logs.length ? (
               <div className="mf-html-log-empty">
-                Widget events and JavaScript messages appear here.
+                Events are replayed to the widget. Game navigation actions are logged here.
               </div>
             ) : (
               logs.map((entry) => (

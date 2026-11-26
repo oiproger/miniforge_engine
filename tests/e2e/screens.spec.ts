@@ -13,17 +13,21 @@ test('authored HUD navigates windows and sends held input through the real overl
     import {Input} from './packages/runtime/src/input'
     const project=makeProject('Inventory test')
     project.screens=[{id:'menu',name:'Start',phase:'menu'},{id:'bag',name:'Bag',phase:'window'},{id:'shop',name:'Shop',phase:'window'}]
+    project.assets=[{id:'phone', name:'Phone', type:'html',
+      data: '<button data-event="phone.openIcon" data-payload=\\'{"icon":"messages"}\\'>Messages</button><button data-action="close">Close phone</button><output></output>',
+      properties:{js:'miniforge.on("phone.openIcon", data => { document.querySelector("output").textContent = data.icon })'}}]
     const button=(id,text,screen,action,target,x,y)=>({id,type:'button',text,screen,action,target,x,y})
     project.ui=[button('start','Enter vault','menu','play',null,10,10),button('inv','Inventory',undefined,'open','bag',10,20),
       button('jump','Jump',undefined,'input','Jump',20,40),button('store','Shop','bag','open','shop',10,10),
       {id:'bag-grid',type:'container',screen:'shop',x:10,y:40,width:40,height:22,cellWidth:80,rowHeight:42,itemsVariable:'wares'},
+      {id:'phone-widget',type:'html',asset:'phone',screen:'bag',x:40,y:40,width:45,height:20},
       {id:'blinking',type:'label',screen:'bag',text:'Marker',x:60,y:20},
       {id:'grid-label',type:'text',text:'Stock',parentId:'bag-grid',screen:'shop',x:0,y:0},
       button('back','Previous','shop','back',null,20,20),button('exit','Exit','shop','close',null,30,30),
       {id:'gold',text:'Gold',screen:'bag',type:'counter',variable:'gold',anchor:'bottom-right',x:4,y:8}]
     const signal=new AbortController()
     window.edges=[];const input=new Input(signal.signal,()=>overlay.back(),(name,down)=>window.edges.push([name,down]))
-    const actions={ play:()=>overlay.render('playing',3,42,7,'en',true),pause:()=>overlay.render('paused',3,42,7,'en',true),retry(){},reward(){},language(){},emit(){} }
+    const actions={ play:()=>overlay.render('playing',3,42,7,'en',true),pause:()=>overlay.render('paused',3,42,7,'en',true),retry(){},reward(){},language(){},emit(name,data){overlay.dispatchEvent(name,data)} }
     const overlay=new Overlay(project,actions,input,k=>translate(project,'en',k))
     let frame = 0
     const ui = overlay.scriptAPI(() => undefined)
@@ -76,6 +80,12 @@ test('authored HUD navigates windows and sends held input through the real overl
   await expect(gold).toBeVisible()
   await btn('Shop').click()
   await btn('Exit').click()
+  await expect(btn('Inventory')).toBeVisible()
+  await btn('Inventory').click()
+  const phone = page.frameLocator('[data-ui-id=phone-widget] iframe')
+  await phone.getByRole('button', { name: 'Messages', exact: true }).click()
+  await expect(phone.locator('output')).toHaveText('messages')
+  await phone.getByRole('button', { name: 'Close phone' }).click()
   await expect(btn('Inventory')).toBeVisible()
   const jump = btn('Jump')
   await jump.hover()

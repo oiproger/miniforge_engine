@@ -1,3 +1,4 @@
+import { HTML_WIDGET_GAME_ACTIONS } from '../../../packages/runtime/src/overlay'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import 'monaco-editor/esm/vs/basic-languages/html/html.contribution.js'
 import 'monaco-editor/esm/vs/basic-languages/css/css.contribution.js'
@@ -62,10 +63,10 @@ htmlDefaults.setOptions({
       miniforge: {
         version: 1.1,
         globalAttributes: [
-          { name: 'data-event', description: 'Send a named event to the game when clicked.' },
+          { name: 'data-event', description: 'Emit a named game event on click. The game also broadcasts it to widget listeners.' },
           { name: 'data-payload', description: 'Optional JSON or text payload for data-event.' },
           { name: 'data-action', description: 'Run a built-in UI action when clicked.',
-            values: ['open', 'close', 'back', 'play', 'pause', 'retry'].map((name) => ({ name })) },
+            values: HTML_WIDGET_GAME_ACTIONS.map((name) => ({ name })) },
           { name: 'data-target', description: 'Screen ID for the open action.' },
         ],
       },

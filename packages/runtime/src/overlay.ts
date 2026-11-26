@@ -5,6 +5,7 @@ import type { GameAPI } from './types'
 import type { Input } from './input'
 
 export type Phase = 'menu' | 'playing' | 'paused' | 'results'
+export const HTML_WIDGET_GAME_ACTIONS = ['open', 'close', 'back', 'play', 'pause', 'retry'] as const
 interface Actions {
   play(): void
   pause(): void
@@ -149,7 +150,9 @@ export class Overlay {
       else if (act === 'retry') this.actions.retry()
       else if (act === 'close') this.close()
       else if (act === 'back') this.back()
-      else if (act === 'open' && d.payload.data) this.open(String(d.payload.data))
+      else if (act === 'open') {
+        if (d.payload.data) this.open(String(d.payload.data))
+      }
       else this.actions.emit(act, d.payload.data)
     } else if (d.kind === 'setVar' && d.payload?.key) {
       this.variables[String(d.payload.key)] = d.payload.value

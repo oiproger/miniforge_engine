@@ -34,6 +34,11 @@ test('widget studio completes HTML, CSS and bridge code, previews snippets and s
   await page.keyboard.insertText('Use widget')
   await page.keyboard.press('Tab')
   await expect(code()).toContainText('Use widget')
+  await replaceCode(`<button type="button" data-event="inventory.use" data-payload='{"icon":"messages"}'>
+  Use widget <svg width="16" height="16" viewBox="0 0 16 16"><path d="M0 0h16v16H0z" /></svg>
+</button>
+<button type="button" data-action="close">Close</button>
+<button type="button" data-action="phone.custom" data-target="tasks">Tasks</button>`)
 
   await selectTab('CSS')
   await replaceCode('button {\n  display: gr')
@@ -51,16 +56,24 @@ test('widget studio completes HTML, CSS and bridge code, previews snippets and s
   await expect(suggestion('emit')).toBeVisible()
   await expect(suggestion('setVar')).toBeVisible()
   await page.keyboard.press('Escape')
-  await replaceCode('miniforge.on("studio.test", (data) => console.log(data.text));\n// trailing comment')
+  await replaceCode(`miniforge.on("inventory.use", (data) => console.log("Opened", data.icon));
+miniforge.on("phone.custom", (target) => console.log("Custom action", target));
+miniforge.on("studio.test", (data) => console.log(data.text));
+// trailing comment`)
   await expect(preview.getByRole('button', { name: 'Use widget' })).toHaveCount(0)
   await studio.getByRole('button', { name: 'Run', exact: true }).click()
-  await preview.getByRole('button', { name: 'Use widget' }).click()
+  await preview.getByRole('button', { name: 'Use widget' }).locator('svg path').dispatchEvent('click')
   await expect(studio.getByText('emit("inventory.use")', { exact: true })).toBeVisible()
+  await expect(studio.getByText('Opened messages', { exact: true })).toBeVisible()
+  await preview.getByRole('button', { name: 'Tasks' }).press('Enter')
+  await expect(studio.getByText('Custom action tasks', { exact: true })).toBeVisible()
+  await preview.getByRole('button', { name: 'Close' }).press('Enter')
+  await expect(studio.getByText('action("close") · game only', { exact: true })).toBeVisible()
 
   await studio.getByLabel('Test event name').fill('studio.test')
   await studio.getByLabel('Test event payload (JSON or text)').fill('{"text":"bridge round trip"}')
   await studio.getByRole('button', { name: 'Send', exact: true }).click()
-  await expect(studio.locator('.mf-html-log-row.console')).toContainText('bridge round trip')
+  await expect(studio.getByText('bridge round trip', { exact: true })).toBeVisible()
 
   await studio.getByLabel('Widget template').selectOption('phone')
   await expect(studio.getByRole('button', { name: 'Replace code' })).toBeVisible()
