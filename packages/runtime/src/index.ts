@@ -605,8 +605,7 @@ export async function startGame(
     input,
     (dx, dy) => {
       if (!firstPerson || phase !== 'playing' || ad) return
-      yaw -= dx
-      pitch = Math.min(1.45, Math.max(-1.45, pitch - dy))
+      cameraAPI.setLook(yaw - dx, pitch - dy)
     },
     (clientX, clientY) => {
       if (phase !== 'playing' || ad) return
@@ -1737,6 +1736,7 @@ export async function startGame(
       jumpHeld = false
       if (player) groundY = (player as Actor).object.getWorldPosition(point).y
       if (firstPerson) {
+        cameraAPI.setLook(yaw, pitch)
         world.camera.height = 0
         world.camera.fov = Number((player as Actor | undefined)?.params.fov ?? 70)
         for (const child of player!.object.children) child.visible = false
@@ -1786,10 +1786,10 @@ export async function startGame(
   window.addEventListener(
     'mousemove',
     (e) => {
-      if (!firstPerson || phase !== 'playing' || document.pointerLockElement !== world.renderer.domElement)
-        return
-      yaw -= e.movementX * 0.002
-      pitch = Math.min(1.45, Math.max(-1.45, pitch - e.movementY * 0.002))
+      if (!firstPerson || phase !== 'playing' || busy || ad ||
+          document.pointerLockElement !== world.renderer.domElement) return
+      // Apply look immediately so rendered frames between physics steps use the latest input.
+      cameraAPI.setLook(yaw - e.movementX * 0.002, pitch - e.movementY * 0.002)
     },
     { signal: signal.signal },
   )
@@ -1923,7 +1923,6 @@ export async function startGame(
         if (shakeRemaining === 0) shakeIntensity = 0
       }
       world.camera.position.set(playerPoint.x + sx, playerPoint.y + currentEyeHeight + sy, playerPoint.z)
-      world.camera.rotation.set(pitch, yaw, 0)
     }
     if (runner) {
       world.camera.position.set(playerPoint.x, playerPoint.y + 6, playerPoint.z + 7)
