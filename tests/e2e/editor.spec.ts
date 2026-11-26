@@ -94,6 +94,10 @@ test('Coin Rush preview plays in an isolated frame and native profiles include b
   await expect(frame.locator('output')).toContainText(/Coins\s+1/)
   await page.keyboard.up('KeyW')
   await page.getByRole('button', { name: 'Stop', exact: true }).click()
+  await page.getByRole('button', { name: 'Project', exact: true }).click()
+  await page.getByRole('button', { name: 'Steamworks & Debug Panel', exact: true }).click()
+  await page.getByRole('checkbox', { name: /Enable Steamworks in desktop exports/ }).check()
+  await page.getByRole('button', { name: 'Save Steam Settings', exact: true }).click()
   for (const target of ['linux', 'windows']) {
     await page.getByRole('button', { name: 'Export', exact: true }).click()
     await page.getByLabel('Build profile').selectOption(target)
@@ -106,6 +110,10 @@ test('Coin Rush preview plays in an isolated frame and native profiles include b
     expect(files['game/index.html']).toBeDefined()
     expect(files['src-tauri/Cargo.lock']).toBeDefined()
     expect(files['src-tauri/src/lan.rs']).toBeDefined()
+    expect(strFromU8(files['src-tauri/src/steam.rs'])).toContain('init_relay_network_access')
+    expect(strFromU8(files['steam-depot.mjs'])).toContain('custom-protocol,steamworks')
+    expect(JSON.parse(strFromU8(files['package.json'])).scripts.build).toBe('node steam-depot.mjs')
+    expect(files['steam_appid.txt']).toBeUndefined()
     expect(JSON.parse(strFromU8(files['src-tauri/tauri.conf.json'])).bundle.targets).toEqual([
       target === 'linux' ? 'deb' : 'nsis',
     ])

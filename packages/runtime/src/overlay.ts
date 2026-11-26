@@ -13,6 +13,7 @@ interface Actions {
   reward(): void
   language(): void
   emit(name: string, source?: unknown): void
+  setVariable?(key: string, value: unknown): void
 }
 export const words: Record<string, Record<string, string>> = {
   en: {
@@ -142,7 +143,9 @@ export class Overlay {
     const frame = this.htmlFrames.get(String(d.frameId))
     if (!frame || ev.source !== frame.contentWindow) return
     if (d.kind === 'emit' && d.payload?.name) {
-      this.actions.emit(String(d.payload.name), d.payload.data)
+      const name = String(d.payload.name)
+      this.actions.emit(name, d.payload.data)
+      this.actions.emit('ui.widgetEvent', { widgetId: String(d.frameId), name, payload: d.payload.data })
     } else if (d.kind === 'action' && d.payload?.name) {
       const act = String(d.payload.name)
       if (act === 'play') this.actions.play()
@@ -155,8 +158,11 @@ export class Overlay {
       }
       else this.actions.emit(act, d.payload.data)
     } else if (d.kind === 'setVar' && d.payload?.key) {
-      this.variables[String(d.payload.key)] = d.payload.value
-      this.actions.emit('ui.var.set', { key: d.payload.key, value: d.payload.value })
+      const key = String(d.payload.key)
+      if (['__proto__', 'prototype', 'constructor'].includes(key)) return
+      this.variables[key] = d.payload.value
+      this.actions.setVariable?.(key, d.payload.value)
+      this.actions.emit('ui.var.set', { key, value: d.payload.value, widgetId: String(d.frameId) })
     }
   }
   constructor(
@@ -401,6 +407,7 @@ export class Overlay {
         const value = Number.isFinite(item.value) ? item.value : readVariable(item.variable)
         return typeof value === 'number' && Number.isFinite(value) ? value : undefined
       },
+      sendEvent: (id, name, data) => this.sendWidgetEvent(id, name, data),
       hasWidget: (id) => this.project.ui.some((item) => item.id === id),
       updateWidget: (id, patch) => this.updateWidget(id, patch),
       removeWidget: (id) => this.removeWidget(id),
@@ -772,10 +779,18 @@ export class Overlay {
   performance(text: string) {
     this.stats.textContent = text
   }
-  dispatchEvent(name: string, data?: unknown) {
-    for (const iframe of this.htmlFrames.values()) {
-      try { iframe.contentWindow?.postMessage({ __mfToHtml: true, name, data }, '*') } catch {}
+  private sendWidgetEvent(id: string, name: string, data?: unknown): boolean {
+    const frame = this.htmlFrames.get(id)?.contentWindow
+    if (!frame || !name) return false
+    try {
+      frame.postMessage({ __mfToHtml: true, name, data }, '*')
+      return true
+    } catch {
+      return false
     }
+  }
+  dispatchEvent(name: string, data?: unknown) {
+    for (const id of this.htmlFrames.keys()) this.sendWidgetEvent(id, name, data)
   }
   dispose() {
     window.removeEventListener('message', this.onHtmlMessage)

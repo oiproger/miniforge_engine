@@ -17,9 +17,7 @@ interface ScopeCtx {
 
 const lit = (v: unknown) => JSON.stringify(v === undefined ? null : v)
 
-function safeId(prefix: string, id: string) {
-  return prefix + '_' + id.replace(/[^a-zA-Z0-9_]/g, '_')
-}
+
 
 function genExpr(ctx: ScopeCtx, node: GraphNode, pinId: string, fallback: unknown, depth = 0): string {
   if (depth > 28) return lit(fallback)
@@ -37,7 +35,7 @@ function genExpr(ctx: ScopeCtx, node: GraphNode, pinId: string, fallback: unknow
 
 function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: number): string {
   const g = (p: string, fb: unknown = '') => genExpr(ctx, node, p, fb, depth)
-  const eid = () => `_eid(${g('entity', '')})`
+  const eid = (pin = 'entity') => `_eid(${g(pin, '')})`
 
   switch (node.type) {
     case 'ui.getValue': return `(api.ui.getValue(String(${g('id', '')})) ?? 0)`
@@ -48,14 +46,14 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
       const varId = String(node.config?.varId || node.inputs?.varId || '')
       return `_readVar(${lit(varId)})`
     }
-    case 'var.getHud':
-      return `(api.vars[String(${g('name', '')})] ?? ${g('fallback', 0)})`
-    case 'var.getWorld':
+    case 'vars.get':
+      return `(api.vars[String(${g('key', '')})] ?? ${g('fallback', 0)})`
+    case 'worldState.get':
       return `api.worldState.get(String(${g('key', '')}), ${g('fallback', '')})`
     case 'math.op': {
       const a = `Number(${g('a', 0)}) || 0`
       const b = `Number(${g('b', 0)}) || 0`
-      const op = String(node.inputs?.op ?? '+')
+      const op = String(node.config?.op ?? '+')
       if (op === '+') return `((${a}) + (${b}))`
       if (op === '-') return `((${a}) - (${b}))`
       if (op === '*') return `((${a}) * (${b}))`
@@ -69,11 +67,11 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
     case 'math.clamp':
       return `Math.max(Number(${g('min', 0)}) || 0, Math.min(Number(${g('max', 1)}) || 1, Number(${g('value', 0)}) || 0))`
     case 'math.lerp':
-      return `((a, b, t) => a + (b - a) * t)(Number(${g('a', 0)}) || 0, Number(${g('b', 1)}) || 0, Number(${g('t', 0.5)}) || 0)`
+      return `((a, b, t) => a + (b - a) * t)(Number(${g('a', 0)}) || 0, Number(${g('b', 1)}) || 0, Number(${g('alpha', 0.5)}) || 0)`
     case 'math.random':
       return `((mn, mx) => mn + Math.random() * (mx - mn))(Number(${g('min', 0)}) || 0, Number(${g('max', 1)}) || 1)`
-    case 'math.compare': {
-      const a = g('a', 0), b = g('b', 0), op = String(node.inputs?.op ?? '==')
+    case 'logic.compare': {
+      const a = g('a', 0), b = g('b', 0), op = String(node.config?.op ?? '==')
       if (op === '==') return `(${a} == ${b})`
       if (op === '!=') return `(${a} != ${b})`
       if (op === '>') return `(Number(${a}) > Number(${b}))`
@@ -83,7 +81,7 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
       return `(${a} == ${b})`
     }
     case 'logic.bool': {
-      const a = `Boolean(${g('a', false)})`, b = `Boolean(${g('b', false)})`, op = String(node.inputs?.op ?? 'AND')
+      const a = `Boolean(${g('a', false)})`, b = `Boolean(${g('b', false)})`, op = String(node.config?.op ?? 'AND')
       if (op === 'OR') return `(${a} || ${b})`
       if (op === 'NOT') return `(!${a})`
       if (op === 'XOR') return `(${a} !== ${b})`
@@ -91,7 +89,7 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
     }
     case 'logic.select':
       return `(Boolean(${g('cond', false)}) ? ${g('a', '')} : ${g('b', '')})`
-    case 'string.append':
+    case 'str.concat':
       return `(String(${g('a', '')}) + String(${g('b', '')}))`
     case 'vec3.make':
       return `[Number(${g('x', 0)}) || 0, Number(${g('y', 0)}) || 0, Number(${g('z', 0)}) || 0]`
@@ -102,7 +100,7 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
       return `${v}[2]`
     }
     case 'vec3.math': {
-      const a = `_v3(${g('a', [0, 0, 0])})`, b = `_v3(${g('b', [0, 0, 0])})`, op = String(node.inputs?.op ?? 'add')
+      const a = `_v3(${g('a', [0, 0, 0])})`, b = `_v3(${g('b', [0, 0, 0])})`, op = String(node.config?.op ?? 'add')
       if (pinId === 'distance') return `Math.hypot(${a}[0]-${b}[0], ${a}[1]-${b}[1], ${a}[2]-${b}[2])`
       if (op === 'sub') return `[${a}[0]-${b}[0], ${a}[1]-${b}[1], ${a}[2]-${b}[2]]`
       if (op === 'scale') return `[${a}[0]*${b}[0], ${a}[1]*${b}[1], ${a}[2]*${b}[2]]`
@@ -153,33 +151,35 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
       return `((c, k, fb) => (c && k in c ? c[k] : fb))(${c}, ${prop}, ${g('fallback', '')})`
     }
     case 'entity.getPos':
-      return `((o) => o ? [o.position.x, o.position.y, o.position.z] : [0,0,0])(api.find(${eid()}))`
+      return `((o) => o ? [o.position.x, o.position.y, o.position.z] : [0,0,0])(api.find(${eid('id')}))`
     case 'input.pressed':
       return `api.input.pressed(String(${g('action', 'Interact')}))`
     case 'input.move': {
-      if (pinId === 'x') return `api.input.move().x`
-      if (pinId === 'y') return `api.input.move().y`
-      return `[api.input.move().x, 0, api.input.move().y]`
+      if (pinId === 'x') return 'api.input.move[0]'
+      if (pinId === 'z') return 'api.input.move[1]'
+      return '[api.input.move[0], 0, api.input.move[1]]'
     }
     case 'player.info':
-      return pinId === 'position'
-        ? `(api.player.position ? [...api.player.position] : [0,0,0])`
-        : `(api.player.id || '')`
+      if (pinId === 'position') return '(api.player.position ?? [0,0,0])'
+      if (pinId === 'grounded') return 'api.player.isGrounded'
+      if (pinId === 'sprinting') return 'api.player.isSprinting'
+      return "(api.player.id ?? '')"
     case 'camera.info':
+      if (pinId === 'fov') return 'api.camera.fov'
       return pinId === 'forward'
-        ? `(api.camera.forward ? [...api.camera.forward] : [0,0,-1])`
-        : `(api.camera.position ? [...api.camera.position] : [0,0,0])`
+        ? 'api.camera.forward.toArray()'
+        : 'api.camera.position.toArray()'
     case 'physics.raycast': {
-      const r = `api.physics.raycastHit(_v3(${g('origin', [0, 1, 0])}), _v3(${g('dir', [0, 0, -1])}), Number(${g('maxDist', 20)}) || 20)`
-      if (pinId === 'hit') return `Boolean(${r})`
-      if (pinId === 'entity') return `(${r}?.entityId || '')`
-      if (pinId === 'point') return `(${r}?.point || [0,0,0])`
-      return `(${r}?.distance || 0)`
+      const ray = `api.physics.raycastHit(_v3(${g('origin', [0, 1, 0])}), _v3(${g('direction', [0, -1, 0])}), Number(${g('length', 10)}) || 10, [api.entity.id, ..._ids(${g('exclude', [])})])`
+      if (pinId === 'hit') return `Boolean(${ray})`
+      if (pinId === 'normalAvailable') return `((hit) => Boolean(hit && hit.normalAvailable !== false))(${ray})`
+      const fallback = pinId === 'id' ? "''" : pinId === 'normal' ? '[0,1,0]' : pinId === 'point' ? '[0,0,0]' : '0'
+      return `(${ray}?.[${lit(pinId)}] ?? ${fallback})`
     }
-    case 'anim.getBone':
-      return `(api.animation.getBonePosition(${eid()}, String(${g('bone', '')})) || [0,0,0])`
+    case 'anim.getBonePos':
+      return `(api.animation.getBonePosition(${eid('id')}, String(${g('bone', '')})) || [0,0,0])`
     case 'nav.isMoving':
-      return `api.nav.isAgentMoving(${eid()})`
+      return `api.nav.isAgentMoving(${eid('id')})`
     case 'world.surfaceAt':
       return `(api.terrain.getSurfaceMaterialAt(Number(${g('x', 0)}) || 0, Number(${g('z', 0)}) || 0) || '')`
     case 'array.make':
@@ -216,6 +216,8 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
     }
     case 'quest.getStatus':
       return `api.dialogue.getQuestStatus(String(${g('questId', '')}))`
+    case 'camera.screenToRay':
+      return `api.camera.screenToRay(Number(${g('x', 0)}) || 0, Number(${g('y', 0)}) || 0)[${lit(pinId)}]`
     case 'camera.worldToScreen': {
       const sp = `api.camera.worldToScreen(_v3(${g('position', [0, 0, 0])}))`
       return `(${sp})[${lit(pinId)}]`
@@ -240,7 +242,7 @@ function genFromPin(ctx: ScopeCtx, fromNodeId: string, fromPin: string, indent: 
 
 function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: string, depth: number): string {
   const g = (p: string, fb: unknown = '') => genExpr(ctx, node, p, fb, depth)
-  const eid = () => `_eid(${g('entity', '')})`
+  const eid = (pin = 'entity') => `_eid(${g(pin, '')})`
   const next = (pin = 'exec', extraIndent = indent) => genFromPin(ctx, node.id, pin, extraIndent, depth + 1)
   const v = (p: string) => {
     const name = `_v${++ctx.counter.n}`
@@ -255,13 +257,13 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
   }
   switch (node.type) {
     case 'flow.branch':
-      return `${indent}if (Boolean(${g('condition', false)})) {\n${next('true', indent + '  ')}${indent}} else {\n${next('false', indent + '  ')}${indent}}\n`
+      return `${indent}if (Boolean(${g('condition', true)})) {\n${next('true', indent + '  ')}${indent}} else {\n${next('false', indent + '  ')}${indent}}\n`
     case 'flow.sequence':
       return next('then0') + next('then1') + next('then2')
     case 'flow.forLoop': {
       const idxVar = v('index')
       const endVar = `_end${++ctx.counter.n}`
-      return `${indent}for (let ${idxVar} = Math.floor(Number(${g('start', 0)}) || 0), ${endVar} = Math.floor(Number(${g('end', 5)}) || 0); ${idxVar} < ${endVar}; ${idxVar}++) {\n${next('loopBody', indent + '  ')}${indent}}\n${next('completed')}`
+      return `${indent}for (let ${idxVar} = Math.floor(Number(${g('first', 0)}) || 0), ${endVar} = Math.min(Math.floor(Number(${g('last', 5)}) || 0), ${idxVar} + 500); ${idxVar} <= ${endVar}; ${idxVar}++) {\n${next('body', indent + '  ')}${indent}}\n${next('completed')}`
     }
     case 'array.forEach': {
       const arrVar = `_arr${++ctx.counter.n}`
@@ -271,12 +273,12 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
     }
     case 'flow.delay': {
       const tid = `_t${++ctx.counter.n}`
-      return `${indent}{ const ${tid} = window.setTimeout(() => { _timers.delete(${tid}); if (_dead) return;\n${next('exec', indent + '  ')}${indent}}, Math.max(0, (Number(${g('seconds', 1)}) || 0) * 1000)); _timers.add(${tid}); }\n`
+      return `${indent}{ const ${tid} = window.setTimeout(() => { _timers.delete(${tid}); if (_dead) return;\n${next('completed', indent + '  ')}${indent}}, Math.max(0, (Number(${g('duration', 1)}) || 0) * 1000)); _timers.add(${tid}); }\n`
     }
     case 'flow.doOnce': {
       const key = lit(node.id)
       if (inPin === 'reset') return `${indent}_doOnce.delete(${key});\n`
-      return `${indent}if (!_doOnce.has(${key})) { _doOnce.add(${key});\n${next('exec', indent + '  ')}${indent}}\n`
+      return `${indent}if (!_doOnce.has(${key})) { _doOnce.add(${key});\n${next('completed', indent + '  ')}${indent}}\n`
     }
     case 'flow.flipFlop': {
       const key = lit(node.id)
@@ -290,10 +292,10 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       if (inPin === 'toggle') return `${indent}_gate.set(${key}, !(_gate.get(${key}) ?? true));\n`
       return `${indent}if (_gate.get(${key}) ?? true) {\n${next('exec', indent + '  ')}${indent}}\n`
     }
-    case 'flow.emit':
+    case 'flow.emitEvent':
       return `${indent}api.events.emit(String(${g('eventName', '')}), ${g('payload', null)});\n` + next()
     case 'flow.print':
-      return `${indent}console.log('[EventGraph]', ${g('message', '')});\n` + next()
+      return `${indent}_print(${g('value', '')});\n` + next()
     case 'enum.switch': {
       const sv = `_sw${++ctx.counter.n}`
       const count = Math.max(1, Math.min(16, Number(node.config?.caseCount ?? 4)))
@@ -310,23 +312,23 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       const out = v('value')
       return `${indent}const ${out} = _writeVar(${lit(varId)}, ${g('value', null)});\n` + next()
     }
-    case 'var.setHud':
-      return `${indent}api.vars[String(${g('name', '')})] = ${g('value', 0)};\n` + next()
-    case 'var.setWorld':
+    case 'vars.set':
+      return `${indent}api.vars[String(${g('key', '')})] = ${g('value', 0)};\n` + next()
+    case 'worldState.set':
       return `${indent}api.worldState.set(String(${g('key', '')}), ${g('value', '')});\n` + next()
     case 'entity.setPos':
-      return `${indent}{ const _o = api.find(${eid()}); const _p = _v3(${g('position', [0, 0, 0])}); if (_o) _o.position.set(_p[0], _p[1], _p[2]); }\n` + next()
+      return `${indent}{ const _o = api.find(${eid('id')}); const _p = _v3(${g('position', [0, 0, 0])}); if (_o) _o.position.set(_p[0], _p[1], _p[2]); }\n` + next()
     case 'entity.setRot':
-      return `${indent}{ const _o = api.find(${eid()}); const _r = _v3(${g('rotation', [0, 0, 0])}); if (_o) _o.rotation.set(_r[0]*Math.PI/180, _r[1]*Math.PI/180, _r[2]*Math.PI/180); }\n` + next()
+      return `${indent}{ const _o = api.find(${eid('id')}); const _r = _v3(${g('rotation', [0, 0, 0])}); if (_o) _o.rotation.set(_r[0], _r[1], _r[2]); }\n` + next()
     case 'entity.setActive':
-      return `${indent}api.setActive(${eid()}, Boolean(${g('active', true)}));\n` + next()
+      return `${indent}api.setActive(${eid('id')}, Boolean(${g('active', true)}));\n` + next()
     case 'entity.spawnPrefab': {
-      const out = v('entity')
-      return `${indent}const ${out} = api.spawnPrefab(String(${g('prefabId', '')}), _v3(${g('position', [0, 0, 0])}));\n` + next()
+      const out = v('spawnedId')
+      return `${indent}const ${out} = ((id) => id ? api.spawnPrefab(id, _v3(${g('position', [0, 0, 0])})) : '')(String(${g('assetId', '')}));\n` + next()
     }
     case 'entity.destroy':
-      return `${indent}api.destroy(${eid()});\n` + next()
-    case 'entity.loadScene':
+      return `${indent}api.destroy(${eid('id')});\n` + next()
+    case 'scene.load':
       return `${indent}api.scene.load(String(${g('sceneId', '')}));\n` + next()
     case 'entity.addTag':
       return `${indent}api.addTag(${eid()}, String(${g('tag', '')}));\n` + next()
@@ -368,15 +370,15 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       return `${indent}api.camera.lookAt(_v3(${g('target', [0, 0, 0])}));\n` + next()
     case 'physics.impulse':
       return `${indent}api.physics.applyImpulse(${eid()}, _v3(${g('impulse', [0, 5, 0])}));\n` + next()
-    case 'physics.velocity':
+    case 'physics.setVelocity':
       return `${indent}api.physics.setVelocity(${eid()}, _v3(${g('velocity', [0, 0, 0])}));\n` + next()
     case 'anim.play':
       return `${indent}api.animation.play(${eid()}, String(${g('clip', '')}), Boolean(${g('loop', true)}), Number(${g('speed', 1)}) || 1);\n` + next()
     case 'anim.crossfade':
       return `${indent}api.animation.crossfade(${eid()}, String(${g('clip', '')}), Number(${g('duration', 0.25)}) || 0.25, Boolean(${g('loop', true)}), Number(${g('speed', 1)}) || 1);\n` + next()
-    case 'nav.move':
+    case 'nav.moveAgent':
       return `${indent}api.nav.moveAgent(${eid()}, _v3(${g('goal', [0, 0, 0])}), { speed: Number(${g('speed', 3.2)}) || 3.2 });\n` + next()
-    case 'nav.stop':
+    case 'nav.stopAgent':
       return `${indent}api.nav.stopAgent(${eid()});\n` + next()
     case 'world.setMatColor':
       return `${indent}api.materials.setColor(String(${g('materialId', '')}), String(${g('color', '#ffffff')}));\n` + next()
@@ -443,7 +445,7 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
     case 'audio.setBusVolume':
       return `${indent}api.audio.setBusVolume(String(${g('bus', 'master')}), Number(${g('volume', 1)}) || 0);\n` + next()
     case 'dialogue.start':
-      return `${indent}api.dialogue.start(String(${g('assetId', '')}));\n` + next()
+      return `${indent}{ const _id = String(${g('assetId', '')}); if (_id) api.dialogue.start(_id); }\n` + next()
     case 'dialogue.stop':
       return `${indent}api.dialogue.stop();\n` + next()
     case 'quest.setStatus':
@@ -500,10 +502,10 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       return `${indent}api.touch.setVisible(Boolean(${g('visible', true)}));\n` + next()
     case 'tween.scaleTo':
       return `${indent}{ const _o = api.find(${eid()}); const _to = _v3(${g('target', [1, 1, 1])}); if (_o) { const _d = Math.max(0.01, Number(${g('duration', 0.4)}) || 0.4); const _tw = api.createTween(); _tw.tweenProperty(_o.scale, 'x', _to[0], _d).setTrans('sine').setEase('inOut'); _tw.parallel().tweenProperty(_o.scale, 'y', _to[1], _d).setTrans('sine').setEase('inOut'); _tw.parallel().tweenProperty(_o.scale, 'z', _to[2], _d).setTrans('sine').setEase('inOut'); } }\n` + next()
-    case 'save.save':
-      return `${indent}void api.save.save(String(${g('slot', 'slot1')}));\n` + next()
-    case 'save.load':
-      return `${indent}void api.save.load(String(${g('slot', 'slot1')}));\n` + next()
+    case 'save.saveSlot':
+      return `${indent}void api.saveSystem.save(String(${g('slot', 'autosave')}) || 'autosave');\n` + next()
+    case 'save.loadSlot':
+      return `${indent}void api.saveSystem.load(String(${g('slot', 'autosave')}) || 'autosave');\n` + next()
     case 'ad.show':
       return `${indent}void api.platform.showAd(String(${g('kind', 'interstitial')}));\n` + next()
     default:
@@ -576,10 +578,10 @@ export function compileEventGraphToScript(graph: EventGraphData, assetName: stri
   for (const n of graph.nodes) {
     if (n.type !== 'event.inputAction') continue
     const action = String(n.inputs?.action || 'Interact')
-    const key = safeId('_in', n.id)
+    const key = lit(n.id)
     const pressedBody = genFromPin(makeCtx(), n.id, 'pressed', '        ', 0)
     const releasedBody = genFromPin(makeCtx(), n.id, 'released', '        ', 0)
-    inputPolls += `      { const _dn = api.input.pressed(${lit(action)}); if (_dn !== _inState.${key}) { _inState.${key} = _dn; if (_dn) {\n${pressedBody}      } else {\n${releasedBody}      } } }\n`
+    inputPolls += `      { const _dn = api.input.pressed(${lit(action)}); if (_dn !== (_inState.get(${key}) ?? false)) { _inState.set(${key}, _dn); if (_dn) {\n${pressedBody}      } else {\n${releasedBody}      } } }\n`
   }
 
   const varDefs = graph.variables.map((v) => ({
@@ -602,7 +604,7 @@ export default function (api: any) {
   const _gate = new Map<string, boolean>();
   const _timers = new Set<number>();
   const _unsubs: (() => void)[] = [];
-  const _inState: Record<string, boolean> = {};
+  const _inState = new Map<string, boolean>();
   let _dead = false;
 
   const _readVar = (id: string) => {
@@ -622,6 +624,15 @@ export default function (api: any) {
   };
   const _eid = (raw: any) => String(raw ?? '').trim() || api.entity.id;
   const _v3 = (v: any): [number, number, number] => Array.isArray(v) && v.length >= 3 ? [Number(v[0])||0, Number(v[1])||0, Number(v[2])||0] : [0, 0, 0];
+  const _print = (value: any) => {
+    const line = '[EventGraph:' + api.entity.name + '] ' +
+      (typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value));
+    console.log(line);
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      try { window.parent.postMessage({ type: 'miniforge:log', log: line }, '*'); } catch {}
+    }
+  };
+  const _ids = (v: any) => Array.isArray(v) ? v.map(String) : [];
   const _parseArr = (raw: any) => { try { const p = JSON.parse(String(raw || '[]')); if (Array.isArray(p)) return p; } catch {} return String(raw || '').split(',').map((s: string) => s.trim()).filter(Boolean); };
   const _parseObj = (raw: any) => { try { const p = JSON.parse(String(raw || '{}')); if (p && typeof p === 'object' && !Array.isArray(p)) return p; } catch {} return {}; };
 
@@ -658,12 +669,31 @@ ${emitEvents('event.destroy')}      _dead = true;
 `
 }
 
-/** Rewrite all Event Graph assets and components in a cloned export Project into native TypeScript/JS script assets. */
-export function nativizeProjectEventGraphs(project: Project): number {
+const aotNodeTypes = new Set([
+  'event.start', 'event.update', 'event.fixedUpdate', 'event.triggerEnter', 'event.triggerExit',
+  'event.collision', 'event.click', 'event.custom', 'event.inputAction', 'event.enable', 'event.disable', 'event.destroy',
+  'flow.branch', 'flow.sequence', 'flow.delay', 'flow.doOnce', 'flow.emitEvent', 'flow.print',
+  'var.get', 'var.set', 'vars.get', 'vars.set', 'worldState.get', 'worldState.set',
+  'math.op', 'math.clamp', 'math.lerp', 'math.random', 'logic.compare', 'logic.bool', 'str.concat',
+  'entity.findByName', 'entity.getPos', 'entity.setPos', 'entity.setRot', 'entity.setActive', 'entity.destroy', 'entity.spawnPrefab',
+  'physics.raycast', 'camera.info', 'camera.worldToScreen', 'camera.screenToRay', 'dialogue.start',
+  'ui.getValue', 'ui.hasWidget', 'ui.isWidgetVisible', 'ui.current', 'ui.bindValue', 'ui.setColors',
+  'ui.open', 'ui.close', 'ui.back', 'ui.setHtml', 'ui.setText', 'ui.setVisible',
+  ...UI_WIDGET_ACTIONS.map((action) => action.type),
+])
+
+/** Compile eligible graphs and keep the interpreter for graphs with unsupported nodes. */
+export function nativizeProjectEventGraphs(project: Project, onFallback?: (asset: string, types: string[]) => void): number {
   const graphAssetIds = new Set<string>()
   for (const asset of project.assets) {
     if (asset.type !== 'graph') continue
     const graphData = parseEventGraph(asset.data)
+    const unsupported = [...new Set(graphData.nodes.map((node) => node.type).filter((type) => !aotNodeTypes.has(type)))]
+    if (graphData.functions.length) unsupported.push('graph functions')
+    if (unsupported.length) {
+      onFallback?.(asset.name, unsupported)
+      continue
+    }
     asset.type = 'script'
     asset.data = compileEventGraphToScript(graphData, asset.name)
     asset.name = asset.name.replace(/\.[^.]+$/, '') + '.nativized.ts'

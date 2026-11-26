@@ -262,3 +262,55 @@ test('explicit Steam local debug P2P messages carry sender identity', async () =
     assert.equal(a.getMode(), 'local-debug')
   } finally { a.dispose(); b.dispose() }
 })
+
+test('native Steam IPC refreshes members and sends snapshots to lobby peers', async () => {
+  const previousWindow = globalThis.window
+  const local = '76561198000000001'
+  const remote = '76561198000000002'
+  const lobbyId = '109775240000000001'
+  const lobby = { id: lobbyId, name: 'Relay', ownerId: local, maxMembers: 4, members: [local], type: 'public', data: {}, createdAt: 0 }
+  const calls = []
+  let invite = null
+  globalThis.window = {
+    setInterval, clearInterval,
+    __TAURI__: { core: { invoke: async (command, args) => {
+      calls.push([command, args])
+      switch (command) {
+        case 'steam_init': return { steamId: local, name: 'Host', appId: 480, native: true }
+        case 'steam_create_lobby': return structuredClone(lobby)
+        case 'steam_poll_p2p': {
+          const frame = { packets: [], ...(args.includeLobby ? { lobby: structuredClone(lobby), invite } : {}) }
+          if (args.includeLobby) invite = null
+          return frame
+        }
+        case 'steam_send_p2p': return true
+        case 'steam_has_achievement': return true
+        case 'steam_cloud_list': return ['save.json']
+        case 'steam_leave_lobby': return true
+        default: throw Error(command)
+      }
+    } } },
+  }
+  const steam = new SteamManager()
+  try {
+    await Promise.all([steam.init(480), steam.init(480)])
+    assert.equal(calls.filter(([command]) => command === 'steam_init').length, 1)
+    await steam.createLobby({ name: 'Relay', data: { build: 'test' } })
+    assert.deepEqual(calls.find(([command]) => command === 'steam_create_lobby')[1].data, { build: 'test' })
+    lobby.members.push(remote)
+    lobby.ownerId = remote
+    invite = { lobbyId, friendId: remote }
+    await waitUntil(() => steam.currentLobby?.ownerId === remote && steam.getPendingInvite()?.lobbyId === lobbyId)
+    steam.sendP2P({ type: 'snapshot', payload: [] })
+    assert.deepEqual(calls.find(([command]) => command === 'steam_send_p2p')[1], {
+      to: remote, data: '{"type":"snapshot","payload":[]}', reliable: false,
+    })
+    assert.equal(await steam.queryAchievement('test'), true)
+    assert.deepEqual(await steam.listCloudFiles(), ['save.json'])
+    await steam.leaveLobby()
+    assert.equal(steam.currentLobby, null)
+  } finally {
+    steam.dispose()
+    globalThis.window = previousWindow
+  }
+})

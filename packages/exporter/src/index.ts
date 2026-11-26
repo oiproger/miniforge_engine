@@ -105,8 +105,9 @@ async function prepare(project: Project, preview: boolean, read: RuntimeLoader) 
   if(issues.length)throw new Error(issues.map(i=>i.owner+' · '+i.message).join('\n'))
   const compiled = structuredClone(project)
   compiled.assets = usedAssets(compiled)
+  const graphFallbacks: string[] = []
   const nativizedGraphs = !preview && compiled.settings?.export?.nativizeEventGraphs
-    ? nativizeProjectEventGraphs(compiled)
+    ? nativizeProjectEventGraphs(compiled, (name, types) => graphFallbacks.push(`${name}: ${types.join(', ')}`))
     : 0
   const files: Files = {}
   const modules: Record<string, string> = Object.create(null)
@@ -144,7 +145,7 @@ async function prepare(project: Project, preview: boolean, read: RuntimeLoader) 
     physics = preview ? 'data:text/javascript;charset=utf-8,' + encodeURIComponent(js) : './physics.js'
     if (!preview) files['physics.js'] = strToU8(js)
   }
-  return { config: { project: compiled, modules, physics }, files, assetSizes, nativizedGraphs }
+  return { config: { project: compiled, modules, physics }, files, assetSizes, nativizedGraphs, graphFallbacks }
 }
 
 export async function buildGame(
@@ -153,7 +154,7 @@ export async function buildGame(
   read: RuntimeLoader = loadRuntime,
 ) {
   if (!['web', 'yandex', 'poki'].includes(profile)) throw new Error('Invalid web export profile')
-  const { config, files, assetSizes, nativizedGraphs } = await prepare(project, false, read)
+  const { config, files, assetSizes, nativizedGraphs, graphFallbacks } = await prepare(project, false, read)
   files['index.html'] = strToU8(
     head +
       '<title>' +
@@ -177,9 +178,13 @@ export async function buildGame(
     initialBytes: total,
     groups,
     assetSizes: assetSizes.sort((a, b) => b.bytes - a.bytes),
-    warnings: assetSizes.filter((a) => a.bytes > 1024 * 1024).map((a) => a.name + ' exceeds 1 MiB'),
+    warnings: [
+      ...assetSizes.filter((a) => a.bytes > 1024 * 1024).map((a) => a.name + ' exceeds 1 MiB'),
+      ...graphFallbacks.map((reason) => 'Event Graph kept interpreted · ' + reason),
+    ],
     files: Object.keys(files),
     nativizedGraphs,
+    graphFallbacks,
     path: profile + '/',
   }
   return { files, blob: toBlob(packed, 'application/zip'), report }

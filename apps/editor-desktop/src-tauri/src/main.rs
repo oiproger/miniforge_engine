@@ -2,6 +2,32 @@
 
 mod lan;
 
+#[cfg(feature = "steamworks")]
+mod steam;
+
+macro_rules! game_commands {
+    ($app:expr $(, $command:path)* $(,)?) => {{
+        #[cfg(feature = "steamworks")]
+        let app = $app.invoke_handler(tauri::generate_handler![
+            $($command,)*
+            lan::lan_start_server, lan::lan_stop_server, lan::lan_discover,
+            steam::steam_init, steam::steam_unlock_achievement, steam::steam_clear_achievement,
+            steam::steam_has_achievement, steam::steam_set_rich_presence, steam::steam_clear_rich_presence,
+            steam::steam_cloud_write, steam::steam_cloud_read, steam::steam_cloud_delete, steam::steam_cloud_list,
+            steam::steam_create_lobby, steam::steam_list_lobbies, steam::steam_join_lobby,
+            steam::steam_leave_lobby, steam::steam_set_lobby_data, steam::steam_send_p2p,
+            steam::steam_poll_p2p, steam::steam_relay_status, steam::steam_invite_friends,
+            steam::steam_read_stat, steam::steam_write_stat, steam::steam_is_dlc_installed
+        ]);
+        #[cfg(not(feature = "steamworks"))]
+        let app = $app.invoke_handler(tauri::generate_handler![
+            $($command,)*
+            lan::lan_start_server, lan::lan_stop_server, lan::lan_discover
+        ]);
+        app
+    }};
+}
+
 #[cfg(feature = "editor")]
 #[tauri::command]
 async fn save_bytes(name: String, bytes: Vec<u8>) -> Result<bool, String> {
@@ -202,26 +228,16 @@ mod player_host {
 fn main() {
     let app = tauri::Builder::default();
     #[cfg(feature = "editor")]
-    let app = app.invoke_handler(tauri::generate_handler![
-        save_bytes,
-        pick_project_file,
-        write_project_file,
-        open_project_file,
-        convert_model_to_glb,
-        lan::lan_start_server,
-        lan::lan_stop_server,
-        lan::lan_discover
-    ]);
+    let app = game_commands!(app, save_bytes, pick_project_file, write_project_file,
+        open_project_file, convert_model_to_glb);
+    #[cfg(not(any(feature = "editor", feature = "player")))]
+    let app = game_commands!(app);
     #[cfg(feature = "player")]
     let app = {
         let game_dir = player_host::find_game_dir();
         let game_dir_proto = game_dir.clone();
         let cfg = player_host::load_config(&game_dir);
-        app.invoke_handler(tauri::generate_handler![
-            lan::lan_start_server,
-            lan::lan_stop_server,
-            lan::lan_discover
-        ])
+        game_commands!(app)
         .register_uri_scheme_protocol("mfgame", move |_ctx, req| {
             let raw_path = req.uri().path().trim_start_matches('/');
             let rel = if raw_path.is_empty() { "index.html" } else { raw_path };

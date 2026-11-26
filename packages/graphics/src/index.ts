@@ -2682,6 +2682,23 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
     info.render.triangles = d.triangles(hidden)
   }
   load(initial, sceneId)
+  function pickRay(origin: Vector3, dir: Vector3, max: number, excluded: string[] = []) {
+    const length = Math.hypot(dir.x, dir.y, dir.z)
+    if (!Number.isFinite(length) || length === 0 || max < 0) return undefined
+    const direction = d.vec3(dir.x / length, dir.y / length, dir.z / length)
+    const ray = new d.Ray3D(v(origin), direction)
+    sync()
+    const hit = d.pick(ray, (object) => {
+      const id = owner(object)?.id
+      return !id || excluded.includes(id) || object === grid || object === skyDome
+        || skyCube.includes(object as L.EngineObject3D) || hidden(object, true)
+    })
+    if (!hit || hit.distance > max) return undefined
+    const id = owner(hit.object)?.id
+    if (!id) return undefined
+    const point = ray.getPosition(hit.distance)
+    return { id, distance: hit.distance, point: [point.x, point.y, point.z] as Vec3 }
+  }
   return {
     renderer,
     objects,
@@ -3130,14 +3147,8 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
     projectPoint(p: Vector3) {
       return r.worldToScreen(v(p), d.vec2(container.clientWidth, container.clientHeight))
     },
-    raycast(origin: Vector3, dir: Vector3, max: number) {
-      sync()
-      const hit = d.pick(
-        new d.Ray3D(v(origin), v(dir).normalize()),
-        (o) => o === grid || (o === skyDome || skyCube.includes(o as L.EngineObject3D)) || hidden(o, true),
-      )
-      return hit && hit.distance <= max ? owner(hit.object)?.id : undefined
-    },
+    raycast: (origin: Vector3, dir: Vector3, max: number) => pickRay(origin, dir, max)?.id,
+    raycastHit: pickRay,
     animationClips: (id: string) => players.get(id)?.model.animations.map((a) => a.name) ?? [],
     inspectModel: (id: string) => {
       const player = players.get(id) as any

@@ -130,7 +130,7 @@ export function SteamStudio({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid var(--border)' }}>
                   <input type="checkbox" checked={cfg.enabled} onChange={(e) => patchCfg({ enabled: e.target.checked })} />
-                  <span><strong>Configure Steam features</strong> (requires a native Steamworks adapter; AppID file alone does not enable Steamworks)</span>
+                  <span><strong>Enable Steamworks in desktop exports</strong> (source package with a Steam depot build)</span>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                   <span style={{ color: 'var(--muted)' }}>Steam AppID (480 = Spacewar test app)</span>

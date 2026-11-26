@@ -3,6 +3,8 @@ import manifest from '../../editor-desktop/src-tauri/Cargo.toml?raw'
 import lockfile from '../../editor-desktop/src-tauri/Cargo.lock?raw'
 import main from '../../editor-desktop/src-tauri/src/main.rs?raw'
 import lan from '../../editor-desktop/src-tauri/src/lan.rs?raw'
+import steam from '../../editor-desktop/src-tauri/src/steam.rs?raw'
+import steamDepot from '../../editor-desktop/steam-depot.mjs?raw'
 import buildScript from '../../editor-desktop/src-tauri/build.rs?raw'
 import icon from '../../editor-desktop/src-tauri/icons/icon.png?url'
 import windowsIcon from '../../editor-desktop/src-tauri/icons/icon.ico?url'
@@ -90,6 +92,7 @@ export async function desktopSources(
     ...defaultExportSettings(project),
     ...(project.settings.export || {}),
   }
+  const steamEnabled = Boolean(project.settings.steam?.enabled || project.settings.multiplayer?.mode === 'steam-p2p')
   const safeName = sanitizeFileName(cfg.appName || project.name)
   const web = await buildGame(project, 'web')
 
@@ -122,7 +125,7 @@ export async function desktopSources(
   }
 
   // Mode 1: Instant Executable via prebuilt Export Template binary (no Rust/Xcode/MSVC needed!)
-  if (cfg.desktopMode === 'template') {
+  if (cfg.desktopMode === 'template' && !steamEnabled) {
     const playerBin = await resolveTemplateBinary(platform, cfg, localTemplates?.[platform]?.bytes)
     if (playerBin) {
       const files: Record<string, Uint8Array | [Uint8Array, { os?: number; attrs?: number }]> = {}
@@ -132,9 +135,6 @@ export async function desktopSources(
         const exeName = 'miniforge-player'
         files[`${appRoot}/Contents/MacOS/${exeName}`] = [playerBin, execOpts]
         files[`${appRoot}/Contents/Info.plist`] = strToU8(buildMacInfoPlist(cfg, exeName))
-        if (project.settings.steam?.enabled || project.settings.multiplayer?.mode === 'steam-p2p') {
-          files[`${appRoot}/Contents/MacOS/steam_appid.txt`] = strToU8(`${project.settings.steam?.appId || 480}\n`)
-        }
         if (resolvedIconBytes) {
           files[`${appRoot}/Contents/Resources/icon.png`] = resolvedIconBytes
           files[`${appRoot}/Contents/Resources/game/icon.png`] = resolvedIconBytes
@@ -191,6 +191,7 @@ export async function desktopSources(
     identifier: cfg.identifier || 'dev.miniforge.game.' + project.id.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 55),
     build: { frontendDist: '../game' },
     app: {
+      withGlobalTauri: true,
       windows: [
         {
           label: 'game',
@@ -211,7 +212,9 @@ export async function desktopSources(
   files['game/game.config.json'] = strToU8(gameConfigJson)
 
   const templateNote =
-    cfg.desktopMode === 'template'
+    steamEnabled
+      ? '\nSteamworks export uses source build. npm run build writes executables and SDK redistributables to steam-depot/. Set MINIFORGE_STEAM_TEST_APP_ID for local testing only. Configure the real AppID and upload the depot through SteamPipe.\n'
+      : cfg.desktopMode === 'template'
       ? '\nNOTE: Prebuilt Export Template binary was not found at ' +
         (cfg.templateBaseUrl || 'https://github.com/oiproger/miniforge_engine/releases/latest/download/') +
         ', so a full Tauri source project was generated instead. Upload a prebuilt player binary in Export Settings for 1-second instant executables.\n'
@@ -222,13 +225,15 @@ export async function desktopSources(
     'src-tauri/Cargo.lock': lockfile,
     'src-tauri/src/main.rs': main,
     'src-tauri/src/lan.rs': lan,
+    'src-tauri/src/steam.rs': steam,
+    ...(steamEnabled ? { 'steam-depot.mjs': steamDepot } : {}),
     'src-tauri/build.rs': buildScript,
     'src-tauri/tauri.conf.json': JSON.stringify(config, null, 2),
     'package.json': JSON.stringify(
       {
         name: 'miniforge-game-build',
         private: true,
-        scripts: { build: 'tauri build --bundles ' + bundleTargets.join(',') },
+        scripts: { build: steamEnabled ? 'node steam-depot.mjs' : 'tauri build --bundles ' + bundleTargets.join(',') },
         devDependencies: { '@tauri-apps/cli': '2.12.5' },
       },
       null,
@@ -240,9 +245,9 @@ export async function desktopSources(
         : platform === 'macos'
           ? 'macOS: install Xcode Command Line Tools (xcode-select --install), Rust stable and Node.js.'
           : 'Linux: install Rust stable, Node.js, WebKitGTK 4.1 development headers, librsvg2-dev, libayatana-appindicator3-dev and build-essential.') +
-      '\nRun npm install and npm run build from this directory on the target OS.\nInstaller output: src-tauri/target/release/bundle/' +
-      target +
-      '/' +
+      (steamEnabled
+        ? '\nRun npm run build on the target OS. Steam depot output: steam-depot/.\n'
+        : '\nRun npm install and npm run build from this directory on the target OS.\nInstaller output: src-tauri/target/release/bundle/' + target + '/') +
       templateNote,
   }
   for (const [path, data] of Object.entries(source)) files[path] = strToU8(data)

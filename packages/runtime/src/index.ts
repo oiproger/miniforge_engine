@@ -16,7 +16,7 @@ import { TouchController } from './touch'
 import { Input } from './input'
 import { NetManager, type NetEntitySnapshot } from './net'
 import { readSyncPath, writeSyncPath, safeSyncValue, syncPaths } from './networkSyncFields'
-import { SteamManager } from './steam'
+import { SteamManager, type SteamLobbyInvite } from './steam'
 import { Events, Lifecycle, type ScriptLifecycle } from './lifecycle'
 import { Overlay, translate, type Phase } from './overlay'
 import type {
@@ -133,10 +133,10 @@ export async function startGame(
     best = 0
   const steam = new SteamManager({ localDebug: Boolean(options.preview && (project.settings as any).steam?.localDebug) })
   const steamCfg = (project.settings as any).steam
-  if (steamCfg?.enabled || (project.settings as any).multiplayer?.mode === "steam-p2p") {
-    void steam.init(Number(steamCfg?.appId || 480)).then(() => {
-      if (steamCfg?.richPresence) void steam.setRichPresence("status", String(steamCfg.richPresence))
-    })
+  const steamEnabled = steamCfg?.enabled || project.settings.multiplayer?.mode === 'steam-p2p'
+  const steamReady = steamEnabled ? steam.init(Number(steamCfg?.appId || 480)) : undefined
+  if (steamCfg?.richPresence && steamReady) {
+    void steamReady.then(() => steam.setRichPresence('status', String(steamCfg.richPresence)))
   }
   const steamAPI = {
     init: (appId?: number) => steam.init(appId ?? Number(steamCfg?.appId || 480)),
@@ -148,6 +148,7 @@ export async function startGame(
     unlockAchievement: (id: string) => steam.unlockAchievement(id),
     clearAchievement: (id: string) => steam.clearAchievement(id),
     hasAchievement: (id: string) => steam.hasAchievement(id),
+    queryAchievement: (id: string) => steam.queryAchievement(id),
     listAchievements: () => steam.listAchievements(),
     setRichPresence: (key: string, value: string) => steam.setRichPresence(key, value),
     clearRichPresence: () => steam.clearRichPresence(),
@@ -155,6 +156,15 @@ export async function startGame(
     cloudRead: (filename: string) => steam.cloudRead(filename),
     cloudDelete: (filename: string) => steam.cloudDelete(filename),
     cloudList: () => steam.cloudList(),
+    listCloudFiles: () => steam.listCloudFiles(),
+    relayStatus: () => steam.relayStatus(),
+    inviteFriends: () => steam.inviteFriends(),
+    readStat: (name: string, floatingPoint?: boolean) => steam.readStat(name, floatingPoint),
+    writeStat: (name: string, value: number, floatingPoint?: boolean) => steam.writeStat(name, value, floatingPoint),
+    isDlcInstalled: (appId: number) => steam.isDlcInstalled(appId),
+    getPendingInvite: () => steam.getPendingInvite(),
+    onLobbyInvite: (handler: (invite: SteamLobbyInvite) => void) => steam.onLobbyInvite(handler),
+    onLobbyChanged: (handler: Parameters<SteamManager['onLobbyChanged']>[0]) => steam.onLobbyChanged(handler),
     createLobby: (opts?: any) => steam.createLobby(opts),
     listLobbies: () => steam.listLobbies(),
     joinLobby: (lobbyId: string) => steam.joinLobby(lobbyId),
@@ -163,6 +173,8 @@ export async function startGame(
     getLobby: () => steam.getLobby(),
     getLogs: () => steam.getLogs(),
   }
+  steam.onLobbyInvite((invite) => emit('steam.lobbyInvite', invite))
+  steam.onLobbyChanged((lobby) => emit('steam.lobbyChanged', lobby))
   const net = new NetManager()
   net.attachSteam(steam)
   const mpCfg = (project.settings as any).multiplayer || { mode: "singleplayer" }
@@ -450,6 +462,8 @@ export async function startGame(
     onPeerJoin: (handler: (peerId: string) => void) => net.onPeerJoin(handler),
     onPeerLeave: (handler: (peerId: string) => void) => net.onPeerLeave(handler),
     getPeers: () => net.getPeers(),
+    isConnected: () => net.connected,
+    getLastError: () => net.lastError,
     getStats: () => net.getStats(),
     isHost: () => net.isHost,
     peerId: () => net.peerId,
@@ -593,6 +607,7 @@ export async function startGame(
         updateUI()
       },
       emit: (name, source?: unknown) => emit(name, source),
+      setVariable: (key, value) => { vars[key] = value },
     },
     input,
     t,
@@ -915,9 +930,37 @@ export async function startGame(
   const dialogueRuntime = createDialogueRuntime(project, () => lastApi!)
   const sequencerPlayer = new SequencerPlayer(project, () => lastApi!)
   const pluginHost = new RuntimePluginHost(project)
+  const steamSaveName = (key: string) => encodeURIComponent(key) + '.json'
+  const savePlatform: GameOptions['platform'] = steamReady ? {
+    ...platform,
+    async saveCloud(key, value) {
+      await steamReady
+      if (!steam.isNative()) {
+        if (!platform.saveCloud) throw new Error('Cloud storage unavailable')
+        return platform.saveCloud(key, value)
+      }
+      if (!await steam.cloudWrite(steamSaveName(key), JSON.stringify(value))) {
+        throw new Error('Steam Cloud write failed')
+      }
+    },
+    async loadData(key) {
+      await steamReady
+      if (!steam.isNative()) return platform.loadData(key)
+      const contents = await steam.cloudRead(steamSaveName(key))
+      return contents === null ? null : JSON.parse(contents)
+    },
+    async saveData(key, value) {
+      await steamReady
+      if (!steam.isNative()) return platform.saveData(key, value)
+      if (value === null) await steam.cloudDelete(steamSaveName(key))
+      else if (!await steam.cloudWrite(steamSaveName(key), JSON.stringify(value))) {
+        throw new Error('Steam Cloud write failed')
+      }
+    },
+  } : platform
   const saveManager = new SaveManager({
     projectId: project.id,
-    platform,
+    platform: savePlatform,
     events: { emit },
     getSceneId: () => sceneId,
     getScene: () => scene,
@@ -1197,16 +1240,22 @@ export async function startGame(
     return Array.isArray(value) ? value : []
   }
   function requestScene(id: string) {
-    if (unloading || disposed || (startingScene && sceneId === id)) return
-    if (queuedScene !== undefined) return
+    if (unloading || disposed || (startingScene && sceneId === id) || queuedScene !== undefined) return false
+    if (!project.scenes.some((candidate) => candidate.id === id)) {
+      emit('scene.error', 'Unknown game scene ' + id)
+      return false
+    }
     queuedScene = id
     const generation = revision
     queueMicrotask(() => {
       if (queuedScene !== id) return
       queuedScene = undefined
       if (!disposed && generation === revision)
-        void load(id, false).catch((err) => emit('scene.error', String(err)))
+        void load(id, false).then(() => {
+          if (!disposed && revision === generation + 1 && sceneId === id) emit('scene.loaded', { id })
+        }).catch((err) => emit('scene.error', String(err)))
     })
+    return true
   }
   interface NavAgentState {
     id: string
@@ -1485,6 +1534,17 @@ export async function startGame(
         const target = scene.entities.find((e) => e.id === (id || entity.id))
         return target?.components.find((c) => c.type === type && c.enabled !== false)
       },
+      setComponentProperty: (id, type, property, value) => {
+        if (!alive() || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(property)
+          || ['type', '__proto__', 'prototype', 'constructor'].includes(property)) return false
+        const target = scene.entities.find((entity) => entity.id === id)
+        const component = target?.components.find((component) => component.type === type && component.enabled !== false)
+        if (!target || !component) return false
+        const index = target.components.filter((item) => item.type === type).indexOf(component)
+        component[property] = value
+        applySyncedComponentField(target, `components.${type}[${index}].${property}`)
+        return true
+      },
       component: (type) => entity.components.find((v) => v.type === type && v.enabled !== false),
       t,
       audio: {
@@ -1537,6 +1597,8 @@ export async function startGame(
       nav: navAPI,
       ui: overlay.scriptAPI((name) => name === 'best' ? best : vars[name]),
       scene: {
+        current: () => sceneId,
+        requestLoad: (id) => alive() && requestScene(id),
         load: (id) => {
           if (alive()) requestScene(id)
         },
@@ -1550,9 +1612,8 @@ export async function startGame(
           const o = Array.isArray(origin) ? new Vector3().fromArray(origin) : origin
           const d = Array.isArray(direction) ? new Vector3().fromArray(direction) : direction
           if (physics?.raycastHit) return physics.raycastHit(o, d, length, excludeIds)
-          const id = world.raycast(o, d, length)
-          if (!id || excludeIds?.includes(id)) return undefined
-          return { id, distance: length, point: [o.x, o.y, o.z], normal: [0, 1, 0] }
+          const hit = world.raycastHit(o, d, length, excludeIds)
+          return hit ? { ...hit, normal: [0, 1, 0], normalAvailable: false } : undefined
         },
         applyImpulse: (id, impulse) => physics?.applyImpulse?.(id, impulse),
         applyForce: (id, force) => physics?.applyForce?.(id, force),

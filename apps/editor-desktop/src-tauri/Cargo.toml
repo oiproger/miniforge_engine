@@ -11,10 +11,12 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 serde_json = "1"
+steamworks = { version = "0.13.1", optional = true }
 rfd = { version = "0.15", optional = true, default-features = false, features = ["gtk3"] }
 
 [features]
 default = []
 editor = ["dep:rfd"]
 player = []
+steamworks = ["dep:steamworks"]
 custom-protocol = ["tauri/custom-protocol"]

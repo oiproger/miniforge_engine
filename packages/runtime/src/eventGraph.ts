@@ -302,6 +302,24 @@ export function createEventGraphLifecycle(
         const qid = String(get('questId', ''))
         return { status: qid ? api.dialogue.getQuestStatus(qid) : 'inactive' }
       }
+      case 'net.status':
+        return { connected: api.net.isConnected(), peers: api.net.getPeers(), room: api.net.room(), error: api.net.getLastError() }
+      case 'steam.pendingInvite': {
+        const invite = api.steam.getPendingInvite()
+        return { pending: Boolean(invite), lobbyId: invite?.lobbyId ?? '', friendId: invite?.friendId ?? '' }
+      }
+      case 'nav.findPath':
+        return { path: api.nav.findPath(toVec3(get('start')), toVec3(get('goal')), { zoneId: String(get('zone', '')) || undefined }) }
+      case 'scene.current':
+        return { id: api.scene.current() }
+      case 'camera.screenToRay':
+        return api.camera.screenToRay(Number(get('x', 0)) || 0, Number(get('y', 0)) || 0)
+      case 'terrain.layerAt': {
+        const [x, , z] = toVec3(get('position', [0, 0, 0]))
+        const layer = api.terrain.getLayerAt(x, z)
+        return { found: Boolean(layer), height: layer?.height ?? 0, layerIndex: layer?.layerIndex ?? -1,
+          materialId: layer?.materialId ?? '', weights: layer?.weights ?? [] }
+      }
       case 'camera.worldToScreen': {
         const pos = toVec3(get('position', [0, 0, 0]))
         const { x, y, xPercent, yPercent, depth, visible } = api.camera.worldToScreen(pos)
@@ -338,11 +356,12 @@ export function createEventGraphLifecycle(
           fov: api.camera.fov,
         }
       case 'physics.raycast': {
+        const excluded = get('exclude', [])
         const hit = api.physics.raycastHit(
           toVec3(get('origin', [0, 1, 0])),
           toVec3(get('direction', [0, -1, 0])),
           Number(get('length', 10)) || 10,
-          [api.entity.id],
+          [api.entity.id, ...(Array.isArray(excluded) ? excluded.map(String) : [])],
         )
         return {
           hit: Boolean(hit),
@@ -350,6 +369,7 @@ export function createEventGraphLifecycle(
           distance: hit?.distance ?? 0,
           point: hit?.point ?? [0, 0, 0],
           normal: hit?.normal ?? [0, 1, 0],
+          normalAvailable: Boolean(hit && hit.normalAvailable !== false),
         }
       }
       case 'anim.getBonePos':
@@ -398,6 +418,17 @@ export function createEventGraphLifecycle(
       scope.nodeOutputs.set(node.id, { ...(scope.nodeOutputs.get(node.id) || {}), ...vals })
     }
     const next = (pin = 'exec') => runFromPin(scope, node.id, pin, budget, depth)
+    const complete = (promise: Promise<unknown>, isSuccess: (result: any) => boolean = Boolean) => {
+      const finish = (result: unknown, error = '') => {
+        if (destroyed || scope.returned) return
+        const ok = !error && isSuccess(result)
+        setOut({ result, error: ok ? '' : error || 'Operation failed' })
+        runFromPin(scope, node.id, ok ? 'completed' : 'failed', { steps: 0 }, depth)
+      }
+      void promise.then((result) => finish(result), (reason) => finish(undefined, String(reason)))
+      // Preserve existing outgoing exec wires for projects authored before completion pins existed.
+      next()
+    }
     const widgetAction = UI_WIDGET_ACTIONS.find((action) => action.type === node.type)
     if (widgetAction) {
       const id = String(get('id', ''))
@@ -537,11 +568,7 @@ export function createEventGraphLifecycle(
         const ctype = String(get('componentType', ''))
         const prop = String(get('property', ''))
         const val = get('value', '')
-        const c = api.getComponent(eid, ctype)
-        if (c && prop) {
-          c[prop] = val
-          if (ctype === 'light' && prop === 'intensity') api.lights.setIntensity(eid, Number(val) || 0)
-        }
+        setOut({ updated: api.setComponentProperty(eid, ctype, prop, val) })
         next('exec')
         break
       }
@@ -697,6 +724,14 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'anim.pause':
+      case 'anim.resume':
+      case 'anim.stop': {
+        const action = node.type === 'anim.pause' ? 'pause' : node.type === 'anim.resume' ? 'resume' : 'stop'
+        api.animation[action](resolveEntityId(get('id', '')))
+        next()
+        break
+      }
       case 'anim.play': {
         api.animation.play(
           resolveEntityId(get('id', '')),
@@ -802,6 +837,9 @@ export function createEventGraphLifecycle(
         const handle = api.audio.play(String(get('assetId', '')), {
           volume: Number(get('volume', 1)) || 1,
           pitch: Number(get('pitch', 1)) || 1,
+          loop: Boolean(get('loop', false)),
+          position: Boolean(get('spatial', false)) ? toVec3(get('position')) : undefined,
+          bus: get('bus', 'sfx'),
         })
         setOut({ handle })
         next()
@@ -877,6 +915,10 @@ export function createEventGraphLifecycle(
       }
       case 'ui.createWidget': {
         const widgetId = api.ui.createWidget({
+          parentId: String(get('parentId', '')) || undefined,
+          asset: String(get('asset', '')) || undefined,
+          event: String(get('event', '')) || undefined,
+
           id: String(get('id', '')) || undefined,
           screen: String(get('screenId', '')) || undefined,
           type: String(get('widgetType', 'label')) || 'label',
@@ -910,6 +952,19 @@ export function createEventGraphLifecycle(
       case 'ui.removeWidget': {
         const id = String(get('id', ''))
         if (id) api.ui.removeWidget(id)
+        next()
+        break
+      }
+      case 'ui.sendEvent': {
+        setOut({ sent: api.ui.sendEvent(String(get('id', '')), String(get('name', '')), get('payload')) })
+        next()
+        break
+      }
+      case 'ui.patchWidget': {
+        const patch = get('patch')
+        const id = String(get('id', ''))
+        setOut({ updated: Boolean(patch && typeof patch === 'object' && !Array.isArray(patch)
+          && api.ui.updateWidget(id, patch)) })
         next()
         break
       }
@@ -1003,35 +1058,47 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'steam.listLobbies':
+        complete(api.steam.init().then((user) => {
+          if (!user.steamId) throw new Error('Steam unavailable')
+          return api.steam.listLobbies()
+        }), Array.isArray)
+        break
+      case 'steam.inviteFriends':
+        complete(api.steam.inviteFriends())
+        break
+      case 'steam.relayStatus':
+        complete(api.steam.relayStatus())
+        break
       case 'steam.createLobby': {
         const name = String(get('name', 'My Lobby')).trim()
         const maxMembers = Number(get('maxMembers', 4)) || 4
-        void api.steam.createLobby({ name, maxMembers }).then(() => api.net.connect({ mode: 'steam-p2p', room: name }))
-        next()
+        complete(api.steam.createLobby({ name, maxMembers }).then(async lobby =>
+          await api.net.connect({ mode: 'steam-p2p', room: lobby.id }) ? lobby : null))
+
         break
       }
       case 'steam.joinLobby': {
         const lid = String(get('lobbyId', '')).trim()
-        if (lid) void api.steam.joinLobby(lid).then(() => api.net.connect({ mode: 'steam-p2p', room: lid }))
-        next()
+        complete(lid ? api.steam.joinLobby(lid).then(async lobby =>
+          lobby && await api.net.connect({ mode: 'steam-p2p', room: lobby.id }) ? lobby : null)
+          : Promise.reject(new Error('Missing Steam lobby ID')))
+
         break
       }
       case 'steam.leaveLobby': {
-        void api.steam.leaveLobby()
         api.net.disconnect()
-        next()
+        complete(api.steam.leaveLobby().then(() => true))
         break
       }
       case 'steam.cloudSave': {
         const fn = String(get('filename', 'save.json')).trim()
         const data = String(get('data', '{}'))
-        if (fn) void api.steam.cloudWrite(fn, data)
-        next()
+        complete(fn ? api.steam.cloudWrite(fn, data) : Promise.reject(new Error('Missing Steam Cloud filename')))
         break
       }
       case 'net.hostLan': {
-        void api.net.hostLan({ room: String(get('room', 'lobby-1')), port: Number(get('port', 8765)) || 8765 })
-        next()
+        complete(api.net.hostLan({ room: String(get('room', 'lobby-1')), port: Number(get('port', 8765)) || 8765 }))
         break
       }
       case 'net.sendChat': {
@@ -1056,8 +1123,8 @@ export function createEventGraphLifecycle(
       case 'net.connect': {
         const room = String(get('room', 'lobby-1')).trim() || 'lobby-1'
         const url = String(get('url', '')).trim()
-        void api.net.connect({ room, url: url || 'local' })
-        next()
+        const mode = get('mode') || undefined
+        complete(api.net.connect({ mode, room, url: url || 'local' }))
         break
       }
       case 'net.disconnect': {
@@ -1138,13 +1205,12 @@ export function createEventGraphLifecycle(
         break
       }
       case 'save.saveSlot': {
-        void api.saveSystem.save(String(get('slot', 'autosave')) || 'autosave')
-        next()
+        complete(api.saveSystem.save(String(get('slot', 'autosave')) || 'autosave'),
+          (result) => Boolean(result?.localSaved || result?.cloudSaved))
         break
       }
       case 'save.loadSlot': {
-        void api.saveSystem.load(String(get('slot', 'autosave')) || 'autosave')
-        next()
+        complete(api.saveSystem.load(String(get('slot', 'autosave')) || 'autosave'))
         break
       }
       case 'platform.ad': {

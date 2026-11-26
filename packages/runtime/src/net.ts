@@ -122,6 +122,7 @@ export class NetManager {
   private useParentBridge = false
   private steam: SteamManager | null = null
   private unsubSteamP2P: (() => void) | null = null
+  private unsubSteamLobby: (() => void) | null = null
   private ws: WebSocket | null = null
   private rtcPeers = new Map<string, { pc: RTCPeerConnection; dc?: RTCDataChannel; pendingIce?: RTCIceCandidateInit[] }>()
   private rpcHandlers = new Map<string, Set<RpcHandler>>()
@@ -293,26 +294,55 @@ export class NetManager {
   }
 
   private async connectSteamP2P(lobbyIdOrName: string): Promise<boolean> {
-    if (!this.steam) return false
+    const steam = this.steam
+    if (!steam) return false
+    const generation = this.generation
     try {
-      const user = await this.steam.init(this.steam.appId)
+      const user = await steam.init(steam.appId)
+      if (generation !== this.generation) return false
       if (!user.steamId) throw new Error('Steam identity unavailable')
+      let lobby = steam.currentLobby
+      if (!lobby || (lobby.id !== lobbyIdOrName && lobby.name !== lobbyIdOrName)) {
+        if (steam.isNative() && /^\d{16,20}$/.test(lobbyIdOrName)) {
+          lobby = await steam.joinLobby(lobbyIdOrName)
+        } else {
+          const lobbies = await steam.listLobbies()
+          if (generation !== this.generation) return false
+          const existing = lobbies.find(l => l.id === lobbyIdOrName || l.name === lobbyIdOrName)
+          lobby = existing ? await steam.joinLobby(existing.id) : await steam.createLobby({ name: lobbyIdOrName })
+        }
+      }
+      if (generation !== this.generation) return false
+      if (!lobby) throw new Error('Could not join Steam lobby')
       this.peerId = user.steamId
       this.peerName = user.name
+      this.room = lobby.id
       this.peers.clear()
       this.peers.set(this.peerId, { id: this.peerId, name: this.peerName, isHost: true, rttMs: 0, joinedAt: Date.now() })
-      if (!this.steam.currentLobby) {
-        const lobbies = await this.steam.listLobbies()
-        const existing = lobbies.find(l => l.id === lobbyIdOrName || l.name === lobbyIdOrName)
-        const lobby = existing ? await this.steam.joinLobby(existing.id) : await this.steam.createLobby({ name: lobbyIdOrName })
-        if (!lobby) throw new Error('Could not join Steam lobby')
-      }
       this.connected = true
       this.recomputeHost()
-      this.unsubSteamP2P?.()
-      this.unsubSteamP2P = this.steam.onP2PPacket((pkt, fromSteamId) => {
+      this.unsubSteamLobby = steam.onLobbyChanged((updated) => {
+        if (!updated || updated.id !== this.room) {
+          this.disconnect()
+          return
+        }
+        for (const id of this.peers.keys()) {
+          if (updated.members.includes(id)) continue
+          this.peers.delete(id)
+          for (const handler of this.leaveHandlers) handler(id)
+        }
+        this.recomputeHost()
+        for (const id of updated.members) {
+          if (this.peers.has(id)) continue
+          this.sendRaw({ type: 'join', from: this.peerId, to: id, room: this.room,
+            ts: Date.now(), payload: { name: this.peerName } })
+        }
+      })
+      this.unsubSteamP2P = steam.onP2PPacket((pkt, fromSteamId) => {
         if (!this.connected || fromSteamId === this.peerId) return
-        if (!this.steam?.currentLobby?.members.includes(fromSteamId)) return
+        // Native IPC already validates the sender against current Steam membership.
+        // Its lobby snapshot can arrive after an otherwise valid initial packet.
+        if (!steam.isNative() && !steam.currentLobby?.members.includes(fromSteamId)) return
         if (!pkt || typeof pkt !== 'object') return
         this.deliverIncoming({ ...pkt, from: fromSteamId } as NetPacket)
       })
@@ -320,6 +350,7 @@ export class NetManager {
       this.startPingLoop()
       return true
     } catch (err) {
+      if (generation !== this.generation) return false
       this.lastError = `Steam lobby connection failed: ${String(err)}`
       this.connected = false
       return false
@@ -781,6 +812,8 @@ export class NetManager {
       window.clearInterval(this.pingTimer)
       this.pingTimer = null
     }
+    this.unsubSteamLobby?.()
+    this.unsubSteamLobby = null
     if (this.unsubSteamP2P) {
       this.unsubSteamP2P()
       this.unsubSteamP2P = null

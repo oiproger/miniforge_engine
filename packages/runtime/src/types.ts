@@ -5,7 +5,7 @@ import type { PlatformAdapter } from '../../platform-sdk/src'
 import type { Events, ScriptLifecycle } from './lifecycle'
 import type { Input } from './input'
 import type { LanDiscoveredGame, LanServerInfo, MultiplayerMode, NetChatMessage, NetConnectOptions, NetPeer, NetStats } from './net'
-import type { SteamLobby, SteamLogEntry, SteamUserInfo } from './steam'
+import type { SteamLobby, SteamLobbyInvite, SteamLogEntry, SteamUserInfo } from './steam'
 import type { AudioBus, AudioPlayOptions } from './audio'
 import type { Tween } from './tween'
 import type { SaveSnapshot, SaveResult, SaveOptions, LoadOptions } from './saveSystem'
@@ -26,6 +26,8 @@ export interface RaycastHit {
   distance: number
   point: Vec3
   normal: Vec3
+  /** False for hits reported by the graphics fallback, which cannot provide face normals. */
+  normalAvailable?: boolean
 }
 
 export interface FlashlightOptions {
@@ -399,6 +401,8 @@ export interface GameAPI {
   getChildByName(id: string, name: string): string | undefined
   /** Find an enabled component of a given type on any entity by ID. */
   getComponent(id: string, type: string): Component | undefined
+  /** Updates component data and applies live renderer fields when supported. */
+  setComponentProperty(id: string, type: string, property: string, value: unknown): boolean
   /** Find an enabled component of a given type on this entity. */
   component(type: string): Component | undefined
   /** GLTF skeletal & node animation controls (crossfade, timeline, bone world positions). */
@@ -512,6 +516,8 @@ export interface GameAPI {
     bindValue(id: string, variable: string): boolean
     /** Read the explicit or bound numeric value, including widgets on closed screens. */
     getValue(id: string): number | undefined
+    /** Send a bridge event to a mounted HTML widget by ID. */
+    sendEvent(id: string, name: string, data?: unknown): boolean
     hasWidget(id: string): boolean
     /** Patch widget properties. Reapplying the same values has no effect. */
     updateWidget(id: string, patch: Record<string, any>): boolean
@@ -531,7 +537,7 @@ export interface GameAPI {
   /** Keyframe Cutscene & Timeline Sequencer player. */
   sequencer: SequencerAPI
   /** Scene switching. */
-  scene: { load(id: string): void }
+  scene: { load(id: string): void; requestLoad(id: string): boolean; current(): string }
   /** Physics raycasting and rigid-body force/impulse/gravity controls. */
   physics: {
     raycast(origin: Vector3, direction: Vector3, length: number): string | undefined
@@ -592,6 +598,8 @@ export interface NetAPI {
   onPeerJoin(handler: (peerId: string) => void): () => void
   onPeerLeave(handler: (peerId: string) => void): () => void
   getPeers(): NetPeer[]
+  isConnected(): boolean
+  getLastError(): string
   getStats(): NetStats
   isHost(): boolean
   peerId(): string
@@ -628,10 +636,13 @@ export interface SteamAPI {
   init(appId?: number): Promise<SteamUserInfo>
   isAvailable(): boolean
   isNative(): boolean
+  isDebug(): boolean
+  getMode(): 'native' | 'local-debug' | 'unavailable'
   getUser(): SteamUserInfo
   unlockAchievement(id: string): Promise<boolean>
   clearAchievement(id: string): Promise<boolean>
   hasAchievement(id: string): boolean
+  queryAchievement(id: string): Promise<boolean>
   listAchievements(): string[]
   setRichPresence(key: string, value: string): Promise<boolean>
   clearRichPresence(): Promise<void>
@@ -639,6 +650,15 @@ export interface SteamAPI {
   cloudRead(filename: string): Promise<string | null>
   cloudDelete(filename: string): Promise<boolean>
   cloudList(): string[]
+  listCloudFiles(): Promise<string[]>
+  relayStatus(): Promise<string | null>
+  inviteFriends(): Promise<boolean>
+  readStat(name: string, floatingPoint?: boolean): Promise<number | null>
+  writeStat(name: string, value: number, floatingPoint?: boolean): Promise<boolean>
+  isDlcInstalled(appId: number): Promise<boolean>
+  getPendingInvite(): SteamLobbyInvite | undefined
+  onLobbyInvite(handler: (invite: SteamLobbyInvite) => void): () => void
+  onLobbyChanged(handler: (lobby: SteamLobby | null) => void): () => void
   createLobby(opts?: { maxMembers?: number; type?: "public" | "friends" | "private"; name?: string; data?: Record<string, string> }): Promise<SteamLobby>
   listLobbies(): Promise<SteamLobby[]>
   joinLobby(lobbyId: string): Promise<SteamLobby | null>

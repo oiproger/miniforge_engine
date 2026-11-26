@@ -16,6 +16,8 @@ export interface SteamLobby {
   createdAt: number
 }
 
+export interface SteamLobbyInvite { lobbyId: string; friendId: string | null }
+
 export interface SteamLogEntry {
   ts: number
   level: 'info' | 'warn' | 'error'
@@ -66,6 +68,10 @@ export class SteamManager {
   private localAchievementsFallback = new Set<string>()
   private knownLobbies = new Map<string, SteamLobby>()
   private pollTimer: number | null = null
+  private lobbyHandlers = new Set<(lobby: SteamLobby | null) => void>()
+  private inviteHandlers = new Set<(invite: SteamLobbyInvite) => void>()
+  private pendingInvite?: SteamLobbyInvite
+  private initPromise: Promise<SteamUserInfo> | null = null
 
   private log(call: string, detail: string, level: 'info' | 'warn' | 'error' = 'info') {
     this.logs.push({ ts: Date.now(), level, call, detail })
@@ -80,7 +86,13 @@ export class SteamManager {
     this.logs.length = 0
   }
 
-  async init(appId = 480): Promise<SteamUserInfo> {
+  init(appId = 480): Promise<SteamUserInfo> {
+    if (this.initPromise) return this.initPromise
+    this.initPromise = this.initialize(appId).finally(() => { this.initPromise = null })
+    return this.initPromise
+  }
+
+  private async initialize(appId: number): Promise<SteamUserInfo> {
     const requestedId = Number(appId)
     this.appId = Number.isInteger(requestedId) && requestedId > 0 ? requestedId : 480
     if (this.native && this.initialized && this.user.appId === this.appId) return this.getUser()
@@ -184,19 +196,96 @@ export class SteamManager {
     } catch { this.p2pChannel = null }
   }
 
+  private updateLobby(lobby: SteamLobby | null) {
+    const previous = this.currentLobby
+    this.currentLobby = lobby
+    if (JSON.stringify(previous) !== JSON.stringify(lobby)) {
+      for (const fn of this.lobbyHandlers) fn(lobby)
+    }
+  }
+
   private startNativeP2PPoll() {
     if (this.pollTimer) window.clearInterval(this.pollTimer)
+    let pending = false
+    let nextLobbyUpdate = 0
     this.pollTimer = window.setInterval(async () => {
-      if (!this.native) return
-      const packets = await invokeTauri<Array<{ from: string; data: string }>>('steam_poll_p2p')
-      if (!Array.isArray(packets)) return
-      for (const p of packets) {
-        try {
-          const parsed = JSON.parse(p.data)
-          for (const fn of this.p2pHandlers) fn(parsed, p.from)
-        } catch {}
+      const lobbyId = this.currentLobby?.id
+      if (pending || !this.native || !this.initialized || (!lobbyId && Date.now() < nextLobbyUpdate)) return
+      pending = true
+      try {
+        const includeLobby = Date.now() >= nextLobbyUpdate
+        if (includeLobby) nextLobbyUpdate = Date.now() + 300
+        const frame = await invokeTauri<{
+          packets: Array<{ from: string; data: string }>
+          lobby?: SteamLobby | null
+          invite?: SteamLobbyInvite | null
+        }>('steam_poll_p2p', { includeLobby })
+        if (!frame || !this.initialized) return
+        if (frame.invite) {
+          this.pendingInvite = frame.invite
+          for (const fn of this.inviteHandlers) fn(frame.invite)
+        }
+        if (!lobbyId || this.currentLobby?.id !== lobbyId) return
+        if (frame.lobby === null) {
+          this.updateLobby(null)
+          return
+        }
+        if (frame.lobby?.id === lobbyId) {
+          this.updateLobby(frame.lobby)
+        }
+        for (const packet of frame.packets ?? []) {
+          try {
+            const parsed = JSON.parse(packet.data)
+            for (const fn of this.p2pHandlers) fn(parsed, packet.from)
+          } catch {}
+        }
+      } finally {
+        pending = false
       }
     }, 16)
+  }
+
+  onLobbyChanged(handler: (lobby: SteamLobby | null) => void): () => void {
+    this.lobbyHandlers.add(handler)
+    return () => this.lobbyHandlers.delete(handler)
+  }
+
+  readStat(name: string, floatingPoint = false): Promise<number | null> {
+    return this.native ? invokeTauri<number>('steam_read_stat', { name, floatingPoint }) : Promise.resolve(null)
+  }
+
+  writeStat(name: string, value: number, floatingPoint = false): Promise<boolean> {
+    return this.native ? invokeTauri<boolean>('steam_write_stat', { name, value, floatingPoint }).then(Boolean)
+      : Promise.resolve(false)
+  }
+
+  isDlcInstalled(appId: number): Promise<boolean> {
+    return this.native ? invokeTauri<boolean>('steam_is_dlc_installed', { appId }).then(Boolean) : Promise.resolve(false)
+  }
+
+  inviteFriends(): Promise<boolean> {
+    return this.native ? invokeTauri<boolean>('steam_invite_friends').then(Boolean) : Promise.resolve(false)
+  }
+
+  getPendingInvite(): SteamLobbyInvite | undefined {
+    return this.pendingInvite ? { ...this.pendingInvite } : undefined
+  }
+
+  onLobbyInvite(handler: (invite: SteamLobbyInvite) => void): () => void {
+    this.inviteHandlers.add(handler)
+    return () => this.inviteHandlers.delete(handler)
+  }
+
+  relayStatus(): Promise<string | null> {
+    return this.native ? invokeTauri<string>('steam_relay_status') : Promise.resolve(null)
+  }
+
+  async queryAchievement(id: string): Promise<boolean> {
+    return this.native ? Boolean(await invokeTauri<boolean>('steam_has_achievement', { id })) : this.hasAchievement(id)
+  }
+
+  async listCloudFiles(): Promise<string[]> {
+    return this.native ? (await invokeTauri<string[]>('steam_cloud_list') ?? []) : this.cloudList()
   }
 
   isAvailable(): boolean {
@@ -351,9 +440,9 @@ export class SteamManager {
     const lobbyType = opts.type || 'public'
     const name = (opts.name || `${this.user.name}'s Lobby`).trim()
     if (this.native) {
-      const nativeLobby = await invokeTauri<SteamLobby>('steam_create_lobby', { maxMembers, lobbyType, name })
+      const nativeLobby = await invokeTauri<SteamLobby>('steam_create_lobby', { maxMembers, lobbyType, name, data: opts.data ?? {} })
       if (nativeLobby) {
-        this.currentLobby = nativeLobby
+        this.updateLobby(nativeLobby)
         this.log('createLobby', `Native lobby ${nativeLobby.id} (max ${maxMembers})`)
         return nativeLobby
       }
@@ -406,7 +495,8 @@ export class SteamManager {
     if (this.native) {
       const joined = await invokeTauri<SteamLobby>('steam_join_lobby', { lobbyId })
       if (joined) {
-        this.currentLobby = joined
+        this.updateLobby(joined)
+        if (this.pendingInvite?.lobbyId === joined.id) this.pendingInvite = undefined
         this.log('joinLobby', `Joined native lobby ${lobbyId}`)
         return joined
       }
@@ -430,7 +520,11 @@ export class SteamManager {
   async leaveLobby(): Promise<void> {
     if (!this.currentLobby) return
     const id = this.currentLobby.id
-    if (this.native) await invokeTauri('steam_leave_lobby', { lobbyId: id })
+    if (this.native) {
+      const left = await invokeTauri<boolean>('steam_leave_lobby', { lobbyId: id })
+      if (!left) throw new Error('Steamworks failed to leave lobby')
+      if (this.currentLobby?.id !== id) return
+    }
     if (!this.native) {
       const lobby = this.currentLobby
       lobby.members = lobby.members.filter(m => m !== this.user.steamId)
@@ -446,7 +540,7 @@ export class SteamManager {
       try { this.p2pChannel.close() } catch {}
       this.p2pChannel = null
     }
-    this.currentLobby = null
+    this.updateLobby(null)
     this.log('leaveLobby', `Left lobby ${id}`)
   }
 
@@ -478,7 +572,7 @@ export class SteamManager {
       const targets = toSteamId ? [toSteamId] : this.currentLobby.members.filter(m => m !== this.user.steamId)
       for (const to of targets) {
         if (!this.currentLobby.members.includes(to)) continue
-        void invokeTauri<boolean>('steam_send_p2p', { to, data: JSON.stringify(packet) }).then(ok => {
+        void invokeTauri<boolean>('steam_send_p2p', { to, data: JSON.stringify(packet), reliable: packet.type !== 'snapshot' }).then(ok => {
           if (!ok) this.log('sendP2P', `Failed to send to ${to}`, 'error')
         })
       }
@@ -492,7 +586,7 @@ export class SteamManager {
       window.clearInterval(this.pollTimer)
       this.pollTimer = null
     }
-    void this.leaveLobby()
+    void this.leaveLobby().catch(() => {})
     this.initialized = false
     if (this.lobbyChannel) {
       try { this.lobbyChannel.close() } catch {}
@@ -502,6 +596,9 @@ export class SteamManager {
       window.removeEventListener('message', this.parentDebugHandler)
       this.parentDebugHandler = null
     }
+    this.lobbyHandlers.clear()
+    this.inviteHandlers.clear()
+    this.pendingInvite = undefined
     this.localCloudFallback.clear()
     this.localAchievementsFallback.clear()
   }

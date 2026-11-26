@@ -1,5 +1,9 @@
 # Miniforge 3.0.4 — Networking and Steam audit
 
+**Current implementation**
+
+This document records the earlier transport audit. The current native feature set and depot instructions are in [Native Steamworks export](STEAM_NATIVE.md).
+
 ## Summary
 
 This update hardens the existing transports and fixes misleading Steam debug behavior. **It does not claim to implement native Steamworks**: the supplied Tauri `steam.rs` contains only unavailable stubs, is not wired into `main.rs`, and no Steamworks SDK is linked in Cargo. Implementing native Steamworks requires a separate, tested Steamworks SDK adapter and a legitimate AppID; AppID 480 (Spacewar) is only a development example.

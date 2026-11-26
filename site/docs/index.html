@@ -717,7 +717,7 @@ api.ui.mount('mini_toast', '&lt;div class="toast"&gt;Welcome!&lt;/div&gt;', '.to
   <div class="sec-meta"><span class="sec-badge">Chapter 16</span><span class="sec-cat">Multiplayer</span></div>
   <h2>Steamworks SDK &amp; Steam Lobbies (v3.0)</h2>
   <p class="sec-lead">Built-in Steam Studio, Steam Lobbies, Steam P2P transport, Achievements, Cloud Saves, Rich Presence, and AppID 480 (Spacewar) testing.</p>
-  <p>Configure Steam in <strong>Project → Steamworks SDK</strong> (<code>SteamStudio</code>). In browser/editor mode, <code>api.steam</code> runs a full local debug mock with <strong>AppID 480 (Spacewar)</strong> so you can test lobbies, achievements, and cloud saves immediately. When exporting a Desktop game, <code>steam_appid.txt</code> is bundled automatically alongside the executable.</p>
+  <p>Configure Steam in <strong>Project → Steamworks SDK</strong> (<code>SteamStudio</code>). Enable Local Debug explicitly for browser simulations. Steam-enabled desktop exports include a source package that builds the native Steamworks bridge and copies its redistributable. Use <code>steam_appid.txt</code> for local testing only.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Method (<code>api.steam.*</code>)</th><th>Event Graph Node</th><th>Description</th></tr></thead>
     <tbody>
@@ -1236,7 +1236,7 @@ exports.registerRuntime = function(ctx) {
   <div class="sec-meta"><span class="sec-badge">Глава 18</span><span class="sec-cat">Мультиплеер</span></div>
   <h2>Интеграция Steamworks SDK и Steam-лобби (v3.0)</h2>
   <p class="sec-lead">Встроенная Steam Studio, Steam Lobbies, Steam P2P, достижения, Cloud Saves, Rich Presence и тестирование через AppID 480 (Spacewar).</p>
-  <p>Настройки Steam находятся в <strong>Project → Steamworks SDK</strong> (<code>SteamStudio</code>). В браузере и редакторе <code>api.steam</code> работает в отладочном режиме с <strong>AppID 480 (Spacewar)</strong>, позволяя тестировать лобби, достижения и облачные сохранения без покупки слота в Steam. При экспорте под Desktop файл <code>steam_appid.txt</code> автоматически вкладывается рядом с бинарником.</p>
+  <p>Настройки Steam находятся в <strong>Project → Steamworks SDK</strong> (<code>SteamStudio</code>). В браузере локальная симуляция включается вручную через Local Debug. Steam-экспорт для Desktop включает исходники нативного моста и скрипт сборки депо. Файл <code>steam_appid.txt</code> нужен только для локальной проверки.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Метод (<code>api.steam.*</code>)</th><th>Нода Event Graph</th><th>Назначение</th></tr></thead>
     <tbody>

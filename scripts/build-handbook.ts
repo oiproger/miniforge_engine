@@ -10,7 +10,7 @@ const sections: { title: string; body: string }[] = []
 const add = (title: string, body: string) => sections.push({title, body})
 const guide = await readFile('site/docs/index.html', 'utf8')
 const russian = guide.slice(guide.indexOf('<div id="docsRu"'), guide.indexOf('</main>'))
-add('Как пользоваться справочником', '<p>Для первого проекта начните с практикума по HUD или урока Key Vault. Разделы api.* содержат сигнатуры методов для скриптов. В разделах type приведены связанные типы, включая Tween. Каталог Event Graph показывает входы, выходы и значения по умолчанию. Для поиска по любой ноде или методу нажмите Ctrl+F.</p><p>Базовое руководство редактора описывает серию 3.0. Подробности текущего поведения сети, теней, декалей и GI приведены в тематических главах. Steam Local Debug доступен в редакторе. Для нативного Steamworks требуется отдельная реализация SDK.</p>')
+add('Как пользоваться справочником', '<p>Для первого проекта начните с практикума по HUD или урока Key Vault. Разделы api.* содержат сигнатуры методов для скриптов. В разделах type приведены связанные типы, включая Tween. Каталог Event Graph показывает входы, выходы и значения по умолчанию. Для поиска по любой ноде или методу нажмите Ctrl+F.</p><p>Базовое руководство редактора описывает серию 3.0. Подробности текущего поведения сети, теней, декалей и GI приведены в тематических главах. Steam Local Debug доступен в редакторе. Нативный Steamworks доступен в исходном экспорте Steam для Desktop.</p>')
 add('Редактор и рабочие процессы', [...russian.matchAll(/<section\b[\s\S]*?<\/section>/g)].map(m => m[0]).join('\n'))
 add('Практикум по HUD и Quick tips', await marked.parse(await readFile('docs/ui-cookbook.md', 'utf8')))
 const catalog = scriptCatalog(process.cwd(), true)
@@ -35,8 +35,15 @@ for (const f of (await readdir('docs')).sort()) {
   const source = await readFile('docs/' + f, 'utf8')
   add(source.split('\n')[0].replace(/^#\s*/, ''), await marked.parse(source))
 }
-const networkChapter = sections.findIndex(s => s.title.includes('Network example projects'))
-for (const section of sections) section.body = section.body.replaceAll('href="NETWORK_EXAMPLES_3_0_4.md"', 'href="#chapter-' + networkChapter + '"')
+for (const [file, title] of [
+  ['NETWORK_EXAMPLES_3_0_4.md', 'Network example projects'],
+  ['STEAM_NATIVE.md', 'Native Steamworks export'],
+]) {
+  const chapter = sections.findIndex((s) => s.title.includes(title))
+  for (const section of sections) {
+    section.body = section.body.replaceAll(`href="${file}"`, `href="#chapter-${chapter}"`)
+  }
+}
 const toc = sections.map((s,i) => '<li><a href="#chapter-' + i + '">' + esc(s.title) + '</a></li>').join('\n')
 const html = '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Miniforge Engine · Руководство разработчика</title><style>body{max-width:76rem;margin:auto;padding:2rem;font:16px/1.55 system-ui;color:#24262a}nav ul{columns:2}section{margin-block:3rem}th,td{padding:.45rem;text-align:left;vertical-align:top;border-bottom:1px solid #ddd}table{border-collapse:collapse}code{overflow-wrap:anywhere}pre{white-space:pre-wrap;background:#f3f4f5;padding:1rem}dt{font-weight:bold}dd{margin:.2rem 0 1rem}a{color:#205994}@media print{nav{break-after:page}h2,h3{break-after:avoid}}</style><main><h1>Miniforge Engine · Руководство разработчика</h1><nav><ul>' + toc + '</ul></nav>' + sections.map((s,i) => '<section id="chapter-' + i + '"><h2>' + esc(s.title) + '</h2>' + s.body + '</section>').join('\n') + '</main></html>'
 await writeFile('site/docs/handbook.html', html)

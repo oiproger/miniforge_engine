@@ -790,6 +790,7 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
     inputs: [
       { id: 'origin', label: 'Origin', type: 'vec3', defaultValue: [0, 1, 0] },
       { id: 'direction', label: 'Direction', type: 'vec3', defaultValue: [0, -1, 0] },
+      { id: 'exclude', label: 'Excluded Entities', type: 'array' },
       { id: 'length', label: 'Length', type: 'number', defaultValue: 10 },
     ],
     outputs: [
@@ -798,6 +799,7 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'distance', label: 'Distance', type: 'number' },
       { id: 'point', label: 'Point', type: 'vec3' },
       { id: 'normal', label: 'Normal', type: 'vec3' },
+      { id: 'normalAvailable', label: 'Normal Available', type: 'boolean' },
     ],
   },
   {
@@ -1018,12 +1020,71 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'assetId', label: 'Audio ID', type: 'string', defaultValue: '' },
       { id: 'volume', label: 'Volume', type: 'number', defaultValue: 1 },
       { id: 'pitch', label: 'Pitch', type: 'number', defaultValue: 1 },
+      { id: 'loop', label: 'Loop', type: 'boolean', defaultValue: false },
+      { id: 'spatial', label: 'Spatial', type: 'boolean', defaultValue: false },
+      { id: 'position', label: 'Position', type: 'vec3', defaultValue: [0, 0, 0] },
+      { id: 'bus', label: 'Bus', type: 'string', defaultValue: 'sfx', options: ['sfx', 'ambient', 'ui'] },
     ],
     outputs: [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'handle', label: 'Handle', type: 'string' },
     ],
   },
+  ...[
+    ['steam.listLobbies', 'Steam List Lobbies'],
+    ['steam.inviteFriends', 'Steam Invite Friends'],
+    ['steam.relayStatus', 'Steam Relay Status'],
+  ].map(([type, title]): GraphNodeSpec => ({
+    type, title, category: 'World & FX',
+    inputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
+  })),
+  {
+    type: 'net.status', title: 'Network Status', category: 'World & FX', pure: true,
+    inputs: [],
+    outputs: [
+      { id: 'connected', label: 'Connected', type: 'boolean' },
+      { id: 'peers', label: 'Peers', type: 'array' },
+      { id: 'room', label: 'Room', type: 'string' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
+  },
+  {
+    type: 'steam.pendingInvite', title: 'Steam Pending Lobby Invite', category: 'World & FX', pure: true,
+    inputs: [],
+    outputs: [
+      { id: 'pending', label: 'Pending', type: 'boolean' },
+      { id: 'lobbyId', label: 'Lobby ID', type: 'string' },
+      { id: 'friendId', label: 'Friend ID', type: 'string' },
+    ],
+  },
+  {
+    type: 'nav.findPath', title: 'Find Navigation Path', category: 'Animation & AI', pure: true,
+    inputs: [
+      { id: 'start', label: 'Start', type: 'vec3', defaultValue: [0, 0, 0] },
+      { id: 'goal', label: 'Goal', type: 'vec3', defaultValue: [0, 0, 0] },
+      { id: 'zone', label: 'Zone ID', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'path', label: 'Path', type: 'array' }],
+  },
+  ...[
+    ['anim.pause', 'Pause Animation'],
+    ['anim.resume', 'Resume Animation'],
+    ['anim.stop', 'Stop Animation'],
+  ].map(([type, title]): GraphNodeSpec => ({
+    type, title, category: 'Animation & AI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Entity', type: 'entity', defaultValue: '' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  })),
   ...UI_WIDGET_ACTIONS.map(({ type, title, fields }): GraphNodeSpec => ({
     type,
     title,
@@ -1184,6 +1245,9 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'id', label: 'Widget ID', type: 'string', defaultValue: 'lbl_info' },
       { id: 'screenId', label: 'Screen ID', type: 'string', defaultValue: '' },
+      { id: 'parentId', label: 'Parent Widget', type: 'string', defaultValue: '' },
+      { id: 'asset', label: 'Image / HTML Asset', type: 'string', defaultValue: '' },
+      { id: 'event', label: 'Click Event', type: 'string', defaultValue: '' },
       { id: 'widgetType', label: 'Widget Type', type: 'string', defaultValue: 'label', options: ['label', 'counter', 'button', 'progress', 'panel', 'blur', 'container', 'image', 'html'] },
       { id: 'text', label: 'Text', type: 'string', defaultValue: 'Hello!' },
       { id: 'x', label: 'X', type: 'number', defaultValue: 24 },
@@ -1395,6 +1459,71 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
     outputs: [{ id: 'exec', label: '', type: 'exec' }],
   },
   {
+    type: 'camera.screenToRay',
+    title: 'Screen To Ray',
+    category: 'Player & Input',
+    pure: true,
+    inputs: [
+      { id: 'x', label: 'X (px)', type: 'number', defaultValue: 0 },
+      { id: 'y', label: 'Y (px)', type: 'number', defaultValue: 0 },
+    ],
+    outputs: [
+      { id: 'origin', label: 'Origin', type: 'vec3' },
+      { id: 'direction', label: 'Direction', type: 'vec3' },
+    ],
+  },
+  {
+    type: 'scene.current',
+    title: 'Get Active Scene',
+    category: 'Entity',
+    pure: true,
+    inputs: [],
+    outputs: [{ id: 'id', label: 'Scene ID', type: 'string' }],
+  },
+  {
+    type: 'ui.sendEvent',
+    title: 'Send Event to HTML Widget',
+    category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+      { id: 'name', label: 'Event Name', type: 'string', defaultValue: '' },
+      { id: 'payload', label: 'Payload', type: 'any' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'sent', label: 'Sent', type: 'boolean' },
+    ],
+  },
+  {
+    type: 'ui.patchWidget',
+    title: 'Patch UI Widget',
+    category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+      { id: 'patch', label: 'Properties', type: 'any' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'updated', label: 'Updated', type: 'boolean' },
+    ],
+  },
+  {
+    type: 'terrain.layerAt',
+    title: 'Terrain Layer at Point',
+    category: 'World & FX',
+    pure: true,
+    inputs: [{ id: 'position', label: 'Position', type: 'vec3', defaultValue: [0, 0, 0] }],
+    outputs: [
+      { id: 'found', label: 'Found', type: 'boolean' },
+      { id: 'height', label: 'Height', type: 'number' },
+      { id: 'layerIndex', label: 'Layer Index', type: 'number' },
+      { id: 'materialId', label: 'Material ID', type: 'string' },
+      { id: 'weights', label: 'Layer Weights', type: 'array' },
+    ],
+  },
+  {
     type: 'camera.worldToScreen',
     title: 'World To Screen 2D',
     category: 'Player & Input',
@@ -1505,7 +1634,13 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'name', label: 'Lobby Name', type: 'string', defaultValue: 'My Lobby' },
       { id: 'maxMembers', label: 'Max Players', type: 'number', defaultValue: 4 },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'steam.joinLobby',
@@ -1515,14 +1650,26 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'lobbyId', label: 'Lobby ID / Name', type: 'string', defaultValue: '' },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'steam.leaveLobby',
     title: 'Steam Leave Lobby',
     category: 'World & FX',
     inputs: [{ id: 'exec', label: '', type: 'exec' }],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'steam.cloudSave',
@@ -1533,7 +1680,13 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'filename', label: 'Filename', type: 'string', defaultValue: 'save.json' },
       { id: 'data', label: 'Data', type: 'string', defaultValue: '{}' },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'steam.getUserName',
@@ -1562,7 +1715,13 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'room', label: 'Room Name', type: 'string', defaultValue: 'lobby-1' },
       { id: 'port', label: 'Port', type: 'number', defaultValue: 8765 },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'net.sendChat',
@@ -1615,10 +1774,17 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
     category: 'World & FX',
     inputs: [
       { id: 'exec', label: '', type: 'exec' },
+      { id: 'mode', label: 'Transport', type: 'string', defaultValue: '', options: ['', 'client-server-ws', 'p2p-webrtc', 'steam-p2p', 'singleplayer', 'local-splitscreen'] },
       { id: 'room', label: 'Room Code', type: 'string', defaultValue: 'lobby-1' },
       { id: 'url', label: 'Server URL', type: 'string', defaultValue: 'ws://localhost:8765' },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'net.disconnect',
@@ -1737,7 +1903,13 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'slot', label: 'Slot Name', type: 'string', defaultValue: 'autosave' },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'save.loadSlot',
@@ -1747,7 +1919,13 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'slot', label: 'Slot Name', type: 'string', defaultValue: 'autosave' },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Result', type: 'any' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
   },
   {
     type: 'platform.ad',
@@ -1867,7 +2045,10 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'property', label: 'Property', type: 'string', defaultValue: 'intensity' },
       { id: 'value', label: 'Value', type: 'any', defaultValue: '' },
     ],
-    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'updated', label: 'Updated', type: 'boolean' },
+    ],
     keywords: 'set component property field write modify',
   },
 
