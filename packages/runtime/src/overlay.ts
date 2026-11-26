@@ -363,7 +363,7 @@ export class Overlay {
     this.redraw()
     return widgetId
   }
-  scriptAPI(variables: () => Record<string, unknown>): GameAPI['ui'] {
+  scriptAPI(readVariable: (name: string) => unknown): GameAPI['ui'] {
     return {
       get: (id) => this.get(id),
       open: (id) => this.open(id),
@@ -385,7 +385,12 @@ export class Overlay {
       setOpacity: (id, opacity) => this.updateWidget(id, { opacity }),
       setColors: (id, color, background) => this.updateWidget(id, { color, background }),
       bindValue: (id, variable) => this.updateWidget(id, { variable, value: undefined }),
-      getValue: (id) => this.getValue(id, variables()),
+      getValue: (id) => {
+        const item = this.project.ui.find((widget) => widget.id === id)
+        if (!item) return undefined
+        const value = Number.isFinite(item.value) ? item.value : readVariable(item.variable)
+        return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+      },
       hasWidget: (id) => this.project.ui.some((item) => item.id === id),
       updateWidget: (id, patch) => this.updateWidget(id, patch),
       removeWidget: (id) => this.removeWidget(id),
@@ -394,12 +399,6 @@ export class Overlay {
       setHtml: (id, html) => this.setHtml(id, html),
       setVisible: (id, visible) => this.setVisible(id, visible),
     }
-  }
-  getValue(id: string, vars: Record<string, unknown> = this.variables): number | undefined {
-    const item = this.project.ui.find((widget) => widget.id === id)
-    if (!item) return undefined
-    const value = Number.isFinite(item.value) ? item.value : vars[item.variable]
-    return typeof value === 'number' && Number.isFinite(value) ? value : undefined
   }
   updateWidget(id: string, patch: Record<string, any>): boolean {
     const item = this.project.ui.find((u) => u.id === id)

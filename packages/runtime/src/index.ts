@@ -1536,7 +1536,7 @@ export async function startGame(
       },
       terrain: terrainAPI,
       nav: navAPI,
-      ui: overlay.scriptAPI(() => vars),
+      ui: overlay.scriptAPI((name) => name === 'best' ? best : vars[name]),
       scene: {
         load: (id) => {
           if (alive()) requestScene(id)

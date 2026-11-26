@@ -134,7 +134,7 @@ test('HUD graph actions work in both preview and compiled scripts', async ({ pag
         overlay.render('playing', 0, 0, 0, 'en', false)
         const meter = overlay.get('meter')
         const vars = {health: 10, gold: 12}
-        const api = { ui: overlay.scriptAPI(() => vars) }
+        const api = { ui: overlay.scriptAPI((name) => vars[name]) }
         const lifecycle = useCompiled ? compiled(api) : createEventGraphLifecycle(graph, api)
         lifecycle.onStart()
         overlay.update(0, 0, vars)
