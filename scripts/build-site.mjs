@@ -8,6 +8,7 @@ const editorDist = resolve(root, 'dist/editor')
 const siteSrc = resolve(root, 'site')
 
 console.log('1/3 Building web editor (pnpm build)...')
+execSync('pnpm docs:handbook', { stdio: 'inherit', cwd: root })
 execSync('pnpm build', { stdio: 'inherit', cwd: root })
 
 console.log('2/3 Assembling dist/pages (landing + docs + /editor/)...')

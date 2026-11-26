@@ -495,6 +495,17 @@ export interface GameAPI {
       [key: string]: any
     }): string
     /** Patch properties of an existing UI widget by ID and redraw. */
+    setPosition(id: string, x: number, y: number): boolean
+    setSize(id: string, width: number, height: number): boolean
+    setValue(id: string, value: number): boolean
+    setProgressMax(id: string, max: number): boolean
+    setOpacity(id: string, opacity: number): boolean
+    setColors(id: string, color: string, background: string): boolean
+    /** Bind a counter or progress bar to api.vars and clear an explicit numeric override. */
+    bindValue(id: string, variable: string): boolean
+    /** Read the explicit or bound numeric value, including widgets on closed screens. */
+    getValue(id: string): number | undefined
+    hasWidget(id: string): boolean
     updateWidget(id: string, patch: Record<string, any>): boolean
     /** Remove a UI widget by ID and redraw. */
     removeWidget(id: string): boolean

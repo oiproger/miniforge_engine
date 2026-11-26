@@ -40,6 +40,8 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
   const eid = () => `_eid(${g('entity', '')})`
 
   switch (node.type) {
+    case 'ui.getValue': return `(api.ui.getValue(String(${g('id', '')})) ?? 0)`
+    case 'ui.hasWidget': return `api.ui.hasWidget(String(${g('id', '')}))`
     case 'var.get': {
       const varId = String(node.config?.varId || node.inputs?.varId || '')
       return `_readVar(${lit(varId)})`
@@ -396,6 +398,10 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       const out = v('handle')
       return `${indent}const ${out} = api.audio.play(String(${g('assetId', '')}), { volume: Number(${g('volume', 1)}) || 1, loop: Boolean(${g('loop', false)}) });\n` + next()
     }
+    case 'ui.bindValue':
+      return `${indent}api.ui.bindValue(String(${g('id', '')}), String(${g('variable', 'health')}));\n` + next()
+    case 'ui.setColors':
+      return `${indent}api.ui.setColors(String(${g('id', '')}), String(${g('color', '#ffffff')}), String(${g('background', 'transparent')}));\n` + next()
     case 'ui.open':
       return `${indent}api.ui.open(String(${g('screenId', '')}));\n` + next()
     case 'ui.close':

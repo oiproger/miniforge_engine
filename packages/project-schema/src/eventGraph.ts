@@ -1036,6 +1036,41 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
     outputs: [{ id: 'exec', label: '', type: 'exec' }],
   })),
   {
+    type: 'ui.bindValue', title: 'Bind UI Value', category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+      { id: 'variable', label: 'Variable', type: 'string', defaultValue: 'health' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  {
+    type: 'ui.setColors', title: 'Set UI Colors', category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+      { id: 'color', label: 'Text color', type: 'string', defaultValue: '#ffffff' },
+      { id: 'background', label: 'Background', type: 'string', defaultValue: 'transparent' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  {
+    type: 'ui.getValue', title: 'Get UI Value', category: 'Audio & UI',
+    pure: true,
+    inputs: [
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'value', label: 'Value', type: 'number' }],
+  },
+  {
+    type: 'ui.hasWidget', title: 'UI Widget Exists', category: 'Audio & UI',
+    pure: true,
+    inputs: [
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'value', label: 'Value', type: 'boolean' }],
+  },
+  {
     type: 'ui.open',
     title: 'Open UI Screen',
     category: 'Audio & UI',

@@ -90,14 +90,22 @@ test('HUD graph actions work in both preview and compiled scripts', async ({ pag
     { id: 'opacity', type: 'ui.setOpacity', inputs: { id: 'meter', opacity: 0.4 } },
     { id: 'inactive', type: 'ui.setValue', inputs: { id: 'coins', value: 0 } },
     { id: 'text', type: 'ui.setText', inputs: { id: 'coins', text: 'Gold' } },
+    { id: 'bind', type: 'ui.bindValue', inputs: { id: 'mirror', variable: 'gold' } },
+    { id: 'copy', type: 'ui.setValue', inputs: { id: 'mirror' } },
+    { id: 'color', type: 'ui.setColors', inputs: { id: 'mirror', color: '#ffffff', background: '#000000' } },
+    { id: 'show', type: 'ui.setVisible', inputs: { id: 'mirror' } },
   ].map((node) => ({ ...node, x: 0, y: 0 }))
   const graph: EventGraphData = {
     version: 1, variables: [], functions: [],
-    nodes: [...nodes, { id: 'amount', type: 'math.op', x: 0, y: 0, inputs: { a: 100, b: 30 } }],
+    nodes: [...nodes, { id: 'amount', type: 'math.op', x: 0, y: 0, inputs: { a: 100, b: 30 } },
+      { id: 'read', type: 'ui.getValue', x: 0, y: 0, inputs: { id: 'meter' } },
+      { id: 'exists', type: 'ui.hasWidget', x: 0, y: 0, inputs: { id: 'coins' } }],
     edges: [
       ...nodes.slice(1).map((next, i) => ({
         id: 'edge' + i, fromNode: nodes[i].id, fromPin: 'exec', toNode: next.id, toPin: 'exec',
       })),
+      { id: 'copy-value', fromNode: 'read', fromPin: 'value', toNode: 'copy', toPin: 'value' },
+      { id: 'exists-link', fromNode: 'exists', fromPin: 'value', toNode: 'show', toPin: 'visible' },
       { id: 'amount-link', fromNode: 'amount', fromPin: 'result', toNode: 'value', toPin: 'value' },
     ],
   }
@@ -116,6 +124,7 @@ test('HUD graph actions work in both preview and compiled scripts', async ({ pag
         project.screens = [{id: 'bag', name: 'Inventory', phase: 'window'}]
         project.ui = [
           {id: 'meter', type: 'progress', text: '', variable: 'health', x: 0, y: 0},
+          {id: 'mirror', type: 'counter', text: '', screen: 'bag', x: 0, y: 0},
           {id: 'coins', type: 'counter', text: 'Coins', x: 5, y: 5, screen: 'bag'},
         ]
         const input = new Input(new AbortController().signal)
@@ -124,16 +133,35 @@ test('HUD graph actions work in both preview and compiled scripts', async ({ pag
         document.body.append(overlay.host)
         overlay.render('playing', 0, 0, 0, 'en', false)
         const meter = overlay.get('meter')
-        const api = { ui: { updateWidget: overlay.updateWidget.bind(overlay), setText: overlay.setText.bind(overlay) } }
+        const vars = {health: 10, gold: 12}
+        const api = { ui: overlay.scriptAPI(() => vars) }
         const lifecycle = useCompiled ? compiled(api) : createEventGraphLifecycle(graph, api)
         lifecycle.onStart()
-        overlay.update(0, 0, {health: 10})
+        overlay.update(0, 0, vars)
         const result = {sameElement: meter === overlay.get('meter'), value: meter.value, max: meter.max,
           styles: [meter.style.left, meter.style.top, meter.style.width, meter.style.height, meter.style.opacity]}
         overlay.open('bag')
         const counter = overlay.get('coins').textContent
+        api.ui.createWidget({ id: 'card', type: 'html', screen: 'bag', html: '<b>Initial</b>' })
+        api.ui.setHtml('card', '<strong>Updated card</strong>')
+        const htmlUpdated = overlay.get('card').querySelector('iframe').srcdoc.includes('<strong>Updated card</strong>')
+        api.ui.createWidget({ id: 'grid', type: 'container', screen: 'bag' })
+        api.ui.createWidget({ id: 'cell', type: 'label', screen: 'bag', parentId: 'grid' })
+        api.ui.setVisible('grid', false)
+        api.ui.setVisible('grid', true)
+        api.ui.setSize('cell', 50, 20)
+        const gridStyles = [overlay.get('grid').style.display, overlay.get('cell').style.width]
+        const mirror = overlay.get('mirror')
+        const mirrored = [mirror.textContent, mirror.style.background, mirror.style.display]
+        api.ui.bindValue('coins', 'gold')
+        overlay.update(0, 0, vars)
+        const bound = overlay.get('coins').textContent
+        api.ui.setValue('coins', 0)
+        api.ui.setColors('coins', '#ffffff', '#000000')
+        const read = api.ui.getValue('coins')
+        const exists = api.ui.hasWidget('coins')
         overlay.dispose()
-        return { ...result, counter }
+        return { ...result, counter, bound, read, exists, htmlUpdated, mirrored, gridStyles }
       }
     ` },
   })
@@ -141,7 +169,7 @@ test('HUD graph actions work in both preview and compiled scripts', async ({ pag
   await page.addScriptTag({ content: outputFiles[0].text })
   for (const compiled of [false, true]) {
     expect(await page.evaluate((compiled) => (window as any).setup(compiled), compiled)).toEqual({
-      sameElement: true, value: 130, max: 200, styles: ['18%', '23%', '45%', '8%', '0.4'], counter: 'Gold 0',
+      sameElement: true, value: 130, max: 200, styles: ['18%', '23%', '45%', '8%', '0.4'], counter: 'Gold 0', bound: 'Gold 12', read: 0, exists: true, htmlUpdated: true, gridStyles: ['grid', '100%'], mirrored: ['130', 'rgb(0, 0, 0)', ''],
     })
   }
 })

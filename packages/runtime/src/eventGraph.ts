@@ -110,6 +110,8 @@ export function createEventGraphLifecycle(
   function evalPureNode(scope: ExecScope, node: GraphNode, depth: number): Record<string, any> | undefined {
     const get = (pin: string, fb?: any) => evalInput(scope, node, pin, fb, depth)
     switch (node.type) {
+      case 'ui.getValue': return { value: api.ui.getValue(String(get('id', ''))) ?? 0 }
+      case 'ui.hasWidget': return { value: api.ui.hasWidget(String(get('id', ''))) }
       case 'var.get':
         return { value: readVar(String(node.config?.varId || '')) }
       case 'vars.get': {
@@ -803,6 +805,14 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'ui.bindValue':
+        api.ui.bindValue(String(get('id', '')), String(get('variable', 'health')))
+        next()
+        break
+      case 'ui.setColors':
+        api.ui.setColors(String(get('id', '')), String(get('color', '#ffffff')), String(get('background', 'transparent')))
+        next()
+        break
       case 'ui.open': {
         const sid = String(get('screenId', ''))
         if (sid) api.ui.open(sid)
