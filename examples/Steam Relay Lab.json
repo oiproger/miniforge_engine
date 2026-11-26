@@ -1,0 +1,692 @@
+{
+  "version": 1,
+  "id": "example-steam-relay-lab",
+  "name": "Steam Relay Lab",
+  "description": "Test Steam lobbies, invitations, packet round trips and Steam services in a single panel. Editor previews use Local Debug. Desktop exports use native Steamworks.",
+  "activeScene": "scene-main",
+  "scenes": [
+    {
+      "id": "scene-main",
+      "name": "Steam Lobby Demo Arena",
+      "environment": {
+        "background": "#151b24",
+        "ambient": 1.15,
+        "sunColor": "#fff3d9",
+        "sunIntensity": 1.1,
+        "shadows": true
+      },
+      "entities": [
+        {
+          "id": "floor",
+          "name": "Ground",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.2,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              14,
+              0.4,
+              14
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-granite"
+            },
+            {
+              "type": "script",
+              "asset": "script-steam-relay-lab"
+            }
+          ],
+          "properties": {
+            "tags": [
+              "ground"
+            ]
+          }
+        },
+        {
+          "id": "sun",
+          "name": "Sun Light",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              6,
+              10,
+              6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "directional",
+              "color": "#fff3d9",
+              "intensity": 1.15,
+              "castShadow": true
+            }
+          ],
+          "properties": {
+            "tags": []
+          }
+        },
+        {
+          "id": "camera",
+          "name": "Main Camera",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              7.2,
+              10.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "camera",
+              "fov": 50,
+              "active": true,
+              "projection": "perspective",
+              "target": [
+                0,
+                0.5,
+                0
+              ]
+            }
+          ],
+          "properties": {
+            "tags": []
+          }
+        },
+        {
+          "id": "pillar-1",
+          "name": "Stone Pillar",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -2.4,
+              1.2,
+              -1.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              2.4,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-shale"
+            }
+          ],
+          "properties": {
+            "tags": [
+              "prop"
+            ]
+          }
+        },
+        {
+          "id": "pillar-2",
+          "name": "Stone Pillar 2",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              2.4,
+              1.2,
+              -1.8
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              2.4,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-shale"
+            }
+          ],
+          "properties": {
+            "tags": [
+              "prop"
+            ]
+          }
+        },
+        {
+          "id": "crate-1",
+          "name": "Supply Crate",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              -1.2,
+              0.45,
+              0.4
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.9,
+              0.9,
+              0.9
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {
+            "tags": [
+              "prop"
+            ]
+          }
+        },
+        {
+          "id": "beacon",
+          "name": "Energy Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.8,
+              -2.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.75,
+              0.75,
+              0.75
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "sphere",
+              "material": "mat-gold"
+            }
+          ],
+          "properties": {
+            "tags": [
+              "beacon"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "default-material",
+      "name": "Porcelain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d9dfdf",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-turf",
+      "name": "Meadow",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#93c85c",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grass",
+      "name": "Grass",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#74ab51",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-moss",
+      "name": "Moss",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c0d76d",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-soil",
+      "name": "Soil",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#99714e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-shale",
+      "name": "Cliff stone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#716f72",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-granite",
+      "name": "Granite",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#989a96",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-slate",
+      "name": "Slate",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#626973",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-limestone",
+      "name": "Limestone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c7c5af",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pine",
+      "name": "Pine",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#38755a",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-needles",
+      "name": "Needles",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#53945f",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-tips",
+      "name": "Tips",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#75ac67",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-bark",
+      "name": "Bark",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#896544",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-timber",
+      "name": "Pine wood",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#bd884e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-planks",
+      "name": "Planks",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d4a360",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grain",
+      "name": "Grain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a27146",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-straw",
+      "name": "Straw",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e5b978",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-gold",
+      "name": "Coin gold",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffbd39",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-rim",
+      "name": "Rim",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffe779",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-amber",
+      "name": "Amber",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e28a23",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-sea",
+      "name": "Tunic",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#4096a2",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pond",
+      "name": "Pond",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#66bac1",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-ripple",
+      "name": "Ripple",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a6e3d5",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-blossom",
+      "name": "Blossom",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#fff1ca",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-petal",
+      "name": "Petal",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#efb873",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-scarf",
+      "name": "Scarf",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ef8041",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-leather",
+      "name": "Leather",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#6a473b",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-skin",
+      "name": "Skin",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e6b088",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-hair",
+      "name": "Hair",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#593d32",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "script-steam-relay-lab",
+      "type": "script",
+      "name": "SteamRelayLab.ts",
+      "properties": {},
+      "data": "export default function createBehavior(api) {\n  const widget = 'steam-relay-lab'\n  const namespace = 'miniforge-relay-lab-v1'\n  const lobbyName = 'Miniforge Relay Lab'\n  const cloudFile = 'miniforge-relay-lab-probe.json'\n  const pingEvent = namespace + ':ping'\n  const pongEvent = namespace + ':pong'\n  let panel\n  let unsubscribe = []\n  let found = []\n  let pendingPing\n  let sequence = 0\n  let busy = false\n  let disposed = false\n  let nextStatusRefresh = 0\n\n  function field(name) {\n    return panel.querySelector('[data-field=\"' + name + '\"]')\n  }\n  function updateStatus() {\n    const lobby = api.steam.getLobby()\n    const invite = api.steam.getPendingInvite()\n    const mode = api.steam.getMode()\n    field('mode').textContent = {\n      native: 'Native Steamworks',\n      'local-debug': 'Local Debug simulation',\n      unavailable: 'Steam unavailable',\n    }[mode]\n    const user = api.steam.getUser()\n    field('identity').textContent = user.steamId ? user.name + ' · ' + user.steamId + ' · AppID ' + user.appId : 'No Steam identity'\n    field('lobby').textContent = lobby ? lobby.name + ' · ' + lobby.id : 'No lobby'\n    field('members').textContent = lobby ? lobby.members.map(id => id === lobby.ownerId ? id + ' (owner)' : id).join(', ') : '—'\n    const connected = api.net.isConnected() && api.net.mode() === 'steam-p2p'\n    field('transport').textContent = connected\n      ? api.net.mode() + ' · ' + api.net.getPeers().length + ' connected · ' + (api.net.isHost() ? 'host' : 'member')\n      : 'Disconnected'\n    field('metadata').textContent = lobby?.data?.probe ?? '—'\n    field('invite').textContent = invite ? invite.lobbyId : 'No pending invite'\n    for (const button of panel.querySelectorAll('[data-action]')) {\n      const action = button.dataset.action\n      const needsNative = ['invite', 'relay', 'stat', 'dlc'].includes(action)\n      const needsLobby = ['leave', 'invite', 'metadata'].includes(action)\n      button.disabled = busy || (needsNative && mode !== 'native') || (needsLobby && !lobby)\n        || (action === 'accept' && !invite) || (action === 'ping' && (!connected || Boolean(pendingPing)))\n        || (mode === 'unavailable' && action !== 'init')\n    }\n  }\n  function report(message) {\n    if (!disposed) field('result').textContent = message\n  }\n  async function connectLobby(lobby) {\n    if (!lobby) throw new Error('Steam refused the lobby request')\n    if (!await api.net.connect({ mode: 'steam-p2p', room: lobby.id })) {\n      await api.steam.leaveLobby()\n      throw new Error(api.net.getLastError() || 'Could not attach the Steam transport')\n    }\n    field('lobbyId').value = ''\n    report('Joined lobby ' + lobby.id + '. Use Ping peer to verify packet exchange.')\n  }\n  async function refreshLobbies() {\n    found = (await api.steam.listLobbies()).filter(lobby =>\n      lobby.data?.example === namespace || lobby.name === lobbyName)\n    const select = field('list')\n    const selected = select.value\n    select.replaceChildren(new Option('Select a lobby', ''))\n    for (const lobby of found) {\n      select.add(new Option(lobby.name + ' (' + lobby.members.length + '/' + lobby.maxMembers + ') · ' + lobby.id, lobby.id))\n    }\n    select.value = found.some(lobby => lobby.id === selected) ? selected : (found[0]?.id || '')\n    report('Found ' + found.length + ' demo lobbies.')\n  }\n  const actions = {\n    async init() {\n      const user = await api.steam.init()\n      report(user.steamId ? 'Steam identity ready.' : 'Native: start Steam and check AppID access. Editor: enable Local Debug.')\n    },\n    async create() {\n      await connectLobby(await api.steam.createLobby({ name: lobbyName, maxMembers: 4, data: { example: namespace } }))\n    },\n    refresh: refreshLobbies,\n    async join() {\n      const id = field('lobbyId').value.trim() || field('list').value\n      if (!id) throw new Error('Select a lobby or enter its ID')\n      await connectLobby(await api.steam.joinLobby(id))\n    },\n    async leave() {\n      api.net.disconnect()\n      await api.steam.leaveLobby()\n      pendingPing = undefined\n      field('lobbyId').value = ''\n      report('Left the lobby.')\n    },\n    async invite() {\n      report(await api.steam.inviteFriends() ? 'Invite dialog requested.' : 'Steam overlay unavailable.')\n    },\n    async accept() {\n      const invite = api.steam.getPendingInvite()\n      if (invite) await connectLobby(await api.steam.joinLobby(invite.lobbyId))\n    },\n    async relay() {\n      report('SDR status: ' + (await api.steam.relayStatus() ?? 'unavailable'))\n    },\n    async metadata() {\n      const updated = await api.steam.setLobbyData('probe', new Date().toISOString())\n      report(updated ? 'Lobby metadata updated.' : 'Steam refused metadata update. Try as the owner.')\n    },\n    ping() {\n      const peer = api.net.getPeers().find(peer => peer.id !== api.net.peerId())\n      if (!peer) throw new Error('Join from a second client and wait for it to appear in the transport')\n      pendingPing = { target: peer.id, token: ++sequence, start: performance.now() }\n      api.net.rpc(pingEvent, { token: pendingPing.token }, peer.id)\n      report('Ping sent to ' + peer.name + '…')\n    },\n    async cloudWrite() {\n      const value = { savedAt: new Date().toISOString(), user: api.steam.getUser().steamId }\n      report(await api.steam.cloudWrite(cloudFile, JSON.stringify(value)) ? 'Cloud probe written.' : 'Cloud write failed.')\n    },\n    async cloudRead() {\n      const value = await api.steam.cloudRead(cloudFile)\n      report(value === null ? 'Cloud probe not found.' : 'Cloud probe: ' + value)\n    },\n    async cloudList() {\n      const files = await api.steam.listCloudFiles()\n      report('Cloud probe listed: ' + (files.includes(cloudFile) ? 'yes' : 'no') + ' · ' + files.length + ' files total')\n    },\n    async achievement() {\n      const id = field('achievementId').value.trim()\n      if (!id) throw new Error('Enter an achievement API name from Steamworks')\n      const unlocked = await api.steam.unlockAchievement(id)\n      const confirmed = unlocked && await api.steam.queryAchievement(id)\n      report(confirmed ? 'Achievement confirmed: ' + id : 'Achievement unavailable: ' + id)\n    },\n    async stat() {\n      const id = field('statId').value.trim()\n      if (!id) throw new Error('Enter an integer stat API name from Steamworks')\n      const value = await api.steam.readStat(id)\n      report(value === null ? 'Stat unavailable.' : id + ' = ' + value)\n    },\n    async dlc() {\n      const id = Number(field('dlcId').value)\n      if (!Number.isInteger(id) || id <= 0 || id > 4294967295) throw new Error('Enter a valid DLC AppID')\n      report(await api.steam.isDlcInstalled(id) ? 'DLC installed.' : 'DLC not installed or unavailable.')\n    },\n  }\n  return {\n    async onStart() {\n      panel = api.ui.mount(widget, `\n        <article class=\"mf-steam-lab\" aria-label=\"Steam Relay Lab\">\n          <header><h1>Steam Relay Lab</h1><strong data-field=\"mode\"></strong></header>\n          <p data-field=\"identity\"></p>\n          <p class=\"mf-steam-result\" role=\"status\" data-field=\"result\">Initializing Steam…</p>\n          <dl>\n            <dt>Lobby</dt><dd data-field=\"lobby\"></dd>\n            <dt>Members</dt><dd data-field=\"members\"></dd>\n            <dt>Transport</dt><dd data-field=\"transport\"></dd>\n            <dt>Metadata probe</dt><dd data-field=\"metadata\"></dd>\n            <dt>Invite</dt><dd data-field=\"invite\"></dd>\n          </dl>\n          <section><h2>Lobby &amp; relay</h2>\n            <div class=\"mf-steam-row\">\n              <button data-action=\"init\">Retry Steam</button><button data-action=\"create\">Create lobby</button>\n              <button data-action=\"refresh\">Find lobbies</button><button data-action=\"leave\">Leave</button>\n            </div>\n            <div class=\"mf-steam-row\">\n              <select aria-label=\"Discovered lobbies\" data-field=\"list\"><option value=\"\">Select a lobby</option></select>\n              <input aria-label=\"Lobby ID\" data-field=\"lobbyId\" placeholder=\"Or enter lobby ID\" />\n              <button data-action=\"join\">Join lobby</button>\n            </div>\n            <div class=\"mf-steam-row\">\n              <button data-action=\"ping\">Ping peer</button><button data-action=\"relay\">Relay status</button>\n              <button data-action=\"invite\">Invite friends</button><button data-action=\"accept\">Join invited lobby</button>\n              <button data-action=\"metadata\">Update lobby metadata</button>\n            </div>\n          </section>\n          <section><h2>Steam services</h2>\n            <div class=\"mf-steam-row\">\n              <button data-action=\"cloudWrite\">Cloud write</button><button data-action=\"cloudRead\">Cloud read</button>\n              <button data-action=\"cloudList\">Cloud list</button>\n            </div>\n            <div class=\"mf-steam-row\">\n              <input aria-label=\"Achievement API name\" data-field=\"achievementId\" value=\"ACH_LOBBY_JOINED\" />\n              <button data-action=\"achievement\">Test achievement</button>\n              <input aria-label=\"Integer stat API name\" data-field=\"statId\" placeholder=\"Integer stat API name\" />\n              <button data-action=\"stat\">Read stat</button>\n              <input aria-label=\"DLC AppID\" data-field=\"dlcId\" placeholder=\"DLC AppID\" />\n              <button data-action=\"dlc\">Check DLC</button>\n            </div>\n          </section>\n        </article>`, `\n        .mf-steam-lab{pointer-events:auto;position:absolute;inset:16px auto 16px 16px;width:min(680px,calc(100% - 32px));height:fit-content;max-height:calc(100% - 32px);overflow:auto;padding:16px;background:#151b25f5;border:1px solid #3b4b63;border-radius:10px;color:#edf3ff;font:14px/1.4 system-ui,sans-serif}\n        .mf-steam-lab header{position:static;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}\n        .mf-steam-lab h1{font-size:23px;letter-spacing:normal;text-shadow:none}.mf-steam-lab h2{font-size:14px;margin:6px 0}\n        .mf-steam-lab header strong{color:#9ae5c3}.mf-steam-lab p{margin:6px 0;text-shadow:none}\n        .mf-steam-lab dl{display:grid;grid-template-columns:auto 1fr;gap:4px 8px}.mf-steam-lab dd{margin:0;overflow-wrap:anywhere}\n        .mf-steam-lab section{position:static;display:block;padding:8px 0;background:none;text-align:left;border-top:1px solid #3b4b63}\n        .mf-steam-row{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0}\n        .mf-steam-row button,.mf-steam-row input,.mf-steam-row select{font:inherit;border:1px solid #506078;border-radius:5px;padding:5px 8px;background:#23334a;color:#edf3ff}\n        .mf-steam-row button{background:#355b8d;cursor:pointer}.mf-steam-row button:disabled{opacity:.45;cursor:default}\n        .mf-steam-row input,.mf-steam-row select{max-width:100%;width:165px}.mf-steam-lab .mf-steam-result{position:sticky;top:0;z-index:1;padding:4px 6px;background:#1d2939;border-radius:4px;overflow-wrap:anywhere;color:#b7e2ff;min-height:1.4em}\n      `)\n      const onClick = async (event) => {\n        const action = event.target.closest?.('button[data-action]')?.dataset.action\n        if (!action || busy || !Object.hasOwn(actions, action)) return\n        busy = true\n        updateStatus()\n        try { await actions[action]() }\n        catch (error) { report(error instanceof Error ? error.message : String(error)) }\n        finally { busy = false; if (!disposed) updateStatus() }\n      }\n      const onFieldKeyDown = (event) => {\n        if (event.target.matches?.('input, select')) event.stopPropagation()\n      }\n      panel.addEventListener('keydown', onFieldKeyDown)\n      panel.addEventListener('click', onClick)\n      unsubscribe = [\n        () => panel.removeEventListener('keydown', onFieldKeyDown),\n        () => panel.removeEventListener('click', onClick),\n        api.net.onRpc(pingEvent, (payload, sender) => {\n          if (!Number.isSafeInteger(payload?.token)) return\n          api.net.rpc(pongEvent, { token: payload.token }, sender)\n          report('Received ping from ' + sender + ' and replied.')\n        }),\n        api.net.onRpc(pongEvent, (payload, sender) => {\n          if (sender !== pendingPing?.target || payload?.token !== pendingPing?.token) return\n          const ms = Math.round(performance.now() - pendingPing.start)\n          pendingPing = undefined\n          report('Round trip confirmed · ' + ms + ' ms · ' + sender)\n        }),\n      ]\n      await onClick({ target: panel.querySelector('[data-action=\"init\"]') })\n    },\n    onUpdate() {\n      if (!panel || performance.now() < nextStatusRefresh) return\n      nextStatusRefresh = performance.now() + 250\n      if (pendingPing && performance.now() - pendingPing.start > 5000) {\n        pendingPing = undefined\n        report('Ping timed out. Check if the other client is still in the lobby.')\n      }\n      updateStatus()\n    },\n    onDestroy() {\n      disposed = true\n      for (const off of unsubscribe) off()\n      api.ui.unmount(widget)\n    },\n  }\n}\n"
+    }
+  ],
+  "ui": [],
+  "locales": {
+    "en": {
+      "menu.play": "Play",
+      "menu.resume": "Resume",
+      "menu.retry": "Try again",
+      "menu.pause": "Pause",
+      "menu.results": "Results",
+      "hud.score": "Coins",
+      "hud.time": "Time",
+      "hud.best": "Personal best",
+      "menu.reward": "Watch ad · +15 seconds",
+      "menu.controls": "Move with WASD, arrow keys or the touch stick."
+    },
+    "ru": {
+      "menu.play": "Играть",
+      "menu.resume": "Продолжить",
+      "menu.retry": "Ещё раз",
+      "menu.pause": "Пауза",
+      "menu.results": "Результаты",
+      "hud.score": "Монеты",
+      "hud.time": "Время",
+      "hud.best": "Рекорд",
+      "menu.reward": "Реклама · +15 секунд",
+      "menu.controls": "Управление — WASD, стрелки или экранный джойстик."
+    }
+  },
+  "settings": {
+    "duration": 60,
+    "language": "en",
+    "mode": "scene",
+    "bounds": [
+      -5.5,
+      5.5,
+      -5.5,
+      5.5
+    ],
+    "multiplayer": {
+      "mode": "singleplayer",
+      "maxPlayers": 4,
+      "roomCode": "steam-lobby-demo",
+      "tickRate": 20,
+      "interpolationDelayMs": 60,
+      "simulatedLatencyMs": 0,
+      "simulatedPacketLoss": 0,
+      "autoStartLanServer": false
+    },
+    "steam": {
+      "enabled": true,
+      "localDebug": true,
+      "appId": 480,
+      "cloudSaves": true,
+      "richPresence": "Testing Steam Relay Lab",
+      "lobbyMaxMembers": 4,
+      "achievements": []
+    }
+  }
+}

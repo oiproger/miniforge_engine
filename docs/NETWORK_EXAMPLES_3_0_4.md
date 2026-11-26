@@ -29,7 +29,11 @@ The example picker automatically imports `examples/*.json`; no registration or p
 - `settings.steam.enabled = true`, `localDebug = true`: the mock is allowed **only in editor preview** and uses `BroadcastChannel` + `localStorage`, *not Steam*.
 - Open the game preview in two tabs at the same origin and under the same AppID. In tab A press **Create lobby**; in tab B press **Find lobbies**, select the announced lobby and press **Join selected**. Test **Send RPC**, **Cloud write** and **Cloud read**.
 - **Leave** disconnects `NetManager` and leaves the local mock lobby. Controls show errors instead of a misleading native success when Steamworks is unavailable.
-- The native Steamworks adapter in this source tree is still a stub. On an exported build, `localDebug` is ignored by design; the example reports **STEAM UNAVAILABLE**. Real Steam lobby / networking requires a separately implemented and tested Steamworks bridge.
+- Local Debug is available in editor preview. For a project with both Local Debug and a native Desktop test path, use **Steam Relay Lab**.
+
+## 5. Steam Relay Lab
+
+Open **Steam Relay Lab** to test lobby creation and discovery, member and owner updates, an acknowledged RPC round trip, invitations, Steam Cloud, achievements, stat reads, and DLC checks. Launch two clients through **Multiplayer & Net Debugger** for the editor simulation. Desktop export produces a Steamworks source package with a depot build command. [Steam Relay Lab walkthrough](STEAM_NATIVE.md)
 
 ## Regression commands
 
