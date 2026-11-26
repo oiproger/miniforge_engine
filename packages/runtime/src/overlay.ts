@@ -65,7 +65,7 @@ export function buildHtmlWidgetSrcdoc(
   const safeId = JSON.stringify(frameId)
   const bridge = `<script>(function(){
   var FRAME_ID=${safeId};
-  var listeners={};
+  var listeners=Object.create(null);
   function post(kind,payload){try{window.parent.postMessage({__mfHtml:true,frameId:FRAME_ID,kind:kind,payload:payload},'*');}catch(e){}}
   window.miniforge={
     emit:function(name,data){post('emit',{name:String(name),data:data});},
@@ -82,7 +82,9 @@ export function buildHtmlWidgetSrcdoc(
     };
   });
   window.addEventListener('error',function(ev){post('console',{level:'error',text:ev.message||'Script error'});});
+  window.addEventListener('unhandledrejection',function(ev){post('console',{level:'error',text:String(ev.reason)});});
   window.addEventListener('message',function(ev){
+    if(ev.source!==window.parent)return;
     var d=ev.data;
     if(!d||!d.__mfToHtml)return;
     (listeners[d.name]||[]).forEach(function(fn){try{fn(d.data);}catch(err){post('console',{level:'error',text:String(err)});}});
@@ -101,7 +103,7 @@ export function buildHtmlWidgetSrcdoc(
     }
   });
 })();<\/script>`
-  return `<!DOCTYPE html><html style="background:transparent;color-scheme:dark"><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden}${css || ''}</style>${bridge}</head><body style="background:transparent">${html || ''}<script>try{${js || ''}}catch(e){console.error(e);}<\/script></body></html>`
+  return `<!DOCTYPE html><html style="background:transparent;color-scheme:dark"><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden}${css || ''}</style>${bridge}</head><body style="background:transparent">${html || ''}<script>try{\n${js || ''}\n}catch(e){console.error(e);}<\/script></body></html>`
 }
 
 const liveWidgetFields = new Set(['x', 'y', 'width', 'height', 'opacity', 'value', 'max', 'color', 'background', 'text', 'variable', 'visible'])

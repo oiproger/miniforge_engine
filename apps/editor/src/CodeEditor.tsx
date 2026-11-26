@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController.js'
 import 'monaco-editor/esm/vs/editor/contrib/find/browser/findController.js'
@@ -7,9 +7,25 @@ import 'monaco-editor/esm/vs/editor/contrib/bracketMatching/browser/bracketMatch
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker.js?worker'
 
-Object.assign(self, { MonacoEnvironment: { getWorker: () => new EditorWorker() } })
+import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker.js?worker'
+import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker.js?worker'
+import ScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker.js?worker'
 
-export type CodeLanguage = 'glsl' | 'typescript' | 'json' | 'markdown' | 'ini' | 'plaintext'
+const languageWorkers: Record<string, new () => Worker> = {
+  html: HtmlWorker, css: CssWorker, javascript: ScriptWorker, typescript: ScriptWorker,
+}
+Object.assign(self, {
+  MonacoEnvironment: {
+    getWorker(_: string, label: string) {
+      const Worker = languageWorkers[label] ?? EditorWorker
+      return new Worker()
+    },
+  },
+})
+
+let nextModelId = 0
+
+export type CodeLanguage = 'glsl' | 'typescript' | 'json' | 'markdown' | 'ini' | 'plaintext' | 'html' | 'css' | 'javascript'
 
 monaco.languages.register({ id: 'glsl' })
 monaco.languages.setMonarchTokensProvider('glsl', {
@@ -336,6 +352,8 @@ export default function CodeEditor({
   language,
   readOnly = false,
   findTrigger = 0,
+  fileName,
+  editorRef,
   onSave,
   onChange,
 }: {
@@ -343,23 +361,29 @@ export default function CodeEditor({
   language: CodeLanguage
   readOnly?: boolean
   findTrigger?: number
+  fileName?: string
+  editorRef?: RefObject<monaco.editor.IStandaloneCodeEditor | null>
   onSave?: () => void
   onChange: (s: string) => void
 }) {
   const container = useRef<HTMLDivElement>(null),
     callback = useRef(onChange),
     saveRef = useRef(onSave),
-    initial = useRef(value),
+    latestValue = useRef(value),
+    syncing = useRef(false),
     instance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   callback.current = onChange
   saveRef.current = onSave
+  latestValue.current = value
   useEffect(() => {
     if (!container.current) return
-    const model = monaco.editor.createModel(initial.current, language)
+    const uri = fileName ? monaco.Uri.from({ scheme: 'inmemory', path: `/${nextModelId++}/${fileName}` }) : undefined
+    const model = monaco.editor.createModel(latestValue.current, language, uri)
     const editor = monaco.editor.create(container.current, {
       model,
       theme: 'vs-dark',
       fontSize: 13,
+      ariaLabel: fileName ? `Widget editor ${fileName}` : undefined,
       readOnly,
       automaticLayout: true,
       minimap: { enabled: false },
@@ -376,20 +400,32 @@ export default function CodeEditor({
       saveRef.current?.()
     })
     const sub = editor.onDidChangeModelContent(() => {
-      if (!readOnly) callback.current(editor.getValue())
+      if (!readOnly && !syncing.current) callback.current(editor.getValue())
     })
     instance.current = editor
+    if (editorRef) editorRef.current = editor
     return () => {
       sub.dispose()
       editor.dispose()
       model.dispose()
       instance.current = null
+      if (editorRef) editorRef.current = null
     }
-  }, [language, readOnly])
+  }, [language, readOnly, fileName, editorRef])
   useEffect(() => {
     const editor = instance.current
-    if (editor && value !== editor.getValue()) editor.setValue(value)
-  }, [value])
+    if (!editor || value === editor.getValue()) return
+    syncing.current = true
+    try {
+      if (fileName && !readOnly) {
+        editor.pushUndoStop()
+        editor.executeEdits('sync', [{ range: editor.getModel()!.getFullModelRange(), text: value }])
+        editor.pushUndoStop()
+      } else editor.setValue(value)
+    } finally {
+      syncing.current = false
+    }
+  }, [value, fileName, readOnly])
   useEffect(() => {
     if (findTrigger > 0) {
       const editor = instance.current

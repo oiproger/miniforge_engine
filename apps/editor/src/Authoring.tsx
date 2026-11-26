@@ -32,7 +32,6 @@ import { DEFAULT_DIALOGUE_SCREEN_ID, makeDialogueControls, makeDialogueScreen, g
 import InterfaceForm from './HudEditor'
 import { Field, Numeric, Color } from './Fields'
 import { ParticleEditor } from './ParticleEditor'
-import { HtmlEditor } from './HtmlEditor'
 import { PrefabEditor } from './PrefabEditor'
 import { ModelEditor } from './ModelEditor'
 import { EventGraphEditor } from './EventGraphEditor'
@@ -45,6 +44,7 @@ import { shaders, checkShader } from './shaderTemplates'
 import { materialPresets, generateProceduralTextures, type ProceduralPattern } from './materialTextures'
 
 const CodeEditor = lazy(() => import('./CodeEditor'))
+const HtmlEditor = lazy(() => import('./HtmlEditor'))
 type Edit = (fn: (p: Project) => void) => void
 const presets: Record<string, Record<string, unknown>> = {
   Default: { background: '#242b35', ambient: 1.3, exposure: 1, shadows: true, fogDensity: 0 },
@@ -1382,7 +1382,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
       }}
     >
       <div
-        className={(activeTarget === 'ui' || a?.type === 'graph' || a?.type === 'dialogue' || a?.type === 'sequence' || a?.type === 'plugin' || a?.type === 'material' || a?.type === 'shader' || (a?.type === 'model' && Boolean(a.properties?.meshBuilder))) ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'html' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' || a?.type === 'audio' ? 'mf-dialog mf-particle-dialog' : 'mf-dialog'}
+        className={(activeTarget === 'ui' || a?.type === 'graph' || a?.type === 'dialogue' || a?.type === 'sequence' || a?.type === 'plugin' || a?.type === 'material' || a?.type === 'shader' || (a?.type === 'model' && Boolean(a.properties?.meshBuilder))) ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' || a?.type === 'audio' ? 'mf-dialog mf-particle-dialog' : a?.type === 'html' ? 'mf-dialog mf-hud-dialog mf-widget-dialog' : 'mf-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={name}
@@ -1421,7 +1421,9 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                       </button>
                     </div>
                   )}
-                  <HtmlEditor a={a} changeA={changeA} />
+                  <Suspense fallback={<p>Loading widget studio…</p>}>
+                    <HtmlEditor key={a.id} a={a} changeA={changeA} />
+                  </Suspense>
                 </>
               )}
               {a.type === 'material' && (
