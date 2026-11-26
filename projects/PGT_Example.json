@@ -1,0 +1,1462 @@
+{
+  "version": 1,
+  "id": "project-edd4daf3-e9f7-455e-8047-3a7042ec67c2",
+  "name": "PGT Example",
+  "activeScene": "scene-d81a4c70-5f98-4ce3-8dc0-1ca13612139c",
+  "scenes": [
+    {
+      "id": "scene-d81a4c70-5f98-4ce3-8dc0-1ca13612139c",
+      "name": "Level 01",
+      "environment": {
+        "background": "#202731",
+        "ambient": 1.5
+      },
+      "entities": [
+        {
+          "id": "floor",
+          "name": "Ground",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              -0.2,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              12,
+              0.4,
+              10
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-grass"
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                12,
+                0.4,
+                10
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {
+            "floor": true
+          }
+        },
+        {
+          "id": "camera",
+          "name": "Scene Camera",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              10,
+              10,
+              13
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "camera",
+              "projection": "orthographic",
+              "target": [
+                0,
+                0.35,
+                0
+              ],
+              "size": 13,
+              "zoom": 1,
+              "fov": 45
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "lights",
+          "name": "Lighting",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [],
+          "properties": {}
+        },
+        {
+          "id": "sun",
+          "name": "Sun",
+          "parent": "lights",
+          "active": true,
+          "transform": {
+            "position": [
+              -4,
+              10,
+              5
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "directional",
+              "color": "#fff2ce",
+              "intensity": 2.35
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "ambient",
+          "name": "Sky Light",
+          "parent": "lights",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              4,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "light",
+              "kind": "ambient",
+              "color": "#f1f8ff",
+              "intensity": 1.55
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player",
+          "name": "Player",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "behavior",
+              "kind": "first-person",
+              "params": {
+                "speed": 3.4
+              }
+            },
+            {
+              "type": "collider",
+              "shape": "capsule",
+              "size": [
+                0.46,
+                0.96,
+                0.46
+              ],
+              "trigger": false
+            },
+            {
+              "type": "eventGraph",
+              "enabled": true,
+              "asset": "asset-4554b806-deed-46ae-9103-1be61f7277aa",
+              "overrides": {}
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Left-boot",
+          "name": "Left boot",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.13,
+              0.1,
+              0.055
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.17,
+              0.21,
+              0.25
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-leather"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Right-boot",
+          "name": "Right boot",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.13,
+              0.1,
+              0.055
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.17,
+              0.21,
+              0.25
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-leather"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Tunic",
+          "name": "Tunic",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.39,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.45,
+              0.43,
+              0.3
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-sea"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Satchel",
+          "name": "Satchel",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.45,
+              -0.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.29,
+              0.31,
+              0.14
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-timber"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Scarf",
+          "name": "Scarf",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.63,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.43,
+              0.13,
+              0.33
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-scarf"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Face",
+          "name": "Face",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.84,
+              0.035
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.38,
+              0.36,
+              0.34
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-skin"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Left-eye",
+          "name": "Left eye",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.088,
+              0.864,
+              0.208
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.043,
+              0.055,
+              0.022
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-hair"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Right-eye",
+          "name": "Right eye",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.088,
+              0.864,
+              0.208
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.043,
+              0.055,
+              0.022
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-hair"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Scarf-end",
+          "name": "Scarf end",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.137,
+              0.53,
+              0.17
+            ],
+            "rotation": [
+              0,
+              0,
+              -0.23
+            ],
+            "scale": [
+              0.11,
+              0.21,
+              0.045
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-scarf"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Hair",
+          "name": "Hair",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.01,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.41,
+              0.12,
+              0.38
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-hair"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Cap",
+          "name": "Cap",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.025,
+              1.1,
+              -0.025
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.49,
+              0.15,
+              0.44
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-sea"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Brim",
+          "name": "Brim",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              1.045,
+              0.15
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.49,
+              0.055,
+              0.24
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-sea"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Left-hand",
+          "name": "Left hand",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              -0.275,
+              0.4,
+              0.02
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.12,
+              0.3,
+              0.15
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-skin"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "player-Right-hand",
+          "name": "Right hand",
+          "parent": "player",
+          "active": true,
+          "transform": {
+            "position": [
+              0.275,
+              0.4,
+              0.02
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.12,
+              0.3,
+              0.15
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "box",
+              "material": "mat-skin"
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "pillar",
+          "name": "Petrovich",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              0,
+              0.75,
+              -2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1.5,
+              1
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "cylinder",
+              "material": "mat-granite",
+              "segments": 7
+            },
+            {
+              "type": "collider",
+              "shape": "box",
+              "size": [
+                1,
+                1.5,
+                1
+              ],
+              "trigger": false
+            }
+          ],
+          "properties": {}
+        },
+        {
+          "id": "beacon",
+          "name": "Beacon",
+          "parent": null,
+          "active": true,
+          "transform": {
+            "position": [
+              2,
+              0.6,
+              -2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              0.7,
+              0.7,
+              0.7
+            ]
+          },
+          "components": [
+            {
+              "type": "mesh",
+              "shape": "sphere",
+              "material": "mat-amber"
+            },
+            {
+              "type": "behavior",
+              "kind": "collectible",
+              "params": {
+                "value": 1,
+                "radius": 0.65
+              }
+            }
+          ],
+          "properties": {}
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "default-material",
+      "name": "Porcelain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d9dfdf",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-turf",
+      "name": "Meadow",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#93c85c",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grass",
+      "name": "Grass",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#74ab51",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-moss",
+      "name": "Moss",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c0d76d",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-soil",
+      "name": "Soil",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#99714e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-shale",
+      "name": "Cliff stone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#716f72",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-granite",
+      "name": "Granite",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#989a96",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-slate",
+      "name": "Slate",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#626973",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-limestone",
+      "name": "Limestone",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#c7c5af",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pine",
+      "name": "Pine",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#38755a",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-needles",
+      "name": "Needles",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#53945f",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-tips",
+      "name": "Tips",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#75ac67",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-bark",
+      "name": "Bark",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#896544",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-timber",
+      "name": "Pine wood",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#bd884e",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-planks",
+      "name": "Planks",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#d4a360",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-grain",
+      "name": "Grain",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a27146",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-straw",
+      "name": "Straw",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e5b978",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-gold",
+      "name": "Coin gold",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffbd39",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-rim",
+      "name": "Rim",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ffe779",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-amber",
+      "name": "Amber",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e28a23",
+        "roughness": 0.42,
+        "metalness": 0.12,
+        "flatShading": true,
+        "emissive": "#402300"
+      }
+    },
+    {
+      "id": "mat-sea",
+      "name": "Tunic",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#4096a2",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-pond",
+      "name": "Pond",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#66bac1",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-ripple",
+      "name": "Ripple",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#a6e3d5",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-blossom",
+      "name": "Blossom",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#fff1ca",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-petal",
+      "name": "Petal",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#efb873",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-scarf",
+      "name": "Scarf",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#ef8041",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-leather",
+      "name": "Leather",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#6a473b",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-skin",
+      "name": "Skin",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#e6b088",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "mat-hair",
+      "name": "Hair",
+      "type": "material",
+      "data": "",
+      "properties": {
+        "color": "#593d32",
+        "roughness": 0.85,
+        "metalness": 0,
+        "flatShading": true
+      }
+    },
+    {
+      "id": "asset-99a58502-d333-4d6a-83e7-3c582bb3bee0",
+      "name": "Petrovich_Dial",
+      "type": "dialogue",
+      "data": "{\"version\":1,\"title\":\"NPC Dialogue\",\"quests\":[{\"id\":\"quest_intro\",\"title\":\"Поговорить со старожилом\",\"description\":\"Узнать новости в посёлке.\",\"defaultStatus\":\"inactive\"}],\"nodes\":[{\"id\":\"d-start\",\"type\":\"start\",\"x\":60,\"y\":120,\"nextNodeId\":\"d-line-1\"},{\"id\":\"d-line-1\",\"type\":\"line\",\"x\":290,\"y\":100,\"speaker\":\"Сосед Петрович\",\"text\":\"Здорово! Выручишь с одним делом?\",\"choices\":[{\"id\":\"c-1\",\"text\":\"Конечно, рассказывай\",\"nextNodeId\":\"d-act-1\"},{\"id\":\"c-2\",\"text\":\"Позже зайду\",\"nextNodeId\":\"d-end\"}]},{\"id\":\"d-act-1\",\"type\":\"action\",\"x\":536,\"y\":101,\"actionKind\":\"setQuest\",\"actionKey\":\"quest_intro\",\"actionValue\":\"active\",\"nextNodeId\":\"dlg-ef39249d-7e15-4b35-bc96-a87a85a41ad4\"},{\"id\":\"d-end\",\"type\":\"end\",\"x\":944,\"y\":789},{\"id\":\"dlg-ef39249d-7e15-4b35-bc96-a87a85a41ad4\",\"type\":\"line\",\"x\":720,\"y\":233,\"speaker\":\"Сосед Петрович\",\"text\":\"Спасибо, мужик!\",\"choices\":[],\"nextNodeId\":\"dlg-69ba5da2-bfda-40b9-b1aa-7d2bcfdef450\"},{\"id\":\"dlg-69ba5da2-bfda-40b9-b1aa-7d2bcfdef450\",\"type\":\"line\",\"x\":718,\"y\":314,\"speaker\":\"Сосед Петрович\",\"text\":\"Я короче чего прошу-то\",\"choices\":[],\"nextNodeId\":\"dlg-38e04b2b-c124-4041-b568-9b5c57d1bea9\"},{\"id\":\"dlg-38e04b2b-c124-4041-b568-9b5c57d1bea9\",\"type\":\"line\",\"x\":715,\"y\":393,\"speaker\":\"Сосед Петрович\",\"text\":\"Я оставил в гараже фунфырик, а ключ потерял. Сможешь пролезть туда и забрать?\",\"choices\":[{\"id\":\"ch-626fe370-8252-4e08-8b04-5711b1977bc2\",\"text\":\"Предлагаешь влезть? Меня же посадят\",\"nextNodeId\":\"dlg-f2f58beb-7686-433f-ab28-be2cdf9a1ff2\"},{\"id\":\"ch-93ae08cf-151e-4ade-a9e5-c03f5add554b\",\"text\":\"Хорошо\",\"nextNodeId\":\"dlg-f282658f-3eb1-446b-ad70-cbb090b947aa\"}]},{\"id\":\"dlg-f282658f-3eb1-446b-ad70-cbb090b947aa\",\"type\":\"line\",\"x\":717,\"y\":613,\"speaker\":\"Сосед Петрович\",\"text\":\"Мужик, ты просто легенда! Спасибо!\",\"choices\":[],\"nextNodeId\":\"d-end\"},{\"id\":\"dlg-f2f58beb-7686-433f-ab28-be2cdf9a1ff2\",\"type\":\"line\",\"x\":709,\"y\":518,\"speaker\":\"Сосед Петрович\",\"text\":\"Неее, всё норм будет, я ручаюсь\",\"choices\":[{\"id\":\"ch-2dedfb06-cd5a-4309-9889-bc5d797f7bc2\",\"text\":\"Хорошо\",\"nextNodeId\":\"dlg-f282658f-3eb1-446b-ad70-cbb090b947aa\"}]}]}",
+      "properties": {}
+    },
+    {
+      "id": "asset-4554b806-deed-46ae-9103-1be61f7277aa",
+      "name": "Petrovich test",
+      "type": "graph",
+      "data": "{\"version\":1,\"variables\":[{\"id\":\"var-ad35bd97-7831-4bf9-a751-8479db9d938d\",\"name\":\"EntityName\",\"type\":\"string\",\"defaultValue\":\"Petrovich\",\"exposed\":true,\"scope\":\"local\"}],\"functions\":[],\"nodes\":[{\"id\":\"n-start\",\"type\":\"event.start\",\"x\":80,\"y\":120},{\"id\":\"node-6bfc9306-b770-4719-a51c-4e035c2bdb92\",\"type\":\"event.inputAction\",\"x\":109,\"y\":284,\"inputs\":{}},{\"id\":\"node-42857da6-8719-4a83-8011-1889b21d4b0e\",\"type\":\"camera.info\",\"x\":105,\"y\":541,\"inputs\":{}},{\"id\":\"node-0ed1b810-ca20-452b-a744-b8e56d0895dc\",\"type\":\"physics.raycast\",\"x\":424,\"y\":549,\"inputs\":{\"length\":4}},{\"id\":\"node-b5ef6aa6-4123-4431-9ff1-615230167b47\",\"type\":\"entity.findByName\",\"x\":422,\"y\":429,\"inputs\":{}},{\"id\":\"node-3329b665-f6ee-4453-8740-83ad8045a012\",\"type\":\"var.get\",\"x\":114,\"y\":446,\"config\":{\"varId\":\"var-ad35bd97-7831-4bf9-a751-8479db9d938d\"},\"inputs\":{}},{\"id\":\"node-c3088b19-125d-40b5-8be0-4005bab09f32\",\"type\":\"logic.compare\",\"x\":751,\"y\":560,\"inputs\":{}},{\"id\":\"node-d3997a57-652b-46b6-add2-06dbeb7e96db\",\"type\":\"flow.branch\",\"x\":1457,\"y\":294,\"inputs\":{}},{\"id\":\"node-de570790-ad26-4e14-b427-bac60ab17701\",\"type\":\"logic.bool\",\"x\":747,\"y\":733,\"inputs\":{}},{\"id\":\"node-e2ca9ee9-5864-4dc8-9d18-27397728cfcc\",\"type\":\"dialogue.start\",\"x\":1853,\"y\":296,\"inputs\":{\"assetId\":\"Petrovich_Dial\"}},{\"id\":\"node-b2a43b50-1e15-4ae6-9abc-49847658cded\",\"type\":\"flow.print\",\"x\":508,\"y\":223,\"inputs\":{\"value\":\"Hello from\"}},{\"id\":\"node-a516de84-9923-4142-932f-9e194bf8579c\",\"type\":\"flow.print\",\"x\":832,\"y\":234,\"inputs\":{}},{\"id\":\"node-a0af9376-bd9e-454b-96b5-8463f58f83c8\",\"type\":\"flow.print\",\"x\":1074,\"y\":268,\"inputs\":{}},{\"id\":\"node-79faf635-6352-41c2-9b6a-ed65a24525e4\",\"type\":\"camera.worldToScreen\",\"x\":930,\"y\":1126,\"inputs\":{}},{\"id\":\"node-52d9b4c0-c535-4091-85f3-712614dec10d\",\"type\":\"event.update\",\"x\":110,\"y\":888,\"inputs\":{}},{\"id\":\"node-a2a61b1a-c13b-4620-bd97-486a58117bfb\",\"type\":\"flow.branch\",\"x\":628,\"y\":922,\"inputs\":{}},{\"id\":\"node-16459070-0f63-48c0-8e47-628832363ae0\",\"type\":\"entity.getPos\",\"x\":934,\"y\":940,\"inputs\":{}}],\"edges\":[{\"id\":\"edge-ec2045b9-1cad-42c0-bc36-7d872cabed8e\",\"fromNode\":\"node-42857da6-8719-4a83-8011-1889b21d4b0e\",\"fromPin\":\"position\",\"toNode\":\"node-0ed1b810-ca20-452b-a744-b8e56d0895dc\",\"toPin\":\"origin\"},{\"id\":\"edge-3cad6e48-b72c-4de8-a65d-7ef6a71f5b55\",\"fromNode\":\"node-42857da6-8719-4a83-8011-1889b21d4b0e\",\"fromPin\":\"forward\",\"toNode\":\"node-0ed1b810-ca20-452b-a744-b8e56d0895dc\",\"toPin\":\"direction\"},{\"id\":\"edge-5e95a4ca-7f4f-466c-8b86-4e1134fefd85\",\"fromNode\":\"node-3329b665-f6ee-4453-8740-83ad8045a012\",\"fromPin\":\"value\",\"toNode\":\"node-b5ef6aa6-4123-4431-9ff1-615230167b47\",\"toPin\":\"name\"},{\"id\":\"edge-3b5deaa6-52f0-4129-a05f-fae1a559e915\",\"fromNode\":\"node-b5ef6aa6-4123-4431-9ff1-615230167b47\",\"fromPin\":\"entity\",\"toNode\":\"node-c3088b19-125d-40b5-8be0-4005bab09f32\",\"toPin\":\"a\"},{\"id\":\"edge-f9a52c1d-035d-4ea5-b651-76c404052377\",\"fromNode\":\"node-0ed1b810-ca20-452b-a744-b8e56d0895dc\",\"fromPin\":\"id\",\"toNode\":\"node-c3088b19-125d-40b5-8be0-4005bab09f32\",\"toPin\":\"b\"},{\"id\":\"edge-aa95f3e3-c0ff-4043-b681-e20cc0099423\",\"fromNode\":\"node-c3088b19-125d-40b5-8be0-4005bab09f32\",\"fromPin\":\"result\",\"toNode\":\"node-de570790-ad26-4e14-b427-bac60ab17701\",\"toPin\":\"a\"},{\"id\":\"edge-315489e8-668a-4b90-8be3-a16a160bfac3\",\"fromNode\":\"node-de570790-ad26-4e14-b427-bac60ab17701\",\"fromPin\":\"result\",\"toNode\":\"node-d3997a57-652b-46b6-add2-06dbeb7e96db\",\"toPin\":\"condition\"},{\"id\":\"edge-e4e33c81-1ac1-4582-8162-d5457a9709a8\",\"fromNode\":\"node-d3997a57-652b-46b6-add2-06dbeb7e96db\",\"fromPin\":\"true\",\"toNode\":\"node-e2ca9ee9-5864-4dc8-9d18-27397728cfcc\",\"toPin\":\"exec\"},{\"id\":\"edge-b757ac3c-2212-4bb3-a54d-4bc36b8d84e1\",\"fromNode\":\"node-6bfc9306-b770-4719-a51c-4e035c2bdb92\",\"fromPin\":\"pressed\",\"toNode\":\"node-b2a43b50-1e15-4ae6-9abc-49847658cded\",\"toPin\":\"exec\"},{\"id\":\"edge-b51f4a92-08f8-4e47-b199-88cf77f3e810\",\"fromNode\":\"node-0ed1b810-ca20-452b-a744-b8e56d0895dc\",\"fromPin\":\"hit\",\"toNode\":\"node-de570790-ad26-4e14-b427-bac60ab17701\",\"toPin\":\"b\"},{\"id\":\"edge-201f20e7-1f01-4352-8ac6-c9d4f76487f7\",\"fromNode\":\"node-b2a43b50-1e15-4ae6-9abc-49847658cded\",\"fromPin\":\"exec\",\"toNode\":\"node-a516de84-9923-4142-932f-9e194bf8579c\",\"toPin\":\"exec\"},{\"id\":\"edge-1f146f28-8e04-403a-b2d8-4a3ffa6825db\",\"fromNode\":\"node-a516de84-9923-4142-932f-9e194bf8579c\",\"fromPin\":\"exec\",\"toNode\":\"node-a0af9376-bd9e-454b-96b5-8463f58f83c8\",\"toPin\":\"exec\"},{\"id\":\"edge-5c4254b7-363b-4f27-a221-f645a222a839\",\"fromNode\":\"node-c3088b19-125d-40b5-8be0-4005bab09f32\",\"fromPin\":\"result\",\"toNode\":\"node-a516de84-9923-4142-932f-9e194bf8579c\",\"toPin\":\"value\"},{\"id\":\"edge-689c8f64-7d17-4fbc-a0af-441ba14550e7\",\"fromNode\":\"node-0ed1b810-ca20-452b-a744-b8e56d0895dc\",\"fromPin\":\"hit\",\"toNode\":\"node-a0af9376-bd9e-454b-96b5-8463f58f83c8\",\"toPin\":\"value\"},{\"id\":\"edge-e0a0d0fc-d819-4f37-b5f1-f0e2ab0f8ba0\",\"fromNode\":\"node-a0af9376-bd9e-454b-96b5-8463f58f83c8\",\"fromPin\":\"exec\",\"toNode\":\"node-d3997a57-652b-46b6-add2-06dbeb7e96db\",\"toPin\":\"exec\"},{\"id\":\"edge-1e0e277f-a318-45a5-9155-55b03ca359ec\",\"fromNode\":\"node-52d9b4c0-c535-4091-85f3-712614dec10d\",\"fromPin\":\"exec\",\"toNode\":\"node-a2a61b1a-c13b-4620-bd97-486a58117bfb\",\"toPin\":\"exec\"},{\"id\":\"edge-75bdb659-cc54-4d77-84c0-50f2977bab89\",\"fromNode\":\"node-de570790-ad26-4e14-b427-bac60ab17701\",\"fromPin\":\"result\",\"toNode\":\"node-a2a61b1a-c13b-4620-bd97-486a58117bfb\",\"toPin\":\"condition\"},{\"id\":\"edge-5c9171a0-0a44-4d40-8f2f-43ebd917a9de\",\"fromNode\":\"node-b5ef6aa6-4123-4431-9ff1-615230167b47\",\"fromPin\":\"entity\",\"toNode\":\"node-16459070-0f63-48c0-8e47-628832363ae0\",\"toPin\":\"id\"},{\"id\":\"edge-1ab5134d-51af-4bc5-b14d-343a01896c87\",\"fromNode\":\"node-16459070-0f63-48c0-8e47-628832363ae0\",\"fromPin\":\"position\",\"toNode\":\"node-79faf635-6352-41c2-9b6a-ed65a24525e4\",\"toPin\":\"position\"}]}",
+      "properties": {}
+    },
+    {
+      "id": "asset-2abbe6de-7c7e-4b1b-bf8d-4b0b31fa5a59",
+      "type": "script",
+      "name": "ScriptPetrovich.ts",
+      "data": "export default function (api: GameAPI) {\n  \n  const elmText = \n  \n  return {\n    onStart() {\n      // Initialize systems or register services here\n    },\n    onUpdate(deltaTime: number) {\n      \n    },\n  };\n}\n",
+      "properties": {}
+    }
+  ],
+  "ui": [
+    {
+      "id": "dialogue_panel",
+      "screen": "dialogue",
+      "type": "panel",
+      "text": "",
+      "anchor": "bottom-center",
+      "x": 0,
+      "y": 3,
+      "width": 68,
+      "height": 36,
+      "background": "rgba(16, 21, 28, 0.94)",
+      "borderColor": "rgba(243, 160, 93, 0.45)",
+      "borderRadius": 0,
+      "backdropBlur": 8,
+      "zIndex": 1,
+      "visible": true
+    },
+    {
+      "id": "dialogue_speaker",
+      "screen": "dialogue",
+      "type": "text",
+      "text": "NPC Name",
+      "anchor": "bottom-center",
+      "x": -29.86,
+      "y": 39.49,
+      "color": "#f3a05d",
+      "fontSize": 15,
+      "align": "left",
+      "zIndex": 2,
+      "visible": true,
+      "backdropBlur": 20,
+      "borderRadius": 8
+    },
+    {
+      "id": "dialogue_text",
+      "screen": "dialogue",
+      "type": "text",
+      "text": "Dialogue line text appears here...",
+      "anchor": "bottom-center",
+      "x": 0,
+      "y": 26,
+      "width": 62,
+      "color": "#edf2f7",
+      "fontSize": 16,
+      "align": "left",
+      "zIndex": 2,
+      "visible": true
+    },
+    {
+      "id": "dialogue_choices",
+      "screen": "dialogue",
+      "type": "container",
+      "text": "",
+      "layout": "list",
+      "scroll": true,
+      "gap": 6,
+      "rowHeight": 36,
+      "anchor": "bottom-center",
+      "x": 0,
+      "y": 5,
+      "width": 62,
+      "height": 17,
+      "background": "rgba(10, 14, 20, 0.35)",
+      "borderRadius": 8,
+      "zIndex": 3,
+      "visible": true
+    },
+    {
+      "id": "dialogue_choice_template",
+      "screen": "dialogue",
+      "parentId": "dialogue_choices",
+      "type": "button",
+      "text": "Choice option (style template)",
+      "action": "event",
+      "event": "dialogue.choose.0",
+      "anchor": "top-left",
+      "x": 0,
+      "y": 0,
+      "background": "#222c38",
+      "color": "#ffffff",
+      "fontSize": 14,
+      "align": "left",
+      "borderRadius": 6,
+      "zIndex": 4,
+      "visible": true
+    },
+    {
+      "id": "dialogue_next",
+      "screen": "dialogue",
+      "type": "button",
+      "text": "Далее →",
+      "action": "event",
+      "event": "dialogue.next",
+      "anchor": "bottom-right",
+      "x": 18,
+      "y": 6,
+      "background": "#f3a05d",
+      "color": "#141920",
+      "fontSize": 14,
+      "borderRadius": 6,
+      "zIndex": 4,
+      "visible": true
+    },
+    {
+      "id": "screen-41752949-ac69-41ec-a427-078aacf54cd8-control-0",
+      "type": "text",
+      "text": "Phone",
+      "screen": "screen-41752949-ac69-41ec-a427-078aacf54cd8",
+      "x": 0,
+      "y": -10,
+      "anchor": "center",
+      "fontSize": 26
+    },
+    {
+      "id": "screen-41752949-ac69-41ec-a427-078aacf54cd8-control-1",
+      "type": "button",
+      "text": "‹",
+      "screen": "screen-41752949-ac69-41ec-a427-078aacf54cd8",
+      "action": "back",
+      "x": 2,
+      "y": 2,
+      "anchor": "top-left"
+    },
+    {
+      "id": "screen-ca48dcc9-a574-4cbb-8a79-78d35a937bfd-control-0",
+      "type": "button",
+      "text": "menu.pause",
+      "screen": "screen-ca48dcc9-a574-4cbb-8a79-78d35a937bfd",
+      "action": "pause",
+      "x": 2,
+      "y": 2,
+      "anchor": "top-right"
+    },
+    {
+      "id": "ui_phone",
+      "screen": "screen-ca48dcc9-a574-4cbb-8a79-78d35a937bfd",
+      "type": "button",
+      "text": "Phone",
+      "x": 3,
+      "y": 2.51,
+      "anchor": "top-left",
+      "color": "#ffffff",
+      "fontSize": 18,
+      "visible": true,
+      "action": "open",
+      "event": "button.clicked",
+      "target": "screen-41752949-ac69-41ec-a427-078aacf54cd8"
+    },
+    {
+      "id": "plr-text-action",
+      "screen": "screen-ca48dcc9-a574-4cbb-8a79-78d35a937bfd",
+      "type": "text",
+      "text": "",
+      "x": 48.19,
+      "y": 91.6,
+      "anchor": "top-left",
+      "color": "#ffffff",
+      "fontSize": 18,
+      "visible": true
+    }
+  ],
+  "locales": {
+    "en": {
+      "menu.play": "Play",
+      "menu.resume": "Resume",
+      "menu.retry": "Try again",
+      "menu.pause": "Pause",
+      "menu.results": "Results",
+      "hud.score": "Coins",
+      "hud.time": "Time",
+      "hud.best": "Personal best",
+      "menu.reward": "Watch ad · +15 seconds",
+      "menu.controls": "Move with WASD, arrow keys or the touch stick."
+    },
+    "ru": {
+      "menu.play": "Играть",
+      "menu.resume": "Продолжить",
+      "menu.retry": "Ещё раз",
+      "menu.pause": "Пауза",
+      "menu.results": "Результаты",
+      "hud.score": "Монеты",
+      "hud.time": "Время",
+      "hud.best": "Рекорд",
+      "menu.reward": "Реклама · +15 секунд",
+      "menu.controls": "Управление — WASD, стрелки или экранный джойстик."
+    }
+  },
+  "settings": {
+    "duration": 60,
+    "language": "en",
+    "mode": "first-person",
+    "bounds": [
+      -5.65,
+      5.65,
+      -4.65,
+      4.65
+    ],
+    "bindings": {
+      "left": [
+        "KeyA",
+        "ArrowLeft",
+        "GP14"
+      ],
+      "right": [
+        "KeyD",
+        "ArrowRight",
+        "GP15"
+      ],
+      "up": [
+        "KeyW",
+        "ArrowUp",
+        "GP12"
+      ],
+      "down": [
+        "KeyS",
+        "ArrowDown",
+        "GP13"
+      ],
+      "Jump": [
+        "Space",
+        "GP0"
+      ],
+      "Interact": [
+        "KeyE",
+        "GP2"
+      ],
+      "Attack": [
+        "KeyF",
+        "Mouse0",
+        "GP7"
+      ],
+      "Sprint": [
+        "ShiftLeft",
+        "ShiftRight",
+        "GP10"
+      ],
+      "Crouch": [
+        "ControlLeft",
+        "KeyC",
+        "GP1"
+      ],
+      "Flashlight": [
+        "KeyL",
+        "GP3"
+      ],
+      "Phone": [
+        "Tab",
+        "KeyP",
+        "GP8"
+      ],
+      "Pause": [
+        "Escape",
+        "GP9"
+      ]
+    },
+    "gamepadDeadzone": 0.18,
+    "touch": {
+      "controls": [
+        {
+          "id": "move",
+          "kind": "joystick",
+          "label": "MOVE",
+          "action": "move",
+          "x": 14,
+          "y": 78,
+          "size": 112,
+          "deadzone": 0.12,
+          "color": "#ffffff"
+        },
+        {
+          "id": "jump",
+          "kind": "button",
+          "label": "JUMP",
+          "action": "Jump",
+          "x": 88,
+          "y": 80,
+          "size": 64,
+          "color": "#58b8ff"
+        },
+        {
+          "id": "interact",
+          "kind": "button",
+          "label": "E",
+          "action": "Interact",
+          "x": 78,
+          "y": 68,
+          "size": 56,
+          "color": "#ffb84d"
+        },
+        {
+          "id": "sprint",
+          "kind": "button",
+          "label": "RUN",
+          "action": "Sprint",
+          "x": 88,
+          "y": 60,
+          "size": 50,
+          "color": "#7ee787"
+        },
+        {
+          "id": "crouch",
+          "kind": "button",
+          "label": "C",
+          "action": "Crouch",
+          "x": 76,
+          "y": 84,
+          "size": 48,
+          "color": "#c9d1d9"
+        }
+      ]
+    }
+  },
+  "description": "PGT Example game",
+  "screens": [
+    {
+      "id": "dialogue",
+      "name": "Dialogue",
+      "phase": "window",
+      "safeArea": true,
+      "modal": true
+    },
+    {
+      "id": "screen-41752949-ac69-41ec-a427-078aacf54cd8",
+      "name": "Phone",
+      "phase": "window",
+      "safeArea": true,
+      "modal": true
+    },
+    {
+      "id": "screen-ca48dcc9-a574-4cbb-8a79-78d35a937bfd",
+      "name": "Game HUD",
+      "phase": "playing",
+      "safeArea": true
+    }
+  ]
+}
