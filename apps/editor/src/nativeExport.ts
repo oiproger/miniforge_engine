@@ -2,6 +2,7 @@ import { strToU8, zipSync } from 'fflate'
 import manifest from '../../editor-desktop/src-tauri/Cargo.toml?raw'
 import lockfile from '../../editor-desktop/src-tauri/Cargo.lock?raw'
 import main from '../../editor-desktop/src-tauri/src/main.rs?raw'
+import lan from '../../editor-desktop/src-tauri/src/lan.rs?raw'
 import buildScript from '../../editor-desktop/src-tauri/build.rs?raw'
 import icon from '../../editor-desktop/src-tauri/icons/icon.png?url'
 import windowsIcon from '../../editor-desktop/src-tauri/icons/icon.ico?url'
@@ -220,6 +221,7 @@ export async function desktopSources(
     'src-tauri/Cargo.toml': manifest,
     'src-tauri/Cargo.lock': lockfile,
     'src-tauri/src/main.rs': main,
+    'src-tauri/src/lan.rs': lan,
     'src-tauri/build.rs': buildScript,
     'src-tauri/tauri.conf.json': JSON.stringify(config, null, 2),
     'package.json': JSON.stringify(

@@ -1,6 +1,7 @@
 import { containerStyle, gridItemStyle } from '../../project-schema/src/hud-layout'
 import type { Project, UIElement } from '../../project-schema/src'
 import { anchorStyle } from '../../project-schema/src/screens'
+import type { GameAPI } from './types'
 import type { Input } from './input'
 
 export type Phase = 'menu' | 'playing' | 'paused' | 'results'
@@ -101,6 +102,18 @@ export function buildHtmlWidgetSrcdoc(
   });
 })();<\/script>`
   return `<!DOCTYPE html><html style="background:transparent;color-scheme:dark"><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden}${css || ''}</style>${bridge}</head><body style="background:transparent">${html || ''}<script>try{${js || ''}}catch(e){console.error(e);}<\/script></body></html>`
+}
+
+const liveWidgetFields = new Set(['x', 'y', 'width', 'height', 'opacity', 'value', 'max', 'color', 'background'])
+
+function widgetLayout(item: UIElement) {
+  return {
+    ...anchorStyle(item.anchor, item.x, item.y),
+    width: Number.isFinite(item.width) ? item.width + '%' : 'auto',
+    height: Number.isFinite(item.height) ? item.height + '%' : 'auto',
+    opacity: Number.isFinite(item.opacity) ? String(item.opacity) : '',
+    ...(item.parentId ? gridItemStyle : {}),
+  }
 }
 
 export class Overlay {
@@ -350,11 +363,73 @@ export class Overlay {
     this.redraw()
     return widgetId
   }
+  scriptAPI(readVariable: (name: string) => unknown): GameAPI['ui'] {
+    return {
+      get: (id) => this.get(id),
+      open: (id) => this.open(id),
+      close: () => this.close(),
+      back: () => this.back(),
+      current: () => this.current(),
+      setBlur: (id, blurPx) => this.setBlur(id, blurPx),
+      setStyle: (id, styles) => this.setStyle(id, styles),
+      mount: (id, content, css) => this.mount(id, content, css),
+      unmount: (id) => this.unmount(id),
+      createScreen: (id, opts) => this.createScreen(id, opts),
+      removeScreen: (id) => this.removeScreen(id),
+      listScreens: () => this.listScreens(),
+      createWidget: (spec) => this.createWidget(spec),
+      setPosition: (id, x, y) => this.updateWidget(id, { x, y }),
+      setSize: (id, width, height) => this.updateWidget(id, { width, height }),
+      setValue: (id, value) => this.updateWidget(id, { value }),
+      setProgressMax: (id, max) => this.updateWidget(id, { max }),
+      setOpacity: (id, opacity) => this.updateWidget(id, { opacity }),
+      setColors: (id, color, background) => this.updateWidget(id, { color, background }),
+      bindValue: (id, variable) => this.updateWidget(id, { variable, value: undefined }),
+      getValue: (id) => {
+        const item = this.project.ui.find((widget) => widget.id === id)
+        if (!item) return undefined
+        const value = Number.isFinite(item.value) ? item.value : readVariable(item.variable)
+        return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+      },
+      hasWidget: (id) => this.project.ui.some((item) => item.id === id),
+      updateWidget: (id, patch) => this.updateWidget(id, patch),
+      removeWidget: (id) => this.removeWidget(id),
+      getWidgets: (screenId) => this.getWidgets(screenId),
+      setText: (id, text) => this.setText(id, text),
+      setHtml: (id, html) => this.setHtml(id, html),
+      setVisible: (id, visible) => this.setVisible(id, visible),
+    }
+  }
   updateWidget(id: string, patch: Record<string, any>): boolean {
     const item = this.project.ui.find((u) => u.id === id)
     if (!item) return false
-    Object.assign(item, patch)
-    this.redraw()
+    const fields = Object.keys(patch)
+    if (fields.every((field) => liveWidgetFields.has(field))) {
+      for (const field of fields) {
+        const value = patch[field]
+        if (field === 'color' || field === 'background') {
+          if (typeof value === 'string') item[field] = value
+          continue
+        }
+        if (!Number.isFinite(value)) continue
+        if (field === 'opacity') item.opacity = Math.min(1, Math.max(0, value))
+        else if (field === 'max') item.max = value > 0 ? value : 100
+        else if (field === 'width' || field === 'height') item[field] = Math.max(0, value)
+        else item[field] = value
+      }
+      const el = this.labels.get(id)
+      if (el) {
+        if ('color' in patch) el.style.color = item.color || 'white'
+        if ('background' in patch) el.style.background = item.background || (item.type === 'blur' ? 'rgba(18, 26, 32, 0.35)' : '')
+        if (fields.some((field) => ['x', 'y', 'width', 'height', 'opacity'].includes(field)))
+          Object.assign(el.style, widgetLayout(item), item.parentId ? gridItemStyle : {})
+        this.updateWidgetValue(item, el, this.variables)
+      }
+    } else {
+      Object.assign(item, patch)
+      if (this.labels.has(id) || patch.visible !== undefined || patch.screen !== undefined || patch.parentId !== undefined)
+        this.redraw()
+    }
     return true
   }
   removeWidget(id: string): boolean {
@@ -372,7 +447,7 @@ export class Overlay {
     const item = this.project.ui.find((u) => u.id === id)
     if (item) {
       item.text = text
-      this.redraw()
+      if (this.labels.has(id)) this.redraw()
       return true
     }
     const el = this.get(id)
@@ -400,8 +475,10 @@ export class Overlay {
   setVisible(id: string, visible: boolean): boolean {
     const item = this.project.ui.find((u) => u.id === id)
     if (item) {
+      if ((item.visible !== false) === visible) return true
       item.visible = visible
       this.redraw()
+      return true
     }
     const el = this.get(id)
     if (el) {
@@ -558,7 +635,7 @@ export class Overlay {
         iframe.setAttribute('allowtransparency', 'true')
         iframe.srcdoc = buildHtmlWidgetSrcdoc(
           item.id,
-          asset?.data || '',
+          item.html ?? asset?.data ?? '',
           String(asset?.properties?.css || ''),
           String(asset?.properties?.js || ''),
         )
@@ -571,9 +648,7 @@ export class Overlay {
       el.dataset.uiId = item.id
       Object.assign(el.style, {
         position: 'absolute',
-        ...anchorStyle(item.anchor, item.x, item.y),
-        width: Number.isFinite(item.width) ? item.width + '%' : 'auto',
-        height: Number.isFinite(item.height) ? item.height + '%' : 'auto',
+        ...widgetLayout(item),
         color: item.color || 'white',
         fontSize: (item.fontSize || 16) + 'px',
         textAlign: item.align || 'left',
@@ -632,11 +707,19 @@ export class Overlay {
             })
         }
       }
-      if (!el || !item.variable || item.type === 'container') continue
-      if (el instanceof HTMLProgressElement) {
-        el.max = Number(item.max) || 100
-        el.value = Number(vars[item.variable]) || 0
-      } else el.textContent = this.t(item.text || '') + ' ' + String(vars[item.variable] ?? 0)
+      if (el) this.updateWidgetValue(item, el, vars)
+    }
+  }
+  private updateWidgetValue(item: UIElement, el: HTMLElement, vars: Record<string, unknown>) {
+    if (item.type === 'container') return
+    const explicit = Number.isFinite(item.value) ? item.value : undefined
+    const value = explicit ?? (item.variable ? vars[item.variable] ?? 0 : undefined)
+    if (el instanceof HTMLProgressElement) {
+      el.max = Number.isFinite(item.max) && item.max > 0 ? item.max : 100
+      el.value = Number(value) || 0
+    } else if (item.variable || (item.type === 'counter' && explicit !== undefined)) {
+      const text = [this.t(item.text || ''), String(value ?? 0)].filter(Boolean).join(' ')
+      if (el.textContent !== text) el.textContent = text
     }
   }
   get(id: string) {

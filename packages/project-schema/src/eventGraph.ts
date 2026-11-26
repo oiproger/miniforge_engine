@@ -106,6 +106,35 @@ export const CATEGORY_COLORS: Record<GraphNodeSpec['category'], string> = {
   'Audio & UI': '#7a2e5c',
 }
 
+export const UI_WIDGET_ACTIONS = [
+  {
+    type: 'ui.setPosition', title: 'Set UI Position',
+    fields: [
+      { id: 'x', label: 'X (%)', type: 'number', defaultValue: 20 },
+      { id: 'y', label: 'Y (%)', type: 'number', defaultValue: 20 },
+    ],
+  },
+  {
+    type: 'ui.setSize', title: 'Set UI Size',
+    fields: [
+      { id: 'width', label: 'Width (%)', type: 'number', defaultValue: 30 },
+      { id: 'height', label: 'Height (%)', type: 'number', defaultValue: 10 },
+    ],
+  },
+  {
+    type: 'ui.setValue', title: 'Set UI Value',
+    fields: [{ id: 'value', label: 'Value', type: 'number', defaultValue: 0 }],
+  },
+  {
+    type: 'ui.setProgressMax', title: 'Set UI Progress Maximum',
+    fields: [{ id: 'max', label: 'Maximum', type: 'number', defaultValue: 100 }],
+  },
+  {
+    type: 'ui.setOpacity', title: 'Set UI Opacity',
+    fields: [{ id: 'opacity', label: 'Opacity (0–1)', type: 'number', defaultValue: 1 }],
+  },
+] as const
+
 export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
   // === EVENTS ===
   {
@@ -994,6 +1023,52 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
       { id: 'exec', label: '', type: 'exec' },
       { id: 'handle', label: 'Handle', type: 'string' },
     ],
+  },
+  ...UI_WIDGET_ACTIONS.map(({ type, title, fields }): GraphNodeSpec => ({
+    type,
+    title,
+    category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+      ...fields,
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  })),
+  {
+    type: 'ui.bindValue', title: 'Bind UI Value', category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+      { id: 'variable', label: 'Variable', type: 'string', defaultValue: 'health' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  {
+    type: 'ui.setColors', title: 'Set UI Colors', category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+      { id: 'color', label: 'Text color', type: 'string', defaultValue: '#ffffff' },
+      { id: 'background', label: 'Background', type: 'string', defaultValue: 'transparent' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  {
+    type: 'ui.getValue', title: 'Get UI Value', category: 'Audio & UI',
+    pure: true,
+    inputs: [
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'value', label: 'Value', type: 'number' }],
+  },
+  {
+    type: 'ui.hasWidget', title: 'UI Widget Exists', category: 'Audio & UI',
+    pure: true,
+    inputs: [
+      { id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'value', label: 'Value', type: 'boolean' }],
   },
   {
     type: 'ui.open',

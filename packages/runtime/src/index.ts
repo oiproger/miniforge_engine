@@ -1536,27 +1536,7 @@ export async function startGame(
       },
       terrain: terrainAPI,
       nav: navAPI,
-      ui: {
-        get: (id) => overlay.get(id),
-        open: (id) => overlay.open(id),
-        close: () => overlay.close(),
-        back: () => overlay.back(),
-        current: () => overlay.current(),
-        setBlur: (id, blurPx) => overlay.setBlur(id, blurPx),
-        setStyle: (id, styles) => overlay.setStyle(id, styles),
-        mount: (id, content, css) => overlay.mount(id, content, css),
-        unmount: (id) => overlay.unmount(id),
-        createScreen: (id, opts) => overlay.createScreen(id, opts),
-        removeScreen: (id) => overlay.removeScreen(id),
-        listScreens: () => overlay.listScreens(),
-        createWidget: (spec) => overlay.createWidget(spec),
-        updateWidget: (id, patch) => overlay.updateWidget(id, patch),
-        removeWidget: (id) => overlay.removeWidget(id),
-        getWidgets: (screenId) => overlay.getWidgets(screenId),
-        setText: (id, text) => overlay.setText(id, text),
-        setHtml: (id, html) => overlay.setHtml(id, html),
-        setVisible: (id, visible) => overlay.setVisible(id, visible),
-      },
+      ui: overlay.scriptAPI((name) => name === 'best' ? best : vars[name]),
       scene: {
         load: (id) => {
           if (alive()) requestScene(id)

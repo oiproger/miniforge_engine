@@ -43,6 +43,7 @@ vi.mock('../../graphics/src', () => ({
 vi.mock('./overlay', () => ({
   Overlay: class {
     host = {}
+    scriptAPI() { return {} }
     get() {}
     render() {}
     dispose() {}

@@ -96,7 +96,7 @@ describe('surface-projected decals', () => {
     const out = projectDecalTriangles(identity,sloped,{depth:.5,normalOffset:.02})
     expect(out.triangles).toBe(1)
     // The surface is not parallel to XY; moving only in Z would not be a normal offset.
-    expect(out.points[0][0]).not.toBeCloseTo(sloped[0].a[0])
+    expect(out.points[0][0]).toBeCloseTo(sloped[0].a[0] - .02 / Math.sqrt(17), 6)
     expect(out.points[0][2]).toBeLessThan(sloped[0].a[2])
   })
 

@@ -54,5 +54,5 @@ test('export retains a material referenced only by a 3D decal', async () => {
   const result = await buildGame(project, 'web', async file => '// fixture: ' + file)
   const zip = unzipSync(new Uint8Array(await result.blob.arrayBuffer()))
   const config = JSON.parse(strFromU8(zip['project.json']))
-  expect(config.assets.map((a: { id: string }) => a.id)).toContain(material.id)
+  expect(config.project.assets.map((a: { id: string }) => a.id)).toContain(material.id)
 })

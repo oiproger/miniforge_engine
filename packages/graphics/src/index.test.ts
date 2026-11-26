@@ -11,6 +11,7 @@ vi.mock('./device.generated', async (original) => {
       ...real.createDevice(null),
       canvas: { style: {}, dataset: {} },
       setWhiteSprite: () => {},
+      whiteTexture: () => null,
     }),
   }
 })

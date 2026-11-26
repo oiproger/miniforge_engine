@@ -105,6 +105,7 @@ test('Coin Rush preview plays in an isolated frame and native profiles include b
     const files = unzipSync(await readFile(path))
     expect(files['game/index.html']).toBeDefined()
     expect(files['src-tauri/Cargo.lock']).toBeDefined()
+    expect(files['src-tauri/src/lan.rs']).toBeDefined()
     expect(JSON.parse(strFromU8(files['src-tauri/tauri.conf.json'])).bundle.targets).toEqual([
       target === 'linux' ? 'deb' : 'nsis',
     ])

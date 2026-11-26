@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import {
   Plus,
   Trash2,
@@ -61,6 +61,7 @@ export function EventGraphEditor({
   p?: Project
   changeA: (fn: (asset: Asset) => void) => void
 }) {
+  const widgetIds = useId()
   const graph: EventGraphData = useMemo(() => parseEventGraph(a.data), [a.data])
 
   // Active sub-graph: 'main' or function ID
@@ -277,6 +278,13 @@ export function EventGraphEditor({
   return (
     <div className="mf-bp-editor">
       {/* Top Blueprint Toolbar */}
+      <datalist id={widgetIds}>
+        {p?.ui.map((widget) => (
+          <option key={widget.id} value={widget.id}>
+            {p.screens?.find((screen) => screen.id === widget.screen)?.name ?? 'Game HUD'} · {widget.text || widget.type}
+          </option>
+        ))}
+      </datalist>
       <div className="mf-bp-toolbar">
         <div className="mf-bp-tabs">
           <button
@@ -929,6 +937,9 @@ export function EventGraphEditor({
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                                       <input
                                         className="mf-bp-inline-val"
+                                        aria-label={inp.label}
+                                        list={inp.id === 'id' && node.type.startsWith('ui.') &&
+                                          /widget|element/i.test(inp.label) ? widgetIds : undefined}
                                         value={Array.isArray(inpVal) ? inpVal.join(',') : String(inpVal ?? '')}
                                         onChange={(e) => {
                                           const raw = e.target.value

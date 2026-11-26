@@ -1,5 +1,6 @@
 import {
   parseEventGraph,
+  UI_WIDGET_ACTIONS,
   type EventGraphData,
   type GraphEdge,
   type GraphNode,
@@ -39,6 +40,8 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
   const eid = () => `_eid(${g('entity', '')})`
 
   switch (node.type) {
+    case 'ui.getValue': return `(api.ui.getValue(String(${g('id', '')})) ?? 0)`
+    case 'ui.hasWidget': return `api.ui.hasWidget(String(${g('id', '')}))`
     case 'var.get': {
       const varId = String(node.config?.varId || node.inputs?.varId || '')
       return `_readVar(${lit(varId)})`
@@ -245,6 +248,11 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
     return name
   }
 
+  const widgetAction = UI_WIDGET_ACTIONS.find((action) => action.type === node.type)
+  if (widgetAction) {
+    const fields = widgetAction.fields.map(({ id, defaultValue }) => `${id}: Number(${g(id, defaultValue)})`)
+    return `${indent}api.ui.updateWidget(String(${g('id', '')}), { ${fields.join(', ')} });\n` + next()
+  }
   switch (node.type) {
     case 'flow.branch':
       return `${indent}if (Boolean(${g('condition', false)})) {\n${next('true', indent + '  ')}${indent}} else {\n${next('false', indent + '  ')}${indent}}\n`
@@ -390,6 +398,10 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       const out = v('handle')
       return `${indent}const ${out} = api.audio.play(String(${g('assetId', '')}), { volume: Number(${g('volume', 1)}) || 1, loop: Boolean(${g('loop', false)}) });\n` + next()
     }
+    case 'ui.bindValue':
+      return `${indent}api.ui.bindValue(String(${g('id', '')}), String(${g('variable', 'health')}));\n` + next()
+    case 'ui.setColors':
+      return `${indent}api.ui.setColors(String(${g('id', '')}), String(${g('color', '#ffffff')}), String(${g('background', 'transparent')}));\n` + next()
     case 'ui.open':
       return `${indent}api.ui.open(String(${g('screenId', '')}));\n` + next()
     case 'ui.close':
@@ -415,7 +427,7 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       return `${indent}const ${out} = api.ui.createWidget({ id: String(${g('id', '')}) || undefined, screen: String(${g('screenId', '')}) || undefined, type: String(${g('widgetType', 'label')}), text: String(${g('text', '')}), x: Number(${g('x', 24)}) || 0, y: Number(${g('y', 24)}) || 0, anchor: String(${g('anchor', 'top-left')}), action: String(${g('action', 'event')}), target: String(${g('target', '')}) || undefined, color: String(${g('color', '#ffffff')}) || undefined });\n` + next()
     }
     case 'ui.updateWidget':
-      return `${indent}api.ui.updateWidget(String(${g('id', '')}), { text: String(${g('text', '')}) || undefined, value: Number(${g('value', 100)}), color: String(${g('color', '')}) || undefined, visible: Boolean(${g('visible', true)}) });\n` + next()
+      return `${indent}api.ui.updateWidget(String(${g('id', '')}), { ...((value) => value === '' ? {} : { text: value })(String(${g('text', '')})), ...((value) => value === '' || value === undefined ? {} : { value: Number(value) })(${g('value', 100)}), ...((value) => value === '' ? {} : { color: value })(String(${g('color', '')})), visible: Boolean(${g('visible', true)}) });\n` + next()
     case 'ui.removeWidget':
       return `${indent}api.ui.removeWidget(String(${g('id', '')}));\n` + next()
     case 'ui.setText':
