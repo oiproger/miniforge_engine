@@ -28,10 +28,12 @@ test('first-person mouse look updates rendered frames between physics steps', as
           } },
         })
         const canvas = document.querySelector('#game canvas')
-        window.look = (dx, dy) => {
-          canvas.dispatchEvent(new MouseEvent('mousemove', {
+        window.look = (dx, dy, coalesced = []) => {
+          const event = new PointerEvent('pointermove', {
             bubbles: true, movementX: dx, movementY: dy,
-          }))
+          })
+          Object.defineProperty(event, 'getCoalescedEvents', { value: () => coalesced })
+          canvas.dispatchEvent(event)
         }
         window.step = (ms) => {
           clock += ms
@@ -58,6 +60,11 @@ test('first-person mouse look updates rendered frames between physics steps', as
   const canvas = page.locator('#game canvas[data-renderer]')
   await canvas.click()
   await expect.poll(() => canvas.evaluate((el) => document.pointerLockElement === el)).toBe(true)
+  await page.evaluate(() => (window as any).resetLook())
+  const bounds = (await canvas.boundingBox())!
+  await page.mouse.move(bounds.x + bounds.width / 2 + 24, bounds.y + bounds.height / 2, { steps: 3 })
+  const nativeMouse = await page.evaluate(() => (window as any).step(0))
+  expect(nativeMouse.frameRotation[1]).toBeLessThan(0)
 
   const steps = await page.evaluate(() => {
     const game = window as any
@@ -72,6 +79,16 @@ test('first-person mouse look updates rendered frames between physics steps', as
     expect(frameRotation[0]).toBeCloseTo(0.01 * (i + 1))
     expect(frameRotation[1]).toBeCloseTo(-0.02 * (i + 1))
   }
+
+  // WebKitGTK may report a reverse warp as the last sample despite a positive net movement.
+  const combined = await page.evaluate(() => {
+    const game = window as any
+    game.resetLook()
+    game.look(-30, 5, [{ movementX: 65, movementY: -10 }, { movementX: -30, movementY: 5 }])
+    return game.step(4)
+  })
+  expect(combined.frameRotation[0]).toBeCloseTo(0.01)
+  expect(combined.frameRotation[1]).toBeCloseTo(-0.07)
 
   await page.evaluate(() => (window as any).pause())
   await expect.poll(() => page.evaluate(() => document.pointerLockElement === null)).toBe(true)

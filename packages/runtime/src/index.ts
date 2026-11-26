@@ -1783,13 +1783,26 @@ export async function startGame(
       if (generation === revision) busy = false
     }
   }
+  const moveEvent = typeof window.PointerEvent?.prototype.getCoalescedEvents === 'function'
+    ? 'pointermove' : 'mousemove'
   window.addEventListener(
-    'mousemove',
+    moveEvent,
     (e) => {
       if (!firstPerson || phase !== 'playing' || busy || ad ||
           document.pointerLockElement !== world.renderer.domElement) return
-      // Apply look immediately so rendered frames between physics steps use the latest input.
-      cameraAPI.setLook(yaw - e.movementX * 0.002, pitch - e.movementY * 0.002)
+      // WebKitGTK can report only the last locked delta on the outer event.
+      const samples = (e as PointerEvent).getCoalescedEvents?.()
+      let dx = e.movementX
+      let dy = e.movementY
+      if (samples?.length) {
+        dx = 0
+        dy = 0
+        for (const sample of samples) {
+          dx += sample.movementX
+          dy += sample.movementY
+        }
+      }
+      cameraAPI.setLook(yaw - dx * 0.002, pitch - dy * 0.002)
     },
     { signal: signal.signal },
   )
