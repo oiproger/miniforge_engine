@@ -76,7 +76,7 @@ export interface CameraAPI {
   setLook(yaw: number, pitch: number): void
   /** Trigger a decaying camera shake effect. */
   shake(intensity: number, duration?: number): void
-  /** Project a 3D world position to 2D canvas CSS pixel coordinates (ideal for HTML markers). */
+  /** Project a 3D world position to 2D canvas CSS pixels and top-left-based percentages for HUD placement. */
   worldToScreen(position: Vec3 | Vector3): ScreenPoint
   /** Unproject a 2D canvas CSS pixel coordinate into a normalized 3D world ray. */
   screenToRay(x: number, y: number): WorldRay
@@ -85,6 +85,10 @@ export interface CameraAPI {
 export interface ScreenPoint {
   x: number
   y: number
+  /** Horizontal percent of canvas width. Offscreen values are unclamped. */
+  xPercent: number
+  /** Vertical percent of canvas height, increasing downwards. */
+  yPercent: number
   visible: boolean
   depth: number
 }
@@ -448,7 +452,10 @@ export interface GameAPI {
     open(id: string): boolean
     close(): boolean
     back(): boolean
+    /** ID of the active screen, including a menu or gameplay HUD. */
     current(): string | undefined
+    /** Whether a widget is shown on the active screen and has no hidden parent. */
+    isWidgetVisible(id: string): boolean
     /** Set backdrop blur (in px) on a HUD element or mounted widget. */
     setBlur(id: string, blurPx: number): void
     /** Dynamically patch CSS properties on a HUD element. */
@@ -494,7 +501,7 @@ export interface GameAPI {
       visible?: boolean
       [key: string]: any
     }): string
-    /** Patch properties of an existing UI widget by ID and redraw. */
+    /** Move a widget in HUD percentages relative to its anchor. */
     setPosition(id: string, x: number, y: number): boolean
     setSize(id: string, width: number, height: number): boolean
     setValue(id: string, value: number): boolean
@@ -506,6 +513,7 @@ export interface GameAPI {
     /** Read the explicit or bound numeric value, including widgets on closed screens. */
     getValue(id: string): number | undefined
     hasWidget(id: string): boolean
+    /** Patch widget properties. Reapplying the same values has no effect. */
     updateWidget(id: string, patch: Record<string, any>): boolean
     /** Remove a UI widget by ID and redraw. */
     removeWidget(id: string): boolean

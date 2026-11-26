@@ -111,6 +111,8 @@ export function createEventGraphLifecycle(
     const get = (pin: string, fb?: any) => evalInput(scope, node, pin, fb, depth)
     switch (node.type) {
       case 'ui.getValue': return { value: api.ui.getValue(String(get('id', ''))) ?? 0 }
+      case 'ui.current': return { screenId: api.ui.current() ?? '' }
+      case 'ui.isWidgetVisible': return { visible: api.ui.isWidgetVisible(String(get('id', ''))) }
       case 'ui.hasWidget': return { value: api.ui.hasWidget(String(get('id', ''))) }
       case 'var.get':
         return { value: readVar(String(node.config?.varId || '')) }
@@ -302,8 +304,8 @@ export function createEventGraphLifecycle(
       }
       case 'camera.worldToScreen': {
         const pos = toVec3(get('position', [0, 0, 0]))
-        const sp = api.camera.worldToScreen(pos)
-        return { x: sp.x, y: sp.y, visible: sp.visible }
+        const { x, y, xPercent, yPercent, depth, visible } = api.camera.worldToScreen(pos)
+        return { x, y, xPercent, yPercent, depth, visible }
       }
       case 'enum.equals': {
         return { result: String(get('a', '')) === String(get('b', '')) }

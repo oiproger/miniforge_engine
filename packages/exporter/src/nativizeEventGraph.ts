@@ -41,6 +41,8 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
 
   switch (node.type) {
     case 'ui.getValue': return `(api.ui.getValue(String(${g('id', '')})) ?? 0)`
+    case 'ui.current': return "(api.ui.current() ?? '')"
+    case 'ui.isWidgetVisible': return `api.ui.isWidgetVisible(String(${g('id', '')}))`
     case 'ui.hasWidget': return `api.ui.hasWidget(String(${g('id', '')}))`
     case 'var.get': {
       const varId = String(node.config?.varId || node.inputs?.varId || '')
@@ -216,9 +218,7 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
       return `api.dialogue.getQuestStatus(String(${g('questId', '')}))`
     case 'camera.worldToScreen': {
       const sp = `api.camera.worldToScreen(_v3(${g('position', [0, 0, 0])}))`
-      if (pinId === 'x') return `(${sp}).x`
-      if (pinId === 'y') return `(${sp}).y`
-      return `(${sp}).visible`
+      return `(${sp})[${lit(pinId)}]`
     }
     case 'enum.equals':
       return `(String(${g('a', '')}) === String(${g('b', '')}))`

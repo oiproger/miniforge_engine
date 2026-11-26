@@ -1071,6 +1071,17 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
     outputs: [{ id: 'value', label: 'Value', type: 'boolean' }],
   },
   {
+    type: 'ui.isWidgetVisible', title: 'Is UI Widget Visible', category: 'Audio & UI',
+    pure: true,
+    inputs: [{ id: 'id', label: 'Widget ID', type: 'string', defaultValue: '' }],
+    outputs: [{ id: 'visible', label: 'Visible', type: 'boolean' }],
+  },
+  {
+    type: 'ui.current', title: 'Get Active UI Screen', category: 'Audio & UI',
+    pure: true, inputs: [],
+    outputs: [{ id: 'screenId', label: 'Screen ID', type: 'string' }],
+  },
+  {
     type: 'ui.open',
     title: 'Open UI Screen',
     category: 'Audio & UI',
@@ -1390,8 +1401,11 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
     pure: true,
     inputs: [{ id: 'position', label: 'World Pos', type: 'vec3', defaultValue: [0, 0, 0] }],
     outputs: [
-      { id: 'x', label: 'Screen X', type: 'number' },
-      { id: 'y', label: 'Screen Y', type: 'number' },
+      { id: 'x', label: 'Screen X (px)', type: 'number' },
+      { id: 'y', label: 'Screen Y (px)', type: 'number' },
+      { id: 'xPercent', label: 'Screen X (%)', type: 'number' },
+      { id: 'yPercent', label: 'Screen Y (%)', type: 'number' },
+      { id: 'depth', label: 'Depth', type: 'number' },
       { id: 'visible', label: 'Visible', type: 'boolean' },
     ],
   },

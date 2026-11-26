@@ -2484,11 +2484,14 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       flashlight.rotation3D.set(camera.rotation.x, camera.rotation.y, camera.rotation.z)
       if (!flashlightEnabled) flashlight.intensity = 0
     }
+    syncCamera()
+  }
+  function syncCamera(aspect = (container.clientWidth || 1) / (container.clientHeight || 1)) {
     r.camera.pos = v(camera.position)
     r.camera.rotation = v(camera.rotation)
     r.camera.fov = (camera.fov * Math.PI) / 180
     r.camera.orthographic =
-      camera.height / Math.min(1, (container.clientWidth || 1) / (container.clientHeight || 1))
+      camera.height / Math.min(1, aspect)
   }
   function render() {
     if (disposed) return
@@ -3103,61 +3106,26 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       dec.opacity = Math.max(0, Math.min(1, opacity))
       dec.obj.color.a = dec.opacity * dec.materialOpacity
     },
-    worldToScreen(pos: Vec3 | Vector3): { x: number; y: number; visible: boolean; depth: number } {
+    worldToScreen(pos: Vec3 | Vector3) {
       const w = Math.max(1, container.clientWidth)
       const h = Math.max(1, container.clientHeight)
-      const px = Array.isArray(pos) ? pos[0] : pos.x
-      const py = Array.isArray(pos) ? pos[1] : pos.y
-      const pz = Array.isArray(pos) ? pos[2] : pos.z
-      const relX = px - camera.position.x
-      const relY = py - camera.position.y
-      const relZ = pz - camera.position.z
-      const cy = Math.cos(camera.rotation.y), sy = Math.sin(camera.rotation.y)
-      const cp = Math.cos(camera.rotation.x), sp = Math.sin(camera.rotation.x)
-      const fwd = [-sy * cp, sp, -cy * cp]
-      const right = [cy, 0, -sy]
-      const up = [
-        right[1] * fwd[2] - right[2] * fwd[1],
-        right[2] * fwd[0] - right[0] * fwd[2],
-        right[0] * fwd[1] - right[1] * fwd[0],
-      ]
-      const depth = relX * fwd[0] + relY * fwd[1] + relZ * fwd[2]
-      if (depth <= 0.05) return { x: -9999, y: -9999, visible: false, depth }
-      const rx = relX * right[0] + relY * right[1] + relZ * right[2]
-      const ry = relX * up[0] + relY * up[1] + relZ * up[2]
-      const tanHalf = Math.tan(((camera.fov * Math.PI) / 180) * 0.5)
-      const aspect = w / h
-      const ndcX = rx / (depth * tanHalf * aspect)
-      const ndcY = ry / (depth * tanHalf)
-      const sx = (ndcX * 0.5 + 0.5) * w
-      const syPx = (0.5 - ndcY * 0.5) * h
-      const visible = ndcX >= -1.05 && ndcX <= 1.05 && ndcY >= -1.05 && ndcY <= 1.05
-      return { x: sx, y: syPx, visible, depth }
+      syncCamera(w / h)
+      r.updateMatrices(w / h)
+      const point = Array.isArray(pos) ? d.vec3(...pos) : v(pos)
+      const clip = r.worldToClip(point)
+      const depth = point.subtract(r.camera.pos).dot(r.cameraForward)
+      if (!clip) return { x: -9999, y: -9999, xPercent: 0, yPercent: 0, visible: false, depth }
+      const x = (clip.x + 1) / 2
+      const y = (1 - clip.y) / 2
+      const visible = clip.z <= 1 && Math.abs(clip.x) <= 1 && Math.abs(clip.y) <= 1
+      return { x: x * w, y: y * h, xPercent: x * 100, yPercent: y * 100, visible, depth }
     },
     screenToRay(x: number, y: number): { origin: Vec3; direction: Vec3 } {
       const w = Math.max(1, container.clientWidth)
       const h = Math.max(1, container.clientHeight)
-      const ndcX = (x / w) * 2 - 1
-      const ndcY = 1 - (y / h) * 2
-      const tanHalf = Math.tan(((camera.fov * Math.PI) / 180) * 0.5)
-      const aspect = w / h
-      const cy = Math.cos(camera.rotation.y), sy = Math.sin(camera.rotation.y)
-      const cp = Math.cos(camera.rotation.x), sp = Math.sin(camera.rotation.x)
-      const fwd = [-sy * cp, sp, -cy * cp]
-      const right = [cy, 0, -sy]
-      const up = [
-        right[1] * fwd[2] - right[2] * fwd[1],
-        right[2] * fwd[0] - right[0] * fwd[2],
-        right[0] * fwd[1] - right[1] * fwd[0],
-      ]
-      const dx = fwd[0] + right[0] * ndcX * aspect * tanHalf + up[0] * ndcY * tanHalf
-      const dy = fwd[1] + right[1] * ndcX * aspect * tanHalf + up[1] * ndcY * tanHalf
-      const dz = fwd[2] + right[2] * ndcX * aspect * tanHalf + up[2] * ndcY * tanHalf
-      const len = Math.hypot(dx, dy, dz) || 1
-      return {
-        origin: [camera.position.x, camera.position.y, camera.position.z],
-        direction: [dx / len, dy / len, dz / len],
-      }
+      syncCamera(w / h)
+      const { origin, direction } = r.screenToRay(d.vec2(x, y), d.vec2(w, h))
+      return { origin: [origin.x, origin.y, origin.z], direction: [direction.x, direction.y, direction.z] }
     },
     projectPoint(p: Vector3) {
       return r.worldToScreen(v(p), d.vec2(container.clientWidth, container.clientHeight))

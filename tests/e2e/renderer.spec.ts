@@ -26,11 +26,24 @@ test('Render3D renders textured geometry, picks its owner and compiles every edi
       const world=createWorld(host,p)
       try{
         await world.ready();world.camera.position.set(0,0,4);world.camera.rotation.set(0,0,0);world.camera.height=4
+        const center = world.worldToScreen([0,0,0])
+        const ortho = world.worldToScreen([1,1,0])
+        const ray = world.screenToRay(ortho.x,ortho.y)
+        const offscreen = world.worldToScreen([20,1,0])
+        world.camera.height=0
+        world.camera.rotation.z=Math.PI/2
+        const rolled=world.worldToScreen([1,0,0])
+        world.camera.rotation.z=0;world.camera.height=4
+        const projected = center.visible && center.x===160 && center.y===120 &&
+          ortho.visible && Math.abs(ortho.xPercent-68.75)<0.001 && ortho.yPercent===25 &&
+          Math.abs(ray.origin[0]-1)<0.001 && Math.abs(ray.origin[1]-1)<0.001 &&
+          !offscreen.visible && offscreen.xPercent>100 && rolled.yPercent>50 &&
+          !world.worldToScreen([0,0,5]).visible
         world.render()
         const hit=world.pick(160,120),canvas=world.renderer.domElement,gl=canvas.getContext('webgl2'),pixel=new Uint8Array(4)
         gl.readPixels(160,120,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);const objectColor=[...pixel]
         world.setEntityActive(box.id,false);world.render();gl.readPixels(160,120,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel)
-        return {hit:hit===box.id,hidden:world.pick(160,120)===undefined,changed:objectColor.some((v,i)=>v!==pixel[i]),renderer:canvas.dataset.renderer}
+        return {projected,hit:hit===box.id,hidden:world.pick(160,120)===undefined,changed:objectColor.some((v,i)=>v!==pixel[i]),renderer:canvas.dataset.renderer}
       }finally{world.dispose();host.remove()}
     }`,
     },
@@ -38,6 +51,7 @@ test('Render3D renders textured geometry, picks its owner and compiles every edi
   await page.setContent('<html><body></body></html>')
   await page.addScriptTag({ content: outputFiles[0].text })
   expect(await page.evaluate(() => (window as any).verify())).toEqual({
+    projected: true,
     hit: true,
     hidden: true,
     changed: true,

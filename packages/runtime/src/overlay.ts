@@ -104,7 +104,7 @@ export function buildHtmlWidgetSrcdoc(
   return `<!DOCTYPE html><html style="background:transparent;color-scheme:dark"><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden}${css || ''}</style>${bridge}</head><body style="background:transparent">${html || ''}<script>try{${js || ''}}catch(e){console.error(e);}<\/script></body></html>`
 }
 
-const liveWidgetFields = new Set(['x', 'y', 'width', 'height', 'opacity', 'value', 'max', 'color', 'background'])
+const liveWidgetFields = new Set(['x', 'y', 'width', 'height', 'opacity', 'value', 'max', 'color', 'background', 'text', 'variable', 'visible'])
 
 function widgetLayout(item: UIElement) {
   return {
@@ -163,6 +163,7 @@ export class Overlay {
     this.host.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:2'
     const style = document.createElement('style')
     style.textContent = `
+[data-ui-id][hidden]{display:none!important}
 :host{color:#fff;font:600 15px system-ui,sans-serif}*{box-sizing:border-box}section{pointer-events:auto;position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;background:linear-gradient(180deg,#12272242,#071d218c);padding:20px}section[hidden],header[hidden],.pad[hidden]{display:none}h1{font-size:clamp(28px,6vw,64px);letter-spacing:-.055em;text-shadow:0 2px 24px #182114;margin:0}p{margin:0 0 6px;text-shadow:0 1px 4px #122}button{border:0;cursor:pointer;pointer-events:auto;font:inherit;border-radius:9px;padding:10px 18px;color:#15291b;background:#c3f48a}button:focus-visible{outline:3px solid white}section button+button,header button{background:#22332fe8;color:white}header{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:10px}output{background:#182922d9;color:#ebffbd;border-radius:7px;padding:8px 12px;font-variant-numeric:tabular-nums}header button{margin-left:auto}.pad{display:none;position:absolute;bottom:22px;left:22px;border:1px solid #ffffff80;background:#253b3277;width:100px;height:100px;border-radius:50%;touch-action:none;pointer-events:auto;place-items:center}.pad i{width:40px;height:40px;border-radius:50%;background:#eaffdacc}@media(pointer:coarse){.pad{display:grid}}small{position:absolute;bottom:8px;right:8px;padding:3px 6px;color:white;background:#101c22ad;font:11px monospace}small:empty{display:none}.inventory-entry{padding:6px 8px;border-radius:6px;background:#101b22cc;pointer-events:auto;cursor:pointer}.inventory-entry:hover{background:#1d303ce6}
 `
     this.custom.className = 'custom'
@@ -370,6 +371,10 @@ export class Overlay {
       close: () => this.close(),
       back: () => this.back(),
       current: () => this.current(),
+      isWidgetVisible: (id) => {
+        const el = this.get(id)
+        return !!el && el.style.display !== 'none'
+      },
       setBlur: (id, blurPx) => this.setBlur(id, blurPx),
       setStyle: (id, styles) => this.setStyle(id, styles),
       mount: (id, content, css) => this.mount(id, content, css),
@@ -403,12 +408,24 @@ export class Overlay {
   updateWidget(id: string, patch: Record<string, any>): boolean {
     const item = this.project.ui.find((u) => u.id === id)
     if (!item) return false
-    const fields = Object.keys(patch)
+    const fields = Object.keys(patch).filter((field) =>
+      field === 'visible' ? typeof patch.visible === 'boolean' && (item.visible !== false) !== patch.visible
+        : !Object.is(item[field], patch[field]),
+    )
+    if (!fields.length) return true
     if (fields.every((field) => liveWidgetFields.has(field))) {
       for (const field of fields) {
         const value = patch[field]
-        if (field === 'color' || field === 'background') {
+        if (field === 'color' || field === 'background' || field === 'text' || field === 'variable') {
           if (typeof value === 'string') item[field] = value
+          continue
+        }
+        if (field === 'visible') {
+          item.visible = value
+          continue
+        }
+        if (field === 'value' && value === undefined) {
+          delete item.value
           continue
         }
         if (!Number.isFinite(value)) continue
@@ -419,15 +436,26 @@ export class Overlay {
       }
       const el = this.labels.get(id)
       if (el) {
-        if ('color' in patch) el.style.color = item.color || 'white'
-        if ('background' in patch) el.style.background = item.background || (item.type === 'blur' ? 'rgba(18, 26, 32, 0.35)' : '')
+        if (fields.includes('color')) el.style.color = item.color || 'white'
+        if (fields.includes('background')) el.style.background = item.background || (item.type === 'blur' ? 'rgba(18, 26, 32, 0.35)' : '')
         if (fields.some((field) => ['x', 'y', 'width', 'height', 'opacity'].includes(field)))
-          Object.assign(el.style, widgetLayout(item), item.parentId ? gridItemStyle : {})
+          Object.assign(el.style, widgetLayout(item))
+        if (fields.includes('visible')) {
+          el.hidden = item.visible === false
+          this.refreshHudVisibility(this.activeWidgets())
+        }
+        if (fields.includes('text') || fields.includes('variable')) {
+          if (el instanceof HTMLImageElement) el.alt = this.t(item.text || '')
+          else if (!['container', 'html', 'progress'].includes(item.type)) {
+            const text = this.t(item.text || '')
+            if (el.textContent !== text && !item.variable) el.textContent = text
+          }
+        }
         this.updateWidgetValue(item, el, this.variables)
       }
     } else {
-      Object.assign(item, patch)
-      if (this.labels.has(id) || patch.visible !== undefined || patch.screen !== undefined || patch.parentId !== undefined)
+      for (const field of fields) item[field] = patch[field]
+      if (this.labels.has(id) || fields.includes('screen') || fields.includes('parentId'))
         this.redraw()
     }
     return true
@@ -444,12 +472,7 @@ export class Overlay {
     return this.project.ui.filter((u) => u.screen === screenId)
   }
   setText(id: string, text: string): boolean {
-    const item = this.project.ui.find((u) => u.id === id)
-    if (item) {
-      item.text = text
-      if (this.labels.has(id)) this.redraw()
-      return true
-    }
+    if (this.updateWidget(id, { text })) return true
     const el = this.get(id)
     if (el) {
       el.textContent = text
@@ -460,32 +483,29 @@ export class Overlay {
   setHtml(id: string, html: string): boolean {
     const mounted = this.mounted.get(id)
     if (mounted) {
-      mounted.root.innerHTML = html
+      if (mounted.root.innerHTML !== html) mounted.root.innerHTML = html
       return true
     }
     const item = this.project.ui.find((u) => u.id === id)
     if (item) {
+      if (item.html === html) return true
       item.html = html
-      item.text = html
-      this.redraw()
+      if (item.type === 'html') {
+        const frame = this.htmlFrames.get(id)
+        if (frame) frame.srcdoc = this.htmlContent(item)
+      } else this.updateWidget(id, { text: html })
       return true
     }
     return false
   }
   setVisible(id: string, visible: boolean): boolean {
-    const item = this.project.ui.find((u) => u.id === id)
-    if (item) {
-      if ((item.visible !== false) === visible) return true
-      item.visible = visible
-      this.redraw()
-      return true
-    }
+    if (this.updateWidget(id, { visible })) return true
     const el = this.get(id)
     if (el) {
       el.style.display = visible ? '' : 'none'
       return true
     }
-    return Boolean(item)
+    return false
   }
   private redraw() {
     const state = this.snapshot
@@ -569,15 +589,8 @@ export class Overlay {
     this.custom.replaceChildren()
     this.labels.clear()
     this.htmlFrames.clear()
-    const items = this.project.ui.filter(
-      (item) =>
-        item.visible !== false &&
-        (item.screen ? item.screen === active?.id : !windowOpen && phase === 'playing'),
-    )
-    const authored = windowOpen || (!!active && items.some((item) => item.screen === active.id))
-    this.panel.hidden = authored || phase === 'playing'
-    this.hud.hidden = authored || phase !== 'playing'
-    this.custom.hidden = !items.length && !windowOpen
+    const items = this.activeWidgets()
+    this.refreshHudVisibility(items)
     this.custom.style.background = active?.background || (isModalWindow ? '#152024dc' : 'transparent')
     const screenBlur = Number((active as any)?.backdropBlur ?? 0)
     this.custom.style.backdropFilter = screenBlur > 0 ? `blur(${screenBlur}px)` : ''
@@ -628,17 +641,11 @@ export class Overlay {
             )
       if (item.type === 'html') {
         el.textContent = ''
-        const asset = this.project.assets.find((a) => a.id === item.asset && (a.type === 'html' || a.type === 'text'))
         const iframe = document.createElement('iframe')
         iframe.setAttribute('sandbox', 'allow-scripts')
         iframe.style.cssText = 'width:100%;height:100%;border:0;background:transparent;color-scheme:dark;display:block;'
         iframe.setAttribute('allowtransparency', 'true')
-        iframe.srcdoc = buildHtmlWidgetSrcdoc(
-          item.id,
-          item.html ?? asset?.data ?? '',
-          String(asset?.properties?.css || ''),
-          String(asset?.properties?.js || ''),
-        )
+        iframe.srcdoc = this.htmlContent(item)
         el.append(iframe)
         this.htmlFrames.set(item.id, iframe)
       } else if (el instanceof HTMLImageElement) {
@@ -646,6 +653,7 @@ export class Overlay {
         el.alt = this.t(item.text || '')
       } else if (item.type !== 'progress') el.textContent = this.t(item.text || '')
       el.dataset.uiId = item.id
+      el.hidden = item.visible === false
       Object.assign(el.style, {
         position: 'absolute',
         ...widgetLayout(item),
@@ -710,8 +718,27 @@ export class Overlay {
       if (el) this.updateWidgetValue(item, el, vars)
     }
   }
+  private activeWidgets() {
+    const screen = this.current()
+    return this.project.ui.filter((item) =>
+      item.screen ? item.screen === screen : !this.windows.length && this.phase === 'playing',
+    )
+  }
+  private refreshHudVisibility(items: UIElement[]) {
+    const screen = this.current()
+    const windowOpen = this.windows.length > 0
+    const authored = windowOpen || items.some((item) => item.screen && item.screen === screen && item.visible !== false)
+    this.panel.hidden = authored || this.phase === 'playing'
+    this.hud.hidden = authored || this.phase !== 'playing'
+    this.custom.hidden = !windowOpen && !items.some((item) => item.visible !== false)
+  }
+  private htmlContent(item: UIElement) {
+    const asset = this.project.assets.find((a) => a.id === item.asset && (a.type === 'html' || a.type === 'text'))
+    return buildHtmlWidgetSrcdoc(item.id, item.html ?? asset?.data ?? '',
+      String(asset?.properties?.css || ''), String(asset?.properties?.js || ''))
+  }
   private updateWidgetValue(item: UIElement, el: HTMLElement, vars: Record<string, unknown>) {
-    if (item.type === 'container') return
+    if (['container', 'html', 'image'].includes(item.type)) return
     const explicit = Number.isFinite(item.value) ? item.value : undefined
     const value = explicit ?? (item.variable ? vars[item.variable] ?? 0 : undefined)
     if (el instanceof HTMLProgressElement) {
@@ -723,7 +750,8 @@ export class Overlay {
     }
   }
   get(id: string) {
-    return this.labels.get(id) ?? this.mounted.get(id)?.root
+    const widget = this.labels.get(id)
+    return widget && !widget.closest('[hidden]') ? widget : this.mounted.get(id)?.root
   }
   setBlur(id: string, blurPx: number) {
     const el = this.get(id)
