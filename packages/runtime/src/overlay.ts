@@ -103,6 +103,18 @@ export function buildHtmlWidgetSrcdoc(
   return `<!DOCTYPE html><html style="background:transparent;color-scheme:dark"><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;color-scheme:dark;overflow:hidden}${css || ''}</style>${bridge}</head><body style="background:transparent">${html || ''}<script>try{${js || ''}}catch(e){console.error(e);}<\/script></body></html>`
 }
 
+const liveWidgetFields = new Set(['x', 'y', 'width', 'height', 'opacity', 'value', 'max'])
+
+function widgetLayout(item: UIElement) {
+  return {
+    ...anchorStyle(item.anchor, item.x, item.y),
+    width: Number.isFinite(item.width) ? item.width + '%' : 'auto',
+    height: Number.isFinite(item.height) ? item.height + '%' : 'auto',
+    opacity: Number.isFinite(item.opacity) ? String(item.opacity) : '',
+    ...(item.parentId ? gridItemStyle : {}),
+  }
+}
+
 export class Overlay {
   host = document.createElement('div')
   private shadow = this.host.attachShadow({ mode: 'open' })
@@ -353,8 +365,26 @@ export class Overlay {
   updateWidget(id: string, patch: Record<string, any>): boolean {
     const item = this.project.ui.find((u) => u.id === id)
     if (!item) return false
-    Object.assign(item, patch)
-    this.redraw()
+    const fields = Object.keys(patch)
+    if (fields.every((field) => liveWidgetFields.has(field))) {
+      for (const field of fields) {
+        const value = patch[field]
+        if (!Number.isFinite(value)) continue
+        if (field === 'opacity') item.opacity = Math.min(1, Math.max(0, value))
+        else if (field === 'max') item.max = value > 0 ? value : 100
+        else if (field === 'width' || field === 'height') item[field] = Math.max(0, value)
+        else item[field] = value
+      }
+      const el = this.labels.get(id)
+      if (el) {
+        if (fields.some((field) => field !== 'value' && field !== 'max'))
+          Object.assign(el.style, widgetLayout(item))
+        this.updateWidgetValue(item, el, this.variables)
+      }
+    } else {
+      Object.assign(item, patch)
+      this.redraw()
+    }
     return true
   }
   removeWidget(id: string): boolean {
@@ -372,7 +402,7 @@ export class Overlay {
     const item = this.project.ui.find((u) => u.id === id)
     if (item) {
       item.text = text
-      this.redraw()
+      if (this.labels.has(id)) this.redraw()
       return true
     }
     const el = this.get(id)
@@ -571,9 +601,7 @@ export class Overlay {
       el.dataset.uiId = item.id
       Object.assign(el.style, {
         position: 'absolute',
-        ...anchorStyle(item.anchor, item.x, item.y),
-        width: Number.isFinite(item.width) ? item.width + '%' : 'auto',
-        height: Number.isFinite(item.height) ? item.height + '%' : 'auto',
+        ...widgetLayout(item),
         color: item.color || 'white',
         fontSize: (item.fontSize || 16) + 'px',
         textAlign: item.align || 'left',
@@ -632,11 +660,19 @@ export class Overlay {
             })
         }
       }
-      if (!el || !item.variable || item.type === 'container') continue
-      if (el instanceof HTMLProgressElement) {
-        el.max = Number(item.max) || 100
-        el.value = Number(vars[item.variable]) || 0
-      } else el.textContent = this.t(item.text || '') + ' ' + String(vars[item.variable] ?? 0)
+      if (el) this.updateWidgetValue(item, el, vars)
+    }
+  }
+  private updateWidgetValue(item: UIElement, el: HTMLElement, vars: Record<string, unknown>) {
+    if (item.type === 'container') return
+    const explicit = Number.isFinite(item.value) ? item.value : undefined
+    const value = explicit ?? (item.variable ? vars[item.variable] ?? 0 : undefined)
+    if (el instanceof HTMLProgressElement) {
+      el.max = Number.isFinite(item.max) && item.max > 0 ? item.max : 100
+      el.value = Number(value) || 0
+    } else if (item.variable || (item.type === 'counter' && explicit !== undefined)) {
+      const text = [this.t(item.text || ''), String(value ?? 0)].filter(Boolean).join(' ')
+      if (el.textContent !== text) el.textContent = text
     }
   }
   get(id: string) {

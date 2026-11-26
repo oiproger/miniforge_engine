@@ -1,3 +1,4 @@
+import { UI_WIDGET_ACTIONS } from '../../project-schema/src/eventGraph'
 import type {
   EventGraphData,
   GraphEdge,
@@ -393,6 +394,15 @@ export function createEventGraphLifecycle(
       scope.nodeOutputs.set(node.id, { ...(scope.nodeOutputs.get(node.id) || {}), ...vals })
     }
     const next = (pin = 'exec') => runFromPin(scope, node.id, pin, budget, depth)
+    const widgetAction = UI_WIDGET_ACTIONS.find((action) => action.type === node.type)
+    if (widgetAction) {
+      const id = String(get('id', ''))
+      if (id) api.ui.updateWidget(id, Object.fromEntries(widgetAction.fields.map(
+        ({ id, defaultValue }) => [id, Number(get(id, defaultValue))],
+      )))
+      next()
+      return
+    }
 
     switch (node.type) {
       case 'flow.branch': {
@@ -878,7 +888,7 @@ export function createEventGraphLifecycle(
           if (txt !== '') patch.text = txt
           const col = String(get('color', ''))
           if (col !== '') patch.color = col
-          const val = get('value', undefined)
+          const val = get('value', 100)
           if (val !== undefined && val !== '') patch.value = Number(val)
           api.ui.updateWidget(id, patch)
         }

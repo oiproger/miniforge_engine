@@ -114,11 +114,11 @@ test('renderer shader changes fail loudly after incompatible LittleJS upgrade',(
 
 test('point lights use automatic nearest-visible shadow selection with pinned override',()=>{
   const {ctx,scene}=loadExtension()
-  const near=light({z:-2}), far=light({z:-35}), medium=light({z:-6})
+  const near=light({z:-2}), far=light({z:-35}), medium=light({z:-8})
   for(const l of [near,far,medium])l.coneAngle=0
   scene.multiPointShadowMax=2
   scene.multiPointShadowLights=[entry(far),entry(medium),entry(near)]
-  expect(ctx.mfTest.mfPointCandidates(scene).map(e=>e.light)).toEqual([near,medium])
+  expect(Array.from(ctx.mfTest.mfPointCandidates(scene), e=>e.light)).toEqual([near,medium])
   scene.multiPointShadowLights=[entry(far,0,true),entry(medium),entry(near)]
   expect(ctx.mfTest.mfPointCandidates(scene).map(e=>e.light)).toContain(far)
 })

@@ -16,6 +16,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck && pnpm lint && pnpm test
+      - run: pnpm test:network && pnpm test:network-sync && pnpm test:examples
       - run: pnpm build && pnpm export:demo
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
