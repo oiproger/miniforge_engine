@@ -395,6 +395,8 @@ export interface GameAPI {
   findByComponent(type: string): string[]
   /** Return the parent entity ID of an entity (or null if root). */
   getParent(id?: string): string | null
+  /** Attach or detach a visual subtree, keeping its local transform. Physics and network subtrees are rejected. */
+  setParent(id: string, parentId: string | null): boolean
   /** Return direct child entity IDs of an entity. */
   getChildren(id?: string): string[]
   /** Find a child (direct or nested) of an entity by name. */

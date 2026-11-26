@@ -135,7 +135,31 @@ export const UI_WIDGET_ACTIONS = [
   },
 ] as const
 
+export const GRAPH_RUNTIME_EVENTS = [
+  { type: 'event.animationFinished', title: 'On Animation Finished', name: 'animation.finished', fields: [
+    { id: 'source', label: 'Entity', type: 'entity' },
+    { id: 'clip', label: 'Clip', type: 'string' },
+  ] },
+  { type: 'event.navArrived', title: 'On Navigation Arrival', name: 'nav.arrived', fields: [
+    { id: 'id', label: 'Agent', type: 'entity' },
+  ] },
+  { type: 'event.sequenceFinished', title: 'On Sequence Finished', name: 'sequence.finished', fields: [
+    { id: 'assetId', label: 'Sequence', type: 'string' },
+  ] },
+  { type: 'event.sceneLoaded', title: 'On Scene Loaded', name: 'scene.loaded', fields: [
+    { id: 'id', label: 'Scene ID', type: 'string' },
+  ] },
+  { type: 'event.steamLobbyInvite', title: 'On Steam Lobby Invite', name: 'steam.lobbyInvite', fields: [
+    { id: 'lobbyId', label: 'Lobby ID', type: 'string' },
+    { id: 'friendId', label: 'Friend ID', type: 'string' },
+  ] },
+] satisfies { type: string; title: string; name: string; fields: GraphPinDef[] }[]
+
 export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
+  ...GRAPH_RUNTIME_EVENTS.map(({ type, title, fields }): GraphNodeSpec => ({
+    type, title, category: 'Events', inputs: [],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }, ...fields],
+  })),
   // === EVENTS ===
   {
     type: 'event.start',
@@ -1458,6 +1482,117 @@ export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
     ],
     outputs: [{ id: 'exec', label: '', type: 'exec' }],
   },
+  {
+    type: 'input.pointer', title: 'Pointer Position', category: 'Player & Input', pure: true, inputs: [],
+    outputs: [
+      { id: 'x', label: 'X (px)', type: 'number' },
+      { id: 'y', label: 'Y (px)', type: 'number' },
+      { id: 'xPercent', label: 'X (%)', type: 'number' },
+      { id: 'yPercent', label: 'Y (%)', type: 'number' },
+      { id: 'inside', label: 'Inside Viewport', type: 'boolean' },
+    ],
+  },
+  {
+    type: 'entity.getWorldTransform', title: 'Get Entity World Transform', category: 'Entity', pure: true,
+    inputs: [{ id: 'id', label: 'Entity', type: 'entity', defaultValue: '' }],
+    outputs: [
+      { id: 'position', label: 'World Position', type: 'vec3' },
+      { id: 'rotation', label: 'World Rotation (quaternion)', type: 'array' },
+      { id: 'scale', label: 'World Scale', type: 'vec3' },
+      { id: 'found', label: 'Found', type: 'boolean' },
+    ],
+  },
+  {
+    type: 'entity.setParent', title: 'Set Entity Parent', category: 'Entity',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'parent', label: 'Parent (empty to detach)', type: 'entity', defaultValue: '' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'updated', label: 'Updated', type: 'boolean' },
+    ],
+  },
+  {
+    type: 'entity.setScale', title: 'Set Entity Local Scale', category: 'Entity',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'scale', label: 'Local Scale', type: 'vec3', defaultValue: [1, 1, 1] },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  {
+    type: 'net.getSyncedField', title: 'Read Network Sync Field', category: 'World & FX', pure: true,
+    inputs: [
+      { id: 'id', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'path', label: 'Sync Path', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'value', label: 'Value', type: 'any' }],
+  },
+  {
+    type: 'net.setSyncedField', title: 'Write Network Sync Field', category: 'World & FX',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'path', label: 'Sync Path', type: 'string', defaultValue: '' },
+      { id: 'value', label: 'Value', type: 'any' },
+    ],
+    outputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'updated', label: 'Updated', type: 'boolean' },
+    ],
+  },
+  {
+    type: 'net.discoverLan', title: 'Discover LAN Games', category: 'World & FX',
+    inputs: [{ id: 'exec', label: '', type: 'exec' }],
+    outputs: [
+      { id: 'exec', label: 'Started', type: 'exec' },
+      { id: 'completed', label: 'Completed', type: 'exec' },
+      { id: 'failed', label: 'Failed', type: 'exec' },
+      { id: 'result', label: 'Games', type: 'array' },
+      { id: 'error', label: 'Error', type: 'string' },
+    ],
+  },
+  {
+    type: 'mat.set', title: 'Set Entity Material', category: 'World & FX',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'id', label: 'Entity', type: 'entity', defaultValue: '' },
+      { id: 'materialId', label: 'Material ID', type: 'string', defaultValue: '' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  {
+    type: 'graphics.setPostProcess', title: 'Set Post Processing Options', category: 'World & FX',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'options', label: 'Options', type: 'object' },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  {
+    type: 'audio.setPosition', title: 'Set Spatial Audio Position', category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'handle', label: 'Handle', type: 'string', defaultValue: '' },
+      { id: 'position', label: 'Position', type: 'vec3', defaultValue: [0, 0, 0] },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  },
+  ...[
+    ['audio.setSpeed', 'Set Audio Speed', 'Speed', 1],
+    ['audio.setLowpass', 'Set Audio Lowpass', 'Frequency (Hz)', 20000],
+  ].map(([type, title, label, value]): GraphNodeSpec => ({
+    type: String(type), title: String(title), category: 'Audio & UI',
+    inputs: [
+      { id: 'exec', label: '', type: 'exec' },
+      { id: 'handle', label: 'Handle', type: 'string', defaultValue: '' },
+      { id: 'value', label: String(label), type: 'number', defaultValue: value },
+    ],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }],
+  })),
   {
     type: 'camera.screenToRay',
     title: 'Screen To Ray',

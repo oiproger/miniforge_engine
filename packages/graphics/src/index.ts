@@ -2435,6 +2435,7 @@ function applyModelAssetClips(model: any, asset: { properties?: Record<string, a
       obj.scale3D.set(n.scale.x, n.scale.y, n.scale.z)
       const parent = n.parent && roots.get(n.parent.id)
       if (parent && obj.parent !== parent) parent.addChild(obj)
+      else if (!parent && obj.parent) obj.parent.removeChild(obj)
     }
     r.ambientColor = color(ambientTint).scale(ambient * 0.36 * exposure)
     ;(r as any).ambientGroundColor = ambientGroundTint

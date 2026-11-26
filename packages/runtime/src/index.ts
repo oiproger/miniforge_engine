@@ -584,6 +584,7 @@ export async function startGame(
       }
     },
     (action, down) => emit('input.' + action + (down ? '' : '.released'), { source: 'input', action }),
+    container,
   )
   for (const [action, keys] of Object.entries(project.settings.bindings || {}))
     if (Array.isArray(keys)) input.bind(action, keys)
@@ -1219,6 +1220,9 @@ export async function startGame(
     const prevActive = new Map(nodes.map((e) => [e.id, active(e.id)]))
     nodes[0].active = enabled
     world.setEntityActive(id, enabled)
+    refreshEntityActivity(nodes, prevActive, enabled)
+  }
+  function refreshEntityActivity(nodes: Entity[], prevActive: Map<string, boolean>, start = true) {
     for (const entity of nodes) {
       const nowActive = active(entity.id)
       const wasActive = prevActive.get(entity.id) ?? false
@@ -1233,7 +1237,24 @@ export async function startGame(
         if (wasActive && registered.has(entity.id)) lifecycle.call('onDisable', entity.id)
       }
     }
-    if (enabled) startEntities(nodes.map((e) => e.id))
+    if (start) startEntities(nodes.map((e) => e.id))
+  }
+  function reparent(id: string, parentId: string | null): boolean {
+    if (unloading || destroying.has(id)) return false
+    const nodes = subtree(scene, id)
+    const entity = nodes[0]
+    const object = world.objects.get(id)
+    const parent = parentId ? world.objects.get(parentId) : undefined
+    if (!entity || !object || (parentId && !parent)) return false
+    if (entity.parent === parentId) return true
+    if (nodes.some((entry) => entry.id === parentId || entry.components.some((component) =>
+      component.enabled !== false && ['body', 'collider', 'networkSync', 'terrain'].includes(component.type)))) return false
+    const previous = new Map(nodes.map((entry) => [entry.id, active(entry.id)]))
+    entity.parent = parentId
+    if (parent) parent.add(object)
+    else object.detach()
+    refreshEntityActivity(nodes, previous)
+    return true
   }
   function tags(id: string): string[] {
     const value = scene.entities.find((e) => e.id === id)?.properties.tags
@@ -1514,6 +1535,7 @@ export async function startGame(
         const target = scene.entities.find((e) => e.id === (id || entity.id))
         return target?.parent ?? null
       },
+      setParent: (id, parentId) => alive() && reparent(id || entity.id, parentId),
       getChildren: (id) => {
         const pid = id || entity.id
         return scene.entities.filter((e) => e.parent === pid).map((e) => e.id)

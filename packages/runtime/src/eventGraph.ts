@@ -1,4 +1,5 @@
-import { UI_WIDGET_ACTIONS } from '../../project-schema/src/eventGraph'
+import { Vector3 } from '../../graphics/src/scene'
+import { GRAPH_RUNTIME_EVENTS, UI_WIDGET_ACTIONS } from '../../project-schema/src/eventGraph'
 import type {
   EventGraphData,
   GraphEdge,
@@ -302,6 +303,19 @@ export function createEventGraphLifecycle(
         const qid = String(get('questId', ''))
         return { status: qid ? api.dialogue.getQuestStatus(qid) : 'inactive' }
       }
+      case 'input.pointer':
+        return api.input.pointer()
+      case 'entity.getWorldTransform': {
+        const entity = api.find(resolveEntityId(get('id', '')))
+        return {
+          found: Boolean(entity),
+          position: entity?.getWorldPosition(new Vector3()).toArray() ?? [0, 0, 0],
+          rotation: entity ? Array.from(entity.worldRotation()) : [0, 0, 0, 1],
+          scale: entity?.getWorldScale(new Vector3()).toArray() ?? [1, 1, 1],
+        }
+      }
+      case 'net.getSyncedField':
+        return { value: api.net.getSyncedField(resolveEntityId(get('id', '')), String(get('path', ''))) }
       case 'net.status':
         return { connected: api.net.isConnected(), peers: api.net.getPeers(), room: api.net.room(), error: api.net.getLastError() }
       case 'steam.pendingInvite': {
@@ -671,6 +685,16 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'entity.setParent':
+        setOut({ updated: api.setParent(resolveEntityId(get('id', '')), String(get('parent', '')).trim() || null) })
+        next()
+        break
+      case 'entity.setScale': {
+        const entity = api.find(resolveEntityId(get('id', '')))
+        if (entity) entity.scale.fromArray(toVec3(get('scale', [1, 1, 1])))
+        next()
+        break
+      }
       case 'entity.setActive': {
         api.setActive(resolveEntityId(get('id', '')), Boolean(get('active', true)))
         next()
@@ -772,6 +796,18 @@ export function createEventGraphLifecycle(
           String(get('color', '#ffffff')),
           Number(get('opacity', 1)),
         )
+        next()
+        break
+      }
+      case 'mat.set': {
+        const assetId = String(get('materialId', ''))
+        if (assetId) api.materials.set(resolveEntityId(get('id', '')), assetId)
+        next()
+        break
+      }
+      case 'graphics.setPostProcess': {
+        const options = get('options')
+        if (options && typeof options === 'object' && !Array.isArray(options)) api.graphics.setPostProcess(options)
         next()
         break
       }
@@ -997,6 +1033,18 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'audio.setPosition':
+        api.audio.setPosition(String(get('handle', '')), toVec3(get('position')))
+        next()
+        break
+      case 'audio.setSpeed':
+        api.audio.setSpeed(String(get('handle', '')), Number(get('value', 1)) || 1)
+        next()
+        break
+      case 'audio.setLowpass':
+        api.audio.setLowpass(String(get('handle', '')), Number(get('value', 20000)) || 20000)
+        next()
+        break
       case 'audio.setBusVolume': {
         const bus = (String(get('bus', 'master')) || 'master') as any
         api.audio.setBusVolume(bus, Number(get('volume', 1)) || 0)
@@ -1120,6 +1168,13 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'net.setSyncedField':
+        setOut({ updated: api.net.setSyncedField(resolveEntityId(get('id', '')), String(get('path', '')), get('value')) })
+        next()
+        break
+      case 'net.discoverLan':
+        complete(api.net.discoverLan(), Array.isArray)
+        break
       case 'net.connect': {
         const room = String(get('room', 'lobby-1')).trim() || 'lobby-1'
         const url = String(get('url', '')).trim()
@@ -1288,6 +1343,20 @@ export function createEventGraphLifecycle(
               ...mainScopeBase,
               eventData: { peerId },
               nodeOutputs: new Map([[n.id, { peerId }]]),
+            }
+            runFromPin(scope, n.id, 'exec', { steps: 0 }, 0)
+          })
+          unsubs.push(off)
+        }
+        const runtimeEvent = GRAPH_RUNTIME_EVENTS.find((event) => event.type === n.type)
+        if (runtimeEvent) {
+          const off = api.events.on(runtimeEvent.name, (payload) => {
+            if (destroyed) return
+            const outputs = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}
+            const scope: ExecScope = {
+              ...mainScopeBase,
+              eventData: outputs,
+              nodeOutputs: new Map([[n.id, outputs]]),
             }
             runFromPin(scope, n.id, 'exec', { steps: 0 }, 0)
           })

@@ -13,6 +13,14 @@ export const DEFAULT_INPUT_BINDINGS: Record<string, string[]> = {
   Pause: ['Escape', 'GP9'],
 }
 
+export interface PointerPosition {
+  x: number
+  y: number
+  xPercent: number
+  yPercent: number
+  inside: boolean
+}
+
 export class Input {
   private keys = new Set<string>()
   private gpButtons = new Set<string>()
@@ -21,6 +29,7 @@ export class Input {
   private deadzone = 0.18
   private virtual = new Map<string, string>()
   private modal = false
+  private pointerClient?: { x: number; y: number }
   private touch = [0, 0]
   private active = new Set<string>()
   private bindings: Record<string, string[]> = structuredClone(DEFAULT_INPUT_BINDINGS)
@@ -29,6 +38,7 @@ export class Input {
     signal: AbortSignal,
     private onPause: () => void,
     private edge?: (action: string, down: boolean) => void,
+    private viewport?: HTMLElement,
   ) {
     window.addEventListener(
       'keydown',
@@ -69,7 +79,30 @@ export class Input {
       },
       { signal },
     )
-    window.addEventListener('blur', () => this.clear(), { signal })
+    if (viewport) {
+      const remember = (event: PointerEvent) => { this.pointerClient = { x: event.clientX, y: event.clientY } }
+      window.addEventListener('pointermove', remember, { signal })
+      window.addEventListener('pointerdown', remember, { signal })
+    }
+    window.addEventListener('blur', () => {
+      this.pointerClient = undefined
+      this.clear()
+    }, { signal })
+  }
+
+  /** Pointer position in game viewport coordinates. Pointer lock uses the center. */
+  pointer(): PointerPosition {
+    const viewport = this.viewport
+    const rect = viewport?.getBoundingClientRect()
+    if (!viewport || !rect?.width || !rect?.height) return { x: 0, y: 0, xPercent: 0, yPercent: 0, inside: false }
+    const locked = Boolean(document.pointerLockElement && viewport.contains(document.pointerLockElement))
+    if (!locked && !this.pointerClient) return { x: 0, y: 0, xPercent: 0, yPercent: 0, inside: false }
+    const x = locked ? 0.5 : (this.pointerClient!.x - rect.left) / rect.width
+    const y = locked ? 0.5 : (this.pointerClient!.y - rect.top) / rect.height
+    return {
+      x: x * viewport.clientWidth, y: y * viewport.clientHeight,
+      xPercent: x * 100, yPercent: y * 100, inside: x >= 0 && x <= 1 && y >= 0 && y <= 1,
+    }
   }
 
   private refresh() {

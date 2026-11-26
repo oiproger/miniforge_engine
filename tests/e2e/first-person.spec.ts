@@ -6,12 +6,17 @@ test('first-person mouse look updates rendered frames between physics steps', as
     bundle: true, write: false, format: 'iife',
     stdin: { resolveDir: process.cwd(), contents: `
       import { createTemplate } from './templates'
+      import { makeEntity } from './packages/project-schema/src'
       import { startGame } from './packages/runtime/src'
       import createPhysics from './packages/runtime/src/physics'
       import { createPlatform } from './packages/platform-sdk/src/web'
 
       window.start = async () => {
         const project = createTemplate('first-person')
+        const marker = makeEntity('Marker', 'box')
+        const anchor = makeEntity('Anchor')
+        anchor.transform.position = [4, 0, 0]
+        project.scenes[0].entities.push(anchor, marker)
         project.scenes[0].entities[0].components.push({ type: 'script', asset: 'camera-probe' })
         let clock = 0, nextFrame, camera, frameRotation, fixedSteps = 0
         Object.defineProperty(performance, 'now', { value: () => clock })
@@ -21,6 +26,14 @@ test('first-person mouse look updates rendered frames between physics steps', as
           physics: createPhysics,
           scripts: { 'camera-probe': (api) => {
             camera = api.camera
+            window.checkHierarchy = () => {
+              const attached = api.setParent(marker.id, anchor.id)
+              const parent = api.getParent(marker.id)
+              const cycle = api.setParent(anchor.id, marker.id)
+              const detached = api.setParent(marker.id, null)
+              return [attached, parent === anchor.id, cycle, detached, api.getParent(marker.id)]
+            }
+            window.pointer = () => api.input.pointer()
             return {
               onFixedUpdate() { fixedSteps++ },
               onUpdate() { frameRotation = [camera.rotation.x, camera.rotation.y] },
@@ -65,6 +78,11 @@ test('first-person mouse look updates rendered frames between physics steps', as
   await page.mouse.move(bounds.x + bounds.width / 2 + 24, bounds.y + bounds.height / 2, { steps: 3 })
   const nativeMouse = await page.evaluate(() => (window as any).step(0))
   expect(nativeMouse.frameRotation[1]).toBeLessThan(0)
+
+  expect(await page.evaluate(() => (window as any).pointer())).toMatchObject({
+    xPercent: 50, yPercent: 50, inside: true,
+  })
+  expect(await page.evaluate(() => (window as any).checkHierarchy())).toEqual([true, true, false, true, null])
 
   const steps = await page.evaluate(() => {
     const game = window as any
