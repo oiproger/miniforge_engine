@@ -131,8 +131,12 @@ export async function startGame(
   }
   let language = project.settings.language,
     best = 0
-  const steam = new SteamManager({ localDebug: Boolean(options.preview && (project.settings as any).steam?.localDebug) })
-  const steamCfg = (project.settings as any).steam
+  const steamCfg = project.settings.steam
+  const steamPreviewInvoke = options.preview ? options.steamPreviewInvoke : undefined
+  const steam = new SteamManager({
+    localDebug: Boolean(options.preview && !steamPreviewInvoke && steamCfg?.localDebug),
+    invoke: steamPreviewInvoke,
+  })
   const steamEnabled = steamCfg?.enabled || project.settings.multiplayer?.mode === 'steam-p2p'
   const steamReady = steamEnabled ? steam.init(Number(steamCfg?.appId || 480)) : undefined
   if (steamCfg?.richPresence && steamReady) {

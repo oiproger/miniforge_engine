@@ -1,3 +1,5 @@
+import { openNativeSteamPreview } from './steamPreview'
+export { canLaunchSteamPreview } from './steamPreview'
 import { nativizeProjectEventGraphs } from './nativizeEventGraph'
 import { strToU8, strFromU8, zipSync, unzipSync } from 'fflate'
 import { needsPhysics, validateProject, serializeProject, parseProject, type Project, type Entity } from '../../project-schema/src'
@@ -190,7 +192,7 @@ export async function buildGame(
   return { files, blob: toBlob(packed, 'application/zip'), report }
 }
 
-export async function previewGame(project: Project, frame: HTMLIFrameElement) {
+export async function previewGame(project: Project, frame: HTMLIFrameElement, options: { nativeSteam?: boolean; signal?: AbortSignal } = {}) {
   const { config } = await prepare(project, true, loadRuntime)
   const runtime = await loadRuntime('web.js')
   const key = 'miniforge.preview.' + project.id
@@ -205,7 +207,13 @@ export async function previewGame(project: Project, frame: HTMLIFrameElement) {
   // the trusted editor window. Never grant iframe same-origin privileges.
   const steamCfg = project.settings.steam
   const steamAppId = Number(steamCfg?.appId || 480)
-  const steamDebug = Boolean(steamCfg?.enabled && steamCfg?.localDebug)
+  options.signal?.throwIfAborted()
+  const nativeSteam = options.nativeSteam ? await openNativeSteamPreview(frame, steamAppId, options.signal) : undefined
+  if (options.signal?.aborted) {
+    nativeSteam?.close()
+    options.signal.throwIfAborted()
+  }
+  const steamDebug = Boolean(!nativeSteam && steamCfg?.enabled && steamCfg?.localDebug)
   let steamBus: BroadcastChannel | null = null
   if (steamDebug && typeof BroadcastChannel !== 'undefined') {
     try { steamBus = new BroadcastChannel(`miniforge-editor-steam-debug:${steamAppId}`) } catch {}
@@ -244,12 +252,13 @@ export async function previewGame(project: Project, frame: HTMLIFrameElement) {
     "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' data: blob:; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; connect-src data: blob: ws: wss: http: https:; worker-src blob:\"><style>" +
     css +
     '</style></head><body><main id="game"></main><script id="preview-data" type="application/json">' +
-    jsonText({ ...config, progress }) +
+    jsonText({ ...config, progress, nativeSteamSession: nativeSteam?.session }) +
     '</script><script type="module">' +
     runtime.replace(/<\/script/gi, '<\\/script') +
     '</script></body></html>'
   return () => {
     window.removeEventListener('message', onMessage)
+    nativeSteam?.close()
     try { steamBus?.close() } catch {}
     frame.removeAttribute('srcdoc')
   }

@@ -57,3 +57,49 @@ test('Steam Relay Lab confirms an RPC round trip in Local Debug and exports Stea
   expect(project.settings.steam).toMatchObject({ enabled: true, appId: 480 })
   expect(files['steam_appid.txt']).toBeUndefined()
 })
+
+test('Desktop Steam preview uses the selected AppID and releases the session on Stop', async ({ page }) => {
+  test.setTimeout(150_000)
+  const calls: { command: string; args?: { appId: number } }[] = []
+  await page.exposeBinding('desktopSteam', ({ frame }, command, args) => {
+    expect(frame).toBe(page.mainFrame())
+    calls.push({ command, args })
+    if (command === 'steam_preview_supported') return true
+    if (command === 'steam_init') {
+      return { native: true, steamId: '76561198000000001', appId: args.appId, name: 'Preview tester' }
+    }
+    if (command === 'steam_relay_status') return 'Current: OK'
+    if (command === 'steam_poll_p2p') return { packets: [] }
+    return true
+  })
+  await page.addInitScript(() => {
+    if (window === window.top) {
+      const desktop = window as unknown as { desktopSteam: unknown; __TAURI__: unknown }
+      desktop.__TAURI__ = { core: { invoke: desktop.desktopSteam } }
+    }
+  })
+  await page.goto('/editor/')
+  await page.getByRole('button', { name: 'Open example Steam Relay Lab', exact: true }).click()
+  const game = page.frameLocator('iframe.preview')
+  const launch = async () => {
+    await page.getByRole('button', { name: 'Project', exact: true }).click()
+    await page.getByRole('button', { name: 'Steamworks & Debug Panel', exact: true }).click()
+    await page.getByRole('button', { name: 'Play with Steam', exact: true }).click()
+    await expect(game.locator('[data-field="mode"]')).toHaveText('Native Steamworks', { timeout: 40_000 })
+  }
+
+  await launch()
+  expect(calls).toContainEqual({ command: 'steam_init', args: { appId: 480 } })
+  await expect(game.getByText(/Preview tester · 76561198000000001/)).toBeVisible()
+  await game.getByRole('button', { name: 'Relay status', exact: true }).click()
+  await expect(game.getByRole('status')).toContainText('SDR status: Current: OK')
+  await page.getByRole('button', { name: 'Stop', exact: true }).click()
+  await expect.poll(() => calls.filter(c => c.command === 'steam_preview_end').length).toBe(1)
+
+  await launch()
+  await page.getByRole('button', { name: 'Stop', exact: true }).click()
+  await expect.poll(() => calls.filter(c => c.command === 'steam_preview_end').length).toBe(2)
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect(game.locator('[data-field="mode"]')).toHaveText('Local Debug simulation', { timeout: 40_000 })
+  expect(calls.filter(c => c.command === 'steam_init')).toHaveLength(2)
+})

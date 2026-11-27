@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Award, Cloud, Download, Plus, RefreshCw, Terminal, Trash2, Users, Check, X, Radio } from 'lucide-react'
+import { Award, Cloud, Download, Play, Plus, RefreshCw, Terminal, Trash2, Users, Check, X, Radio } from 'lucide-react'
 import type { Project, SteamAchievementDef, SteamSettings } from '../../../packages/project-schema/src'
 import { SteamManager, type SteamLobby, type SteamLogEntry } from '../../../packages/runtime/src/steam'
 
@@ -19,10 +19,14 @@ export function SteamStudio({
   p,
   onSave,
   onClose,
+  onPlayNative,
+  nativePreviewRunning,
 }: {
   p: Project
   onSave: (steam: SteamSettings) => void
   onClose: () => void
+  onPlayNative?: (steam: SteamSettings) => void
+  nativePreviewRunning: boolean
 }) {
   const [tab, setTab] = useState<'settings' | 'lobbies' | 'debug'>('settings')
   const [cfg, setCfg] = useState<SteamSettings>(() => ({
@@ -50,7 +54,7 @@ export function SteamStudio({
   }
 
   useEffect(() => {
-    const m = new SteamManager({ localDebug: Boolean(cfg.localDebug) })
+    const m = new SteamManager({ localDebug: Boolean(cfg.localDebug), invoke: async () => null })
     mgrRef.current = m
     void m.init(cfg.appId || 480).then(() => syncDebugState())
     return () => {
@@ -101,7 +105,9 @@ export function SteamStudio({
 
         <div className="mf-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div role="status" style={{ padding: '9px 12px', background: '#22201a', border: '1px solid #a27b38', borderRadius: 8, fontSize: 12, color: '#f8dca3' }}>
-            {mgrRef.current?.isNative() ? 'Native Steamworks connected.' : cfg.localDebug ? 'LOCAL DEBUG ONLY: lobbies, achievements and cloud files are simulated in this browser. They are NOT Steamworks.' : 'Real Steamworks is unavailable in the current build. Enable Local Debug for isolated editor tests; a native Steamworks-enabled Tauri build is required for release.'}
+            {nativePreviewRunning ? 'Native Steam preview is running in the Game tab.'
+              : onPlayNative ? 'Start Steam, then use Play with Steam to test the project with your Steam account.'
+                : 'Use the Miniforge desktop editor to run a native Steam preview. Local Debug is available here.'}
           </div>
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid #242c37', paddingBottom: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
@@ -116,9 +122,16 @@ export function SteamStudio({
                 <Terminal size={13} /> Steam API Logs ({logs.length})
               </button>
             </div>
-            <button type="button" className="mf-btn" style={{ fontSize: 11.5 }} onClick={downloadAppIdTxt}>
-              <Download size={12} /> Download steam_appid.txt ({cfg.appId || 480})
-            </button>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {onPlayNative && (
+                <button type="button" className="mf-primary" disabled={!cfg.enabled} onClick={() => onPlayNative(cfg)}>
+                  <Play size={13} /> Play with Steam
+                </button>
+              )}
+              <button type="button" className="mf-btn" style={{ fontSize: 11.5 }} onClick={downloadAppIdTxt}>
+                <Download size={12} /> Download steam_appid.txt ({cfg.appId || 480})
+              </button>
+            </div>
           </div>
 
           {tab === 'settings' && (
@@ -130,7 +143,7 @@ export function SteamStudio({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '8px 10px', borderRadius: 8, background: '#141a22', border: '1px solid var(--border)' }}>
                   <input type="checkbox" checked={cfg.enabled} onChange={(e) => patchCfg({ enabled: e.target.checked })} />
-                  <span><strong>Enable Steamworks in desktop exports</strong> (source package with a Steam depot build)</span>
+                  <span><strong>Enable Steamworks in desktop exports and preview</strong> (source package with a Steam depot build)</span>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                   <span style={{ color: 'var(--muted)' }}>Steam AppID (480 = Spacewar test app)</span>

@@ -2312,7 +2312,15 @@ pnpm build
 </tr>
 </tbody></table>
 <p><strong>Local Debug</strong> проверяет игровой интерфейс, обмен сообщениями и обработку результатов через симуляцию. В изолированном iframe данные отладки могут храниться только до перезапуска превью. <strong>Ping peer</strong> подтверждает доставку по текущему транспорту. Название режима в верхней строке отличает симуляцию от настоящего Steamworks.</p>
-<h3>Проверка через Steam</h3>
+<h3>Проверка из Desktop-редактора через Steam</h3>
+<ol>
+<li>Откройте Desktop-редактор Miniforge со Steamworks и войдите в Steam на той же машине.</li>
+<li>Откройте <strong>Steam Relay Lab</strong>, затем <strong>Project → Steamworks &amp; Debug Panel</strong>. Убедитесь, что Steamworks включён, выберите AppID и нажмите <strong>Play with Steam</strong>. Настройки из панели используются для этого запуска. Нажмите <strong>Save Steam Settings</strong>, чтобы сохранить их в проект.</li>
+<li>Во вкладке <strong>Game</strong> ожидаются режим <strong>Native Steamworks</strong> и ваш Steam ID. Нажмите <strong>Stop</strong>, измените проект и снова выберите <strong>Play with Steam</strong>. Редактор запускает текущую сцену через установленный Steamworks-мост. Экспорт, Cargo и перепаковка при каждом изменении не нужны. Если установка устарела, воспользуйтесь новой сборкой Desktop-редактора.</li>
+<li>Для лобби и обмена пакетами используйте второй компьютер с другим Steam-аккаунтом и тем же AppID. <strong>Launch Host + Client</strong> остаётся локальным симулятором. Если Steam Overlay недоступен в Desktop-редакторе, подключите второй клиент по ID лобби. Overlay и запуск через Steam проверяйте в депо.</li>
+</ol>
+<p>Steam привязывает AppID к процессу. Для смены AppID после успешной инициализации перезапустите Desktop-редактор. Обычный <strong>Play</strong> использует Local Debug, если проект его включил. При ошибке <strong>Play with Steam</strong> редактор выводит причину в уведомлении и в Console.</p>
+<h3>Проверка собранного депо через Steam</h3>
 <ol>
 <li><p>В <strong>Project → Steamworks &amp; Debug Panel</strong> установите доступный обоим тестовым аккаунтам AppID. У примера по умолчанию AppID <code>480</code> для Spacewar. Используйте собственный AppID для доступа к своим достижениям, статистике и DLC. Сохраните настройки и экспортируйте Desktop-пакет.</p>
 </li>

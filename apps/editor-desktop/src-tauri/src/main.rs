@@ -17,7 +17,11 @@ macro_rules! game_commands {
             steam::steam_create_lobby, steam::steam_list_lobbies, steam::steam_join_lobby,
             steam::steam_leave_lobby, steam::steam_set_lobby_data, steam::steam_send_p2p,
             steam::steam_poll_p2p, steam::steam_relay_status, steam::steam_invite_friends,
-            steam::steam_read_stat, steam::steam_write_stat, steam::steam_is_dlc_installed
+            steam::steam_read_stat, steam::steam_write_stat, steam::steam_is_dlc_installed,
+            #[cfg(feature = "editor")]
+            steam::steam_preview_supported,
+            #[cfg(feature = "editor")]
+            steam::steam_preview_end
         ]);
         #[cfg(not(feature = "steamworks"))]
         let app = $app.invoke_handler(tauri::generate_handler![

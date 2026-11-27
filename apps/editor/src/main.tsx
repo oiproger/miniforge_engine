@@ -102,7 +102,7 @@ import {
 } from '../../../packages/project-schema/src'
 import { createTemplate, freshTemplate } from '../../../templates'
 import { SceneViewport, type TerrainBrushConfig, type ScatterBrushConfig } from '../../../packages/editor-tools/src'
-import { buildGame, previewGame, exportProject, importProject } from '../../../packages/exporter/src'
+import { buildGame, previewGame, exportProject, importProject, canLaunchSteamPreview } from '../../../packages/exporter/src'
 import { projectIssues, type ProjectIssue } from '../../../packages/project-schema/src/references'
 import { Inspector } from './Inspector'
 import Authoring from './Authoring'
@@ -204,6 +204,7 @@ function App() {
   const [showInputManager, setShowInputManager] = useState(false)
   const [showMultiplayer, setShowMultiplayer] = useState(false)
   const [showSteam, setShowSteam] = useState(false)
+  const [nativeSteamPreview, setNativeSteamPreview] = useState(false)
   const [scatterBrush, setScatterBrush] = useState<ScatterBrushConfig>(DEFAULT_SCATTER_BRUSH)
   const [focusUiId, setFocusUiId] = useState<string>()
   const [target, edit] = useState(''),
@@ -252,6 +253,7 @@ function App() {
   }
   function replace(next: Project) {
     setPreview(null)
+    setNativeSteamPreview(false)
     setTab('scene')
     setP(next)
     setHistory([])
@@ -328,15 +330,15 @@ function App() {
     let dead = false,
       cleanup: (() => void) | undefined
     const el = frame.current
-    previewGame(preview, el)
+    const abort = new AbortController()
+    previewGame(preview, el, { nativeSteam: nativeSteamPreview, signal: abort.signal })
       .then((fn) => {
         if (dead) fn()
         else cleanup = fn
       })
       .catch((e) => {
         if (!dead) {
-          setPreview(null)
-          setTab('scene')
+          stop()
           note(String(e))
         }
       })
@@ -350,17 +352,27 @@ function App() {
     window.addEventListener('message', receive)
     return () => {
       dead = true
+      abort.abort()
       cleanup?.()
       window.removeEventListener('message', receive)
     }
-  }, [preview])
+  }, [preview, nativeSteamPreview])
   const play = () => {
     frame.current?.contentWindow?.postMessage({ type: 'miniforge:resume' }, '*')
     setTab('game')
     setPreview((v) => v ?? structuredClone(p))
   }
+  const playWithSteam = (steam: NonNullable<Project['settings']['steam']>) => {
+    const project = structuredClone(p)
+    project.settings.steam = steam
+    setShowSteam(false)
+    setNativeSteamPreview(true)
+    setTab('game')
+    setPreview(project)
+  }
   const stop = () => {
     setPreview(null)
+    setNativeSteamPreview(false)
     setTab('scene')
   }
   async function save(forcePick = false) {
@@ -1208,11 +1220,12 @@ function App() {
                 onNotify={note}
               />
             )}
-            {preview && tab === 'game' && (
+            {preview && (
               <iframe
                 title="Game preview"
                 ref={frame}
                 className="preview"
+                style={tab === 'game' ? undefined : { display: 'none' }}
               />
             )}
             {tab === 'scene' && (
@@ -1423,6 +1436,8 @@ function App() {
       {showSteam && (
         <SteamStudio
           p={p}
+          onPlayNative={canLaunchSteamPreview() && !nativeSteamPreview ? playWithSteam : undefined}
+          nativePreviewRunning={nativeSteamPreview}
           onSave={(steam) =>
             patch((n) => {
               n.settings.steam = steam

@@ -1,3 +1,4 @@
+import { createSteamPreviewInvoke } from './steamPreview'
 import type { Project } from '../../project-schema/src'
 import type { PlatformAdapter } from '../../platform-sdk/src'
 import type { startGame } from '../../runtime/src'
@@ -38,6 +39,9 @@ export async function boot(run: typeof startGame, platformFactory: (id: string) 
       physics,
       performance: !!preview,
       preview: !!preview,
+      steamPreviewInvoke: preview && typeof config.nativeSteamSession === 'string'
+        ? createSteamPreviewInvoke(config.nativeSteamSession)
+        : undefined,
       onEvent: (name, data) => {
         if (preview && name.endsWith('.error')) parent.postMessage({ error: String(data) }, '*')
       },

@@ -571,6 +571,7 @@ export interface GameOptions {
   performance?: boolean
   /** True only for an editor preview; prevents debug-only Steam simulation in shipped games. */
   preview?: boolean
+  steamPreviewInvoke?: import('./steam').SteamInvoke
 }
 
 export interface GameSession {

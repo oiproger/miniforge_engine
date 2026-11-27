@@ -101,7 +101,7 @@ pub fn steam_init(app_id: u32) -> Result<Value, String> {
     let _guard = INIT.lock().map_err(|err| err.to_string())?;
     if STEAM.get().is_none() {
         // A Steam-launched process supplies its own identity. init_app also supports local developer runs.
-        let client = if std::env::var_os("SteamAppId").is_some() {
+        let client = if !cfg!(feature = "editor") && std::env::var_os("SteamAppId").is_some() {
             Client::init()
         } else {
             Client::init_app(AppId(app_id))
@@ -160,13 +160,34 @@ pub fn steam_init(app_id: u32) -> Result<Value, String> {
     let actual_app = client.utils().app_id().0;
     if actual_app != app_id {
         return Err(format!(
-            "Steam AppID {actual_app} differs from configured AppID {app_id}"
+            "Steam AppID {actual_app} differs from configured AppID {app_id}. Restart the desktop host to switch AppIDs."
         ));
     }
     Ok(
         json!({ "steamId": client.user().steam_id().raw().to_string(),
         "name": client.friends().name(), "appId": actual_app, "native": true }),
     )
+}
+
+#[cfg(feature = "editor")]
+#[tauri::command]
+pub fn steam_preview_supported() -> bool {
+    true
+}
+
+#[cfg(feature = "editor")]
+#[tauri::command]
+pub fn steam_preview_end() -> Result<(), String> {
+    let steam = state()?;
+    if let Some(lobby) = steam.lobby.lock().unwrap().take() {
+        steam.client.matchmaking().leave_lobby(lobby);
+    }
+    steam.client.friends().clear_rich_presence();
+    steam
+        .client
+        .networking_messages()
+        .receive_messages_on_channel(CHANNEL, 64);
+    Ok(())
 }
 
 #[tauri::command]

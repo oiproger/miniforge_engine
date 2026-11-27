@@ -27,7 +27,9 @@ export interface SteamLogEntry {
 
 type P2PHandler = (packet: any, fromSteamId: string) => void
 
-async function invokeTauri<T = any>(cmd: string, args?: Record<string, any>): Promise<T | null> {
+export type SteamInvoke = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T | null>
+
+async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T | null> {
   const g = typeof window !== 'undefined' ? (window as any) : null
   const inv = g?.__TAURI__?.core?.invoke || g?.__TAURI_INTERNALS__?.invoke
   if (typeof inv !== 'function') return null
@@ -40,8 +42,10 @@ async function invokeTauri<T = any>(cmd: string, args?: Record<string, any>): Pr
 
 export class SteamManager {
   /** Local mock is strictly opt-in. Never silently emulate Steamworks in a shipped game. */
-  private readonly opts: { localDebug?: boolean }
-  constructor(opts: { localDebug?: boolean } = {}) { this.opts = opts }
+  private readonly opts: { localDebug?: boolean; invoke?: SteamInvoke }
+  constructor(opts: { localDebug?: boolean; invoke?: SteamInvoke } = {}) { this.opts = opts }
+
+  private get invoke(): SteamInvoke { return this.opts.invoke ?? invokeTauri }
 
   isDebug(): boolean { return !this.native && this.initialized && Boolean(this.opts.localDebug) }
   getMode(): 'native' | 'local-debug' | 'unavailable' {
@@ -97,7 +101,7 @@ export class SteamManager {
     this.appId = Number.isInteger(requestedId) && requestedId > 0 ? requestedId : 480
     if (this.native && this.initialized && this.user.appId === this.appId) return this.getUser()
     if (this.initialized && this.isDebug() && this.user.appId === this.appId) return this.getUser()
-    const nativeRes = await invokeTauri<SteamUserInfo>('steam_init', { appId: this.appId })
+    const nativeRes = await this.invoke<SteamUserInfo>('steam_init', { appId: this.appId })
     if (nativeRes && nativeRes.steamId) {
       this.native = true
       this.user = { ...nativeRes, appId: this.appId, native: true }
@@ -215,7 +219,7 @@ export class SteamManager {
       try {
         const includeLobby = Date.now() >= nextLobbyUpdate
         if (includeLobby) nextLobbyUpdate = Date.now() + 300
-        const frame = await invokeTauri<{
+        const frame = await this.invoke<{
           packets: Array<{ from: string; data: string }>
           lobby?: SteamLobby | null
           invite?: SteamLobbyInvite | null
@@ -251,20 +255,20 @@ export class SteamManager {
   }
 
   readStat(name: string, floatingPoint = false): Promise<number | null> {
-    return this.native ? invokeTauri<number>('steam_read_stat', { name, floatingPoint }) : Promise.resolve(null)
+    return this.native ? this.invoke<number>('steam_read_stat', { name, floatingPoint }) : Promise.resolve(null)
   }
 
   writeStat(name: string, value: number, floatingPoint = false): Promise<boolean> {
-    return this.native ? invokeTauri<boolean>('steam_write_stat', { name, value, floatingPoint }).then(Boolean)
+    return this.native ? this.invoke<boolean>('steam_write_stat', { name, value, floatingPoint }).then(Boolean)
       : Promise.resolve(false)
   }
 
   isDlcInstalled(appId: number): Promise<boolean> {
-    return this.native ? invokeTauri<boolean>('steam_is_dlc_installed', { appId }).then(Boolean) : Promise.resolve(false)
+    return this.native ? this.invoke<boolean>('steam_is_dlc_installed', { appId }).then(Boolean) : Promise.resolve(false)
   }
 
   inviteFriends(): Promise<boolean> {
-    return this.native ? invokeTauri<boolean>('steam_invite_friends').then(Boolean) : Promise.resolve(false)
+    return this.native ? this.invoke<boolean>('steam_invite_friends').then(Boolean) : Promise.resolve(false)
   }
 
   getPendingInvite(): SteamLobbyInvite | undefined {
@@ -277,15 +281,15 @@ export class SteamManager {
   }
 
   relayStatus(): Promise<string | null> {
-    return this.native ? invokeTauri<string>('steam_relay_status') : Promise.resolve(null)
+    return this.native ? this.invoke<string>('steam_relay_status') : Promise.resolve(null)
   }
 
   async queryAchievement(id: string): Promise<boolean> {
-    return this.native ? Boolean(await invokeTauri<boolean>('steam_has_achievement', { id })) : this.hasAchievement(id)
+    return this.native ? Boolean(await this.invoke<boolean>('steam_has_achievement', { id })) : this.hasAchievement(id)
   }
 
   async listCloudFiles(): Promise<string[]> {
-    return this.native ? (await invokeTauri<string[]>('steam_cloud_list') ?? []) : this.cloudList()
+    return this.native ? (await this.invoke<string[]>('steam_cloud_list') ?? []) : this.cloudList()
   }
 
   isAvailable(): boolean {
@@ -314,7 +318,7 @@ export class SteamManager {
   async unlockAchievement(id: string): Promise<boolean> {
     if (!id || !this.initialized) return false
     if (this.native) {
-      const ok = await invokeTauri<boolean>('steam_unlock_achievement', { id })
+      const ok = await this.invoke<boolean>('steam_unlock_achievement', { id })
       if (ok) this.nativeAchievements.add(id)
       this.log('unlockAchievement', `${id} -> ${ok ? 'unlocked' : 'failed'}`, ok ? 'info' : 'error')
       return Boolean(ok)
@@ -330,7 +334,7 @@ export class SteamManager {
   async clearAchievement(id: string): Promise<boolean> {
     if (!id || !this.initialized) return false
     if (this.native) {
-      const ok = await invokeTauri<boolean>('steam_clear_achievement', { id })
+      const ok = await this.invoke<boolean>('steam_clear_achievement', { id })
       if (ok) this.nativeAchievements.delete(id)
       this.log('clearAchievement', `${id} -> ${Boolean(ok)}`, ok ? 'info' : 'error')
       return Boolean(ok)
@@ -355,7 +359,7 @@ export class SteamManager {
   // ---- Rich Presence ----
   async setRichPresence(key: string, value: string): Promise<boolean> {
     if (!this.initialized) return false
-    if (this.native && !await invokeTauri<boolean>('steam_set_rich_presence', { key, value })) return false
+    if (this.native && !await this.invoke<boolean>('steam_set_rich_presence', { key, value })) return false
     this.richPresence[key] = value
     this.log('setRichPresence', `${key} = "${value}"`)
     return true
@@ -363,7 +367,7 @@ export class SteamManager {
 
   async clearRichPresence(): Promise<void> {
     if (!this.initialized) return
-    if (this.native && !await invokeTauri<boolean>('steam_clear_rich_presence')) return
+    if (this.native && !await this.invoke<boolean>('steam_clear_rich_presence')) return
     this.richPresence = {}
     this.log('clearRichPresence', 'cleared')
   }
@@ -380,7 +384,7 @@ export class SteamManager {
   async cloudWrite(filename: string, content: string): Promise<boolean> {
     if (!filename || !this.initialized) return false
     if (this.native) {
-      const ok = await invokeTauri<boolean>('steam_cloud_write', { filename, content })
+      const ok = await this.invoke<boolean>('steam_cloud_write', { filename, content })
       this.log('cloudWrite', `${filename} (${content.length} bytes)`)
       return Boolean(ok)
     }
@@ -395,7 +399,7 @@ export class SteamManager {
   async cloudRead(filename: string): Promise<string | null> {
     if (!filename || !this.initialized) return null
     if (this.native) {
-      const res = await invokeTauri<string | null>('steam_cloud_read', { filename })
+      const res = await this.invoke<string | null>('steam_cloud_read', { filename })
       this.log('cloudRead', `${filename} -> ${res ? res.length + ' bytes' : 'null'}`)
       return res
     }
@@ -409,7 +413,7 @@ export class SteamManager {
   async cloudDelete(filename: string): Promise<boolean> {
     if (!filename || !this.initialized) return false
     if (this.native) {
-      const ok = await invokeTauri<boolean>('steam_cloud_delete', { filename })
+      const ok = await this.invoke<boolean>('steam_cloud_delete', { filename })
       this.log('cloudDelete', `${filename} -> ${Boolean(ok)}`, ok ? 'info' : 'error')
       return Boolean(ok)
     }
@@ -440,7 +444,7 @@ export class SteamManager {
     const lobbyType = opts.type || 'public'
     const name = (opts.name || `${this.user.name}'s Lobby`).trim()
     if (this.native) {
-      const nativeLobby = await invokeTauri<SteamLobby>('steam_create_lobby', { maxMembers, lobbyType, name, data: opts.data ?? {} })
+      const nativeLobby = await this.invoke<SteamLobby>('steam_create_lobby', { maxMembers, lobbyType, name, data: opts.data ?? {} })
       if (nativeLobby) {
         this.updateLobby(nativeLobby)
         this.log('createLobby', `Native lobby ${nativeLobby.id} (max ${maxMembers})`)
@@ -471,7 +475,7 @@ export class SteamManager {
     if (!this.initialized) await this.init(this.appId)
     if (!this.initialized) return []
     if (this.native) {
-      const list = await invokeTauri<SteamLobby[]>('steam_list_lobbies')
+      const list = await this.invoke<SteamLobby[]>('steam_list_lobbies')
       if (Array.isArray(list)) {
         this.log('listLobbies', `Found ${list.length} native lobbies`)
         return list
@@ -493,7 +497,7 @@ export class SteamManager {
     if (!this.initialized) await this.init(this.appId)
     if (!this.initialized) return null
     if (this.native) {
-      const joined = await invokeTauri<SteamLobby>('steam_join_lobby', { lobbyId })
+      const joined = await this.invoke<SteamLobby>('steam_join_lobby', { lobbyId })
       if (joined) {
         this.updateLobby(joined)
         if (this.pendingInvite?.lobbyId === joined.id) this.pendingInvite = undefined
@@ -521,7 +525,7 @@ export class SteamManager {
     if (!this.currentLobby) return
     const id = this.currentLobby.id
     if (this.native) {
-      const left = await invokeTauri<boolean>('steam_leave_lobby', { lobbyId: id })
+      const left = await this.invoke<boolean>('steam_leave_lobby', { lobbyId: id })
       if (!left) throw new Error('Steamworks failed to leave lobby')
       if (this.currentLobby?.id !== id) return
     }
@@ -546,7 +550,7 @@ export class SteamManager {
 
   async setLobbyData(key: string, value: string): Promise<boolean> {
     if (!this.currentLobby || !key) return false
-    if (this.native && !await invokeTauri<boolean>('steam_set_lobby_data', { lobbyId: this.currentLobby.id, key, value })) {
+    if (this.native && !await this.invoke<boolean>('steam_set_lobby_data', { lobbyId: this.currentLobby.id, key, value })) {
       this.log('setLobbyData', `Failed: ${key}`, 'error')
       return false
     }
@@ -572,7 +576,7 @@ export class SteamManager {
       const targets = toSteamId ? [toSteamId] : this.currentLobby.members.filter(m => m !== this.user.steamId)
       for (const to of targets) {
         if (!this.currentLobby.members.includes(to)) continue
-        void invokeTauri<boolean>('steam_send_p2p', { to, data: JSON.stringify(packet), reliable: packet.type !== 'snapshot' }).then(ok => {
+        void this.invoke<boolean>('steam_send_p2p', { to, data: JSON.stringify(packet), reliable: packet.type !== 'snapshot' }).then(ok => {
           if (!ok) this.log('sendP2P', `Failed to send to ${to}`, 'error')
         })
       }
