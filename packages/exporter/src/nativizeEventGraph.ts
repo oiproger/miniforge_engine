@@ -658,9 +658,6 @@ export default function (api: any) {
     const line = '[EventGraph:' + api.entity.name + '] ' +
       (typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value));
     console.log(line);
-    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-      try { window.parent.postMessage({ type: 'miniforge:log', log: line }, '*'); } catch {}
-    }
   };
   const _ids = (v: any) => Array.isArray(v) ? v.map(String) : [];
   const _parseArr = (raw: any) => { try { const p = JSON.parse(String(raw || '[]')); if (Array.isArray(p)) return p; } catch {} return String(raw || '').split(',').map((s: string) => s.trim()).filter(Boolean); };

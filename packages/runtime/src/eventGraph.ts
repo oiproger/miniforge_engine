@@ -527,13 +527,6 @@ export function createEventGraphLifecycle(
         const val = get('value', '')
         const line = `[EventGraph:${api.entity.name}] ${typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val)}`
         console.log(line)
-        try {
-          if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'miniforge:log', log: line }, '*')
-          }
-        } catch {
-          /* ignore cross-origin */
-        }
         next()
         break
       }

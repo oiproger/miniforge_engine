@@ -380,13 +380,6 @@ export function createDialogueRuntime(project: Project, getApi: () => GameAPI): 
       if (!asset) {
         const msg = `[Dialogue] Asset not found: "${key}"`
         console.warn(msg)
-        try {
-          if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'miniforge:log', log: msg }, '*')
-          }
-        } catch {
-          /* ignore */
-        }
         return false
       }
       activeGraph = parseDialogueGraph(asset.data)

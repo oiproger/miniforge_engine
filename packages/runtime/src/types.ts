@@ -570,6 +570,7 @@ export interface GameOptions {
   platform: PlatformAdapter
   scripts?: Record<string, any>
   onEvent?: (name: string, data?: unknown) => void
+  onLog?: (line: string) => void
   physics?: (view: RenderWorld, scene: Scene) => Promise<PhysicsSession>
   performance?: boolean
   /** True only for an editor preview; prevents debug-only Steam simulation in shipped games. */

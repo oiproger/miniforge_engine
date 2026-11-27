@@ -14,6 +14,7 @@ interface Actions {
   language(): void
   emit(name: string, source?: unknown): void
   setVariable?(key: string, value: unknown): void
+  log?(line: string): void
 }
 export const words: Record<string, Record<string, string>> = {
   en: {
@@ -157,6 +158,9 @@ export class Overlay {
         if (d.payload.data) this.open(String(d.payload.data))
       }
       else this.actions.emit(act, d.payload.data)
+    } else if (d.kind === 'console' && typeof d.payload?.text === 'string') {
+      const level = d.payload.level === 'warn' || d.payload.level === 'error' ? ' ' + d.payload.level : ''
+      this.actions.log?.('[HUD ' + String(d.frameId) + level + '] ' + d.payload.text)
     } else if (d.kind === 'setVar' && d.payload?.key) {
       const key = String(d.payload.key)
       if (['__proto__', 'prototype', 'constructor'].includes(key)) return

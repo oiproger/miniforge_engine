@@ -613,6 +613,7 @@ export async function startGame(
         updateUI()
       },
       emit: (name, source?: unknown) => emit(name, source),
+      log: options.onLog,
       setVariable: (key, value) => { vars[key] = value },
     },
     input,

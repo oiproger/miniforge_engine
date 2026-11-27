@@ -3,10 +3,39 @@ import type { Project } from '../../project-schema/src'
 import type { PlatformAdapter } from '../../platform-sdk/src'
 import type { startGame } from '../../runtime/src'
 
+function postPreviewLog(line: string) {
+  parent.postMessage({ type: 'miniforge:log', log: line.slice(0, 4000) }, '*')
+}
+
+function formatConsoleArgument(value: unknown): string {
+  try {
+    if (value instanceof Error) return value.stack ?? value.message
+    if (value !== null && typeof value === 'object') {
+      try { return JSON.stringify(value) ?? String(value) }
+      catch { return String(value) }
+    }
+    return String(value)
+  } catch {
+    return '[unserializable console value]'
+  }
+}
+
+function forwardPreviewConsole() {
+  for (const level of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+    const original = console[level].bind(console)
+    console[level] = (...args: unknown[]) => {
+      original(...args)
+      const prefix = level === 'log' ? '' : '[' + level + '] '
+      postPreviewLog(prefix + args.map(formatConsoleArgument).join(' '))
+    }
+  }
+}
+
 export async function boot(run: typeof startGame, platformFactory: (id: string) => PlatformAdapter) {
   const root = document.getElementById('game')!
+  const preview = document.getElementById('preview-data')
+  if (preview) forwardPreviewConsole()
   try {
-    const preview = document.getElementById('preview-data')
     const config = preview
       ? JSON.parse(preview.textContent!)
       : await fetch('./project.json').then((r) => {
@@ -39,6 +68,7 @@ export async function boot(run: typeof startGame, platformFactory: (id: string) 
       physics,
       performance: !!preview,
       preview: !!preview,
+      onLog: preview ? postPreviewLog : undefined,
       steamPreviewInvoke: preview && typeof config.nativeSteamSession === 'string'
         ? createSteamPreviewInvoke(config.nativeSteamSession)
         : undefined,
@@ -67,6 +97,6 @@ export async function boot(run: typeof startGame, platformFactory: (id: string) 
   } catch (error) {
     root.textContent = 'Game failed to start. ' + String(error)
     console.error(error)
-    if (document.getElementById('preview-data')) parent.postMessage({ error: String(error) }, '*')
+    if (preview) parent.postMessage({ error: String(error) }, '*')
   }
 }
