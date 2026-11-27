@@ -12,6 +12,7 @@ import {
   List,
   File,
   HardDrive,
+  Database,
 } from 'lucide-react'
 import type { Project, Asset } from '../../../packages/project-schema/src'
 import { Thumb } from './Thumb'
@@ -20,12 +21,14 @@ export default function Assets({
   onUse,
   importFiles,
   editAsset,
+  createAsset,
   manage,
 }: {
   project: Project
   onUse: (a: Asset) => void
   importFiles: () => void
   editAsset: (s: string) => void
+  createAsset: (anchor: HTMLElement) => void
   manage: (a: Asset, x: number, y: number) => void
 }) {
   const [folder, setFolder] = useState('All assets'),
@@ -43,6 +46,7 @@ export default function Assets({
     Scripts: ['script'],
     'Event Graphs': ['graph'],
     Dialogues: ['dialogue'],
+    Databases: ['db'],
     Sequences: ['sequence'],
     Plugins: ['plugin'],
     Models: ['model'],
@@ -85,6 +89,9 @@ export default function Assets({
           <button className="icon" title="Toggle asset layout" onClick={() => list(!rows)}>
             {rows ? <List /> : <Grid2X2 />}
           </button>
+          <button className="minor-btn" onClick={ev => createAsset(ev.currentTarget)}>
+            <Plus size={13} /> Add asset
+          </button>
           <button className="minor-btn" onClick={importFiles}>
             <Upload size={13} /> Import
           </button>
@@ -108,45 +115,13 @@ export default function Assets({
                 <Thumb asset={a} project={project} />
               </div>
               <div className="asset-name">
-                {a.type === 'prefab' ? <PackageOpen /> : <File />}
+                {a.type === 'db' ? <Database /> : a.type === 'prefab' ? <PackageOpen /> : <File />}
                 {a.name}
               </div>
-              <small>{a.type}</small>
+              <small>{a.type === 'db' ? 'DB Asset' : a.type}</small>
             </button>
           ))}
-          {!filtered.length && (
-            <div className="empty-assets">
-              <span>No matching assets</span>
-              <button
-                className="minor-btn"
-                onClick={() =>
-                  folder === 'Scripts'
-                    ? editAsset('new-script')
-                    : folder === 'Materials'
-                      ? editAsset('new-material')
-                      : folder === 'Particles'
-                        ? editAsset('new-particle')
-                        : folder === 'HTML UI'
-                          ? editAsset('new-html')
-                          : folder === 'Textures'
-                            ? editAsset('new-texture')
-                            : folder === 'Prefabs'
-                              ? editAsset('new-prefab')
-                              : folder === 'Event Graphs'
-                                ? editAsset('new-graph')
-                                : folder === 'Dialogues'
-                                  ? editAsset('new-dialogue')
-                                  : folder === 'Sequences'
-                                    ? editAsset('new-sequence')
-                                    : folder === 'Plugins'
-                                      ? editAsset('new-plugin')
-                        : importFiles()
-                }
-              >
-                <Plus size={13} /> Add asset
-              </button>
-            </div>
-          )}
+          {!filtered.length && <div className="empty-assets">No matching assets</div>}
         </div>
       </section>
     </div>

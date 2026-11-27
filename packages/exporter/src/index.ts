@@ -79,7 +79,7 @@ function usedAssets(project: Project) {
   if (dynamic) {
     for (const asset of project.assets) if (asset.type === 'prefab') visit(asset.id)
   }
-  return project.assets.filter((a) => used.has(a.id) || a.type === 'plugin' || (dynamic && a.type !== 'script'))
+  return project.assets.filter((a) => used.has(a.id) || a.type === 'db' || a.type === 'plugin' || (dynamic && a.type !== 'script'))
 }
 
 async function compileScript(name: string, source: string) {

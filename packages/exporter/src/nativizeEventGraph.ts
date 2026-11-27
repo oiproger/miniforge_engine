@@ -1,6 +1,8 @@
 import {
   parseEventGraph,
   UI_WIDGET_ACTIONS,
+  DB_GRAPH_NODES,
+  parseDbJson,
   type EventGraphData,
   type GraphEdge,
   type GraphNode,
@@ -214,6 +216,14 @@ function genPureOutput(ctx: ScopeCtx, node: GraphNode, pinId: string, depth: num
       if (pinId === 'ok') return `((s) => { try { JSON.parse(s); return true } catch { return false } })(${j})`
       return `((s) => { try { return JSON.parse(s) } catch { return null } })(${j})`
     }
+    case 'db.list':
+      return 'api.db.list()'
+    case 'db.rows':
+      return `api.db.rows(String(${g('db', '')}))`
+    case 'db.get':
+      return `api.db.get(String(${g('db', '')}), String(${g('row', '')}), ${g('path', '')})`
+    case 'db.has':
+      return `api.db.has(String(${g('db', '')}), String(${g('row', '')}), ${g('path', '')})`
     case 'quest.getStatus':
       return `api.dialogue.getQuestStatus(String(${g('questId', '')}))`
     case 'camera.screenToRay':
@@ -448,6 +458,26 @@ function genExecNode(ctx: ScopeCtx, node: GraphNode, inPin: string, indent: stri
       return `${indent}{ const _id = String(${g('assetId', '')}); if (_id) api.dialogue.start(_id); }\n` + next()
     case 'dialogue.stop':
       return `${indent}api.dialogue.stop();\n` + next()
+    case 'db.set':
+    case 'db.upsertRow': {
+      const fallback = node.type === 'db.set' ? 'null' : '{}'
+      const wired = ctx.edges.some(edge => edge.toNode === node.id && edge.toPin === 'value')
+      const raw = node.inputs?.value === undefined ? fallback : node.inputs.value
+      const parsed = typeof raw === 'string' ? parseDbJson(raw) : raw
+      const value = wired ? g('value', fallback)
+        : parsed === undefined ? 'undefined' : `JSON.parse(${lit(JSON.stringify(parsed))})`
+      const args = `String(${g('db', '')}), String(${g('row', '')})`
+      const call = node.type === 'db.set'
+        ? `api.db.set(${args}, ${g('path', '')}, ${value})`
+        : `api.db.upsertRow(${args}, ${value})`
+      return `${indent}const ${v('ok')} = ${call};\n` + next()
+    }
+    case 'db.delete':
+      return `${indent}const ${v('ok')} = api.db.delete(String(${g('db', '')}), String(${g('row', '')}), ${g('path', '')});\n` + next()
+    case 'db.removeRow':
+      return `${indent}const ${v('ok')} = api.db.removeRow(String(${g('db', '')}), String(${g('row', '')}));\n` + next()
+    case 'db.reset':
+      return `${indent}const ${v('ok')} = api.db.reset(String(${g('db', '')}));\n` + next()
     case 'quest.setStatus':
       return `${indent}api.dialogue.setQuestStatus(String(${g('questId', '')}), String(${g('status', 'active')}));\n` + next()
     case 'sequencer.play':
@@ -680,6 +710,7 @@ const aotNodeTypes = new Set([
   'ui.getValue', 'ui.hasWidget', 'ui.isWidgetVisible', 'ui.current', 'ui.bindValue', 'ui.setColors',
   'ui.open', 'ui.close', 'ui.back', 'ui.setHtml', 'ui.setText', 'ui.setVisible',
   ...UI_WIDGET_ACTIONS.map((action) => action.type),
+  ...DB_GRAPH_NODES.map(node => node.type),
 ])
 
 /** Compile eligible graphs and keep the interpreter for graphs with unsupported nodes. */

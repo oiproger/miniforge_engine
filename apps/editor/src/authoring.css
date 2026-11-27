@@ -1371,3 +1371,61 @@
     grid-template-columns: minmax(90px, 1fr) minmax(0, 2fr) auto;
   }
 }
+
+.mf-db-editor {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.mf-db-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.mf-db-actions small { color: var(--muted); }
+.mf-db-draft {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: #1b2028;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.mf-db-draft textarea { resize: vertical; font-family: monospace; }
+.mf-db-grid {
+  max-height: 56vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.mf-db-grid table { min-width: 100%; border-collapse: separate; border-spacing: 0; }
+.mf-db-grid th, .mf-db-grid td {
+  padding: 5px 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.mf-db-grid thead th { position: sticky; top: 0; z-index: 1; background: #242a34; white-space: nowrap; }
+.mf-db-grid tbody th { white-space: nowrap; background: #1c222a; }
+.mf-db-grid button {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+.mf-db-grid button:hover:not(:disabled) { background: #333e4b; }
+.mf-db-grid .mf-db-cell {
+  display: block;
+  min-width: 110px;
+  max-width: 260px;
+  width: 100%;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+}
+.mf-db-grid p { margin: 10px; color: var(--muted); }

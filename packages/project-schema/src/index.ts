@@ -1,3 +1,5 @@
+import { dbNameProblem, parseDbAsset } from './database'
+export * from './database'
 import {validTerrain} from './terrain'
 export * from './terrain'
 export * from './nav'
@@ -36,7 +38,7 @@ export interface Scene {
   environment: Environment
   entities: Entity[]
 }
-export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox' | 'text' | 'particle' | 'html' | 'graph' | 'dialogue' | 'sequence' | 'plugin'
+export type AssetType = 'material' | 'model' | 'texture' | 'audio' | 'script' | 'prefab' | 'shader' | 'json' | 'skybox' | 'text' | 'particle' | 'html' | 'graph' | 'dialogue' | 'sequence' | 'plugin' | 'db'
 export interface ModelAnimationClip {
   id: string
   name: string
@@ -472,6 +474,12 @@ export function validateProject(input: unknown): Project {
       'invalid asset ' + asset.id,
     )
     if (asset.type === 'json') JSON.parse(asset.data)
+    if (asset.type === 'db') {
+      const problem = dbNameProblem(input.assets, asset.id, asset.name)
+      if (problem) throw new Error(problem + ' ' + asset.name)
+      try { parseDbAsset(asset.data) }
+      catch (error) { throw new Error('DB Asset ' + asset.name + ': ' + String(error)) }
+    }
     if (asset.type === 'prefab') {
       const nodes = JSON.parse(asset.data)
       validateEntities(nodes)

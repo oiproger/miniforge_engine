@@ -1,3 +1,4 @@
+import type { DbAPI } from './database'
 import type { SceneNode, Vector3 } from '../../graphics/src/scene'
 import type { Component, Entity, Project, Scene, Vec3 } from '../../project-schema/src'
 import type { PostProcessOptions, ProceduralSkyOptions, SkyboxFaces, RenderWorld } from '../../graphics/src'
@@ -536,6 +537,8 @@ export interface GameAPI {
   }
   /** Branching NPC Dialogue & Quest state manager. */
   dialogue: DialogueAPI
+  /** Runtime access to all DB Assets in the current game. */
+  db: DbAPI
   /** Keyframe Cutscene & Timeline Sequencer player. */
   sequencer: SequencerAPI
   /** Scene switching. */

@@ -29,9 +29,13 @@ export interface DialogueNode {
   trueNodeId?: string
   falseNodeId?: string
   // For 'action' nodes (quests, vars, events)
-  actionKind?: 'setQuest' | 'setWorldState' | 'setVar' | 'addVar' | 'emitEvent'
+  actionKind?: 'setQuest' | 'setWorldState' | 'setVar' | 'addVar' | 'emitEvent' | 'setDbValue'
   actionKey?: string
   actionValue?: string | number | boolean
+  actionDbId?: string
+  actionDbRow?: string
+  actionDbPath?: string
+  actionDbJson?: string
 }
 
 export interface QuestDef {

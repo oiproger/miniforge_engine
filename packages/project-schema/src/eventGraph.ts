@@ -70,6 +70,7 @@ export interface GraphNodeSpec {
     | 'World & FX'
     | 'Audio & UI'
     | 'Collections'
+    | 'Database'
   pure?: boolean
   color?: string
   inputs: GraphPinDef[]
@@ -101,6 +102,7 @@ export const CATEGORY_COLORS: Record<GraphNodeSpec['category'], string> = {
   'Player & Input': '#1f617a',
   Physics: '#3e428c',
   Collections: '#7c4a15',
+  Database: '#286776',
   'Animation & AI': '#9a5418',
   'World & FX': '#1b6b66',
   'Audio & UI': '#7a2e5c',
@@ -155,7 +157,35 @@ export const GRAPH_RUNTIME_EVENTS = [
   ] },
 ] satisfies { type: string; title: string; name: string; fields: GraphPinDef[] }[]
 
+const dbNamePin: GraphPinDef = { id: 'db', label: 'Database name', type: 'string', defaultValue: '' }
+const dbRowPin: GraphPinDef = { id: 'row', label: 'Row ID', type: 'string', defaultValue: '' }
+const dbPathPin: GraphPinDef = { id: 'path', label: 'Field path', type: 'any', defaultValue: '' }
+const dbValuePin: GraphPinDef = { id: 'value', label: 'Value (JSON or wire)', type: 'any', defaultValue: 'null' }
+
+export const DB_GRAPH_NODES: GraphNodeSpec[] = [
+  ...([
+    ['db.list', 'List Databases', [], { id: 'names', label: 'Names', type: 'array' }],
+    ['db.rows', 'List DB Rows', [dbNamePin], { id: 'rows', label: 'Rows', type: 'array' }],
+    ['db.get', 'Get DB Value', [dbNamePin, dbRowPin, dbPathPin], { id: 'value', label: 'Value', type: 'any' }],
+    ['db.has', 'Has DB Value', [dbNamePin, dbRowPin, dbPathPin], { id: 'found', label: 'Found', type: 'boolean' }],
+  ] satisfies [string, string, GraphPinDef[], GraphPinDef][]).map(([type, title, inputs, output]): GraphNodeSpec => ({
+    type, title, category: 'Database', pure: true, inputs, outputs: [output],
+  })),
+  ...([
+    ['db.set', 'Set DB Value', [dbNamePin, dbRowPin, dbPathPin, dbValuePin]],
+    ['db.delete', 'Delete DB Value', [dbNamePin, dbRowPin, dbPathPin]],
+    ['db.upsertRow', 'Insert or Replace DB Row', [dbNamePin, dbRowPin, { ...dbValuePin, label: 'Row (JSON or wire)', defaultValue: '{}' }]],
+    ['db.removeRow', 'Remove DB Row', [dbNamePin, dbRowPin]],
+    ['db.reset', 'Reset Database', [dbNamePin]],
+  ] satisfies [string, string, GraphPinDef[]][]).map(([type, title, inputs]): GraphNodeSpec => ({
+    type, title, category: 'Database',
+    inputs: [{ id: 'exec', label: '', type: 'exec' }, ...inputs],
+    outputs: [{ id: 'exec', label: '', type: 'exec' }, { id: 'ok', label: 'Success', type: 'boolean' }],
+  })),
+]
+
 export const GRAPH_NODE_CATALOG: GraphNodeSpec[] = [
+  ...DB_GRAPH_NODES,
   ...GRAPH_RUNTIME_EVENTS.map(({ type, title, fields }): GraphNodeSpec => ({
     type, title, category: 'Events', inputs: [],
     outputs: [{ id: 'exec', label: '', type: 'exec' }, ...fields],
