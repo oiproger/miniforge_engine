@@ -1,3 +1,5 @@
+import { dbNameProblem } from '../../../packages/project-schema/src'
+import { Database } from 'lucide-react'
 import { ExportSettingsPanel } from './ExportSettings'
 import { SceneProfiler } from './SceneProfiler'
 import { ScatterBrushPanel, DEFAULT_SCATTER_BRUSH } from './ScatterBrush'
@@ -218,7 +220,7 @@ function App() {
     [notice, say] = useState(''),
     [report, setReport] = useState<Record<string, any> | null>(null),
     [stats, setStats] = useState<Record<string, number>>({})
-  const [menu, menuAt] = useState<{ items: MenuItem[]; x: number; y: number } | null>(null),
+  const [menu, menuAt] = useState<{ items: MenuItem[]; x: number; y: number; above?: boolean } | null>(null),
     [sidebar, sizeSidebar] = useState(() => Number(localStorage.getItem('forge.left')) || 214),
     [right, sizeRight] = useState(() => Number(localStorage.getItem('forge.right')) || 268),
     [bottom, sizeBottom] = useState(() => Number(localStorage.getItem('forge.dock')) || 220)
@@ -749,10 +751,13 @@ function App() {
           'Rename',
           () => {
             const name = prompt('Asset name', a.name)?.trim()
-            if (name)
+            if (name) {
+              const problem = a.type === 'db' ? dbNameProblem(p.assets, a.id, name) : ''
+              if (problem) { note(problem); return }
               patch((n) => {
                 n.assets.find((o) => o.id === a.id)!.name = name
               })
+            }
           },
           FilePlus2,
         ],
@@ -771,6 +776,7 @@ function App() {
       ],
     })
   }
+  const menuHeight = Math.min((menu?.items.length ?? 0) * 34 + 16, innerHeight - 60)
   const buildIssues = dialog === 'export' ? projectIssues(p) : []
   function locateIssue(issue:ProjectIssue) {
     modal('')
@@ -832,6 +838,7 @@ function App() {
     ['New Low-Poly Mesh (Builder)', () => edit('new-mesh'), Box],
     ['New 2D Paint Texture', () => edit('new-paint'), Paintbrush],
     ['New Sound / Music (Synth)', () => edit('new-sound'), Volume2],
+    ['New DB Asset', () => edit('new-db'), Database],
     ['New Dialogue & Quest Graph', () => edit('new-dialogue'), MessageSquare],
     ['New Keyframe Sequence', () => edit('new-sequence'), Clapperboard],
     ['New Plugin / Examples', () => edit('new-plugin'), Puzzle],
@@ -1309,6 +1316,10 @@ function App() {
               onUse={use}
               importFiles={() => assetInput.current?.click()}
               editAsset={edit}
+              createAsset={anchor => {
+                const rect = anchor.getBoundingClientRect()
+                menuAt({ x: rect.left, y: rect.top - 5, items: assetsMenu, above: true })
+              }}
               manage={manage}
             />
           ) : (
@@ -1410,7 +1421,7 @@ function App() {
             className="popup"
             style={{
               left: Math.max(8, Math.min(menu.x, innerWidth - 260)),
-              top: Math.max(8, Math.min(menu.y, innerHeight - Math.min(menu.items.length * 34 + 16, innerHeight - 60))),
+              top: Math.max(8, Math.min(menu.above ? menu.y - menuHeight : menu.y, innerHeight - menuHeight)),
             }}
             onPointerDown={(e) => e.stopPropagation()}
           >

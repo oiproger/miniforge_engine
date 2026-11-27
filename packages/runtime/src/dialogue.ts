@@ -1,6 +1,8 @@
 import {
   DEFAULT_DIALOGUE_SCREEN_ID,
   parseDialogueGraph,
+  parseDbJson,
+  parseDbPathText,
   type DialogueChoice,
   type DialogueGraphData,
   type DialogueNode,
@@ -337,6 +339,15 @@ export function createDialogueRuntime(project: Project, getApi: () => GameAPI): 
         api.vars[k] = node.actionValue
       } else if (node.actionKind === 'addVar' && k) {
         api.vars[k] = (Number(api.vars[k]) || 0) + (Number(node.actionValue) || 0)
+      } else if (node.actionKind === 'setDbValue') {
+        const db = node.actionDbId ?? ''
+        const row = node.actionDbRow ?? ''
+        const path = node.actionDbPath ?? ''
+        const segments = parseDbPathText(path)
+        const value = parseDbJson(node.actionDbJson ?? 'null')
+        if (segments === undefined || value === undefined || !api.db.set(db, row, segments, value)) {
+          api.events.emit('db.error', { db, row, path, error: 'Check the database, row, field path and JSON value.' })
+        }
       } else if (node.actionKind === 'emitEvent' && k) {
         api.events.emit(k, node.actionValue)
       }
@@ -369,13 +380,6 @@ export function createDialogueRuntime(project: Project, getApi: () => GameAPI): 
       if (!asset) {
         const msg = `[Dialogue] Asset not found: "${key}"`
         console.warn(msg)
-        try {
-          if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'miniforge:log', log: msg }, '*')
-          }
-        } catch {
-          /* ignore */
-        }
         return false
       }
       activeGraph = parseDialogueGraph(asset.data)

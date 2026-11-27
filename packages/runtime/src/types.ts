@@ -1,3 +1,4 @@
+import type { DbAPI } from './database'
 import type { SceneNode, Vector3 } from '../../graphics/src/scene'
 import type { Component, Entity, Project, Scene, Vec3 } from '../../project-schema/src'
 import type { PostProcessOptions, ProceduralSkyOptions, SkyboxFaces, RenderWorld } from '../../graphics/src'
@@ -536,6 +537,8 @@ export interface GameAPI {
   }
   /** Branching NPC Dialogue & Quest state manager. */
   dialogue: DialogueAPI
+  /** Runtime access to all DB Assets in the current game. */
+  db: DbAPI
   /** Keyframe Cutscene & Timeline Sequencer player. */
   sequencer: SequencerAPI
   /** Scene switching. */
@@ -567,6 +570,7 @@ export interface GameOptions {
   platform: PlatformAdapter
   scripts?: Record<string, any>
   onEvent?: (name: string, data?: unknown) => void
+  onLog?: (line: string) => void
   physics?: (view: RenderWorld, scene: Scene) => Promise<PhysicsSession>
   performance?: boolean
   /** True only for an editor preview; prevents debug-only Steam simulation in shipped games. */

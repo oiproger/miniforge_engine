@@ -30,6 +30,6 @@ The Energy Beacon now has host-owned Network Sync with **Sync Active** enabled. 
 - Current packets are tick-based snapshots, not a transactional replicated database. Path changes can be missed if rapidly changed and reversed within the same network tick.
 - Reconnects and late joins cause a full snapshot of selected fields; spawned entities and destroyed tombstones are also sent by the host (bounded to 256 spawns, 512 tombstones per join).
 - `net:spawn` only accepts a prefab already in the project and a host-supplied root ID. Only the host may spawn shared prefabs; peer-owned player proxies remain separate.
-- No protocol version migration or server persistence. Host migration is not implemented; if the authoritative host quits, state can be lost.
+- No protocol version migration or server persistence. The transport can elect a new host or follow the new Steam lobby owner. Recovery of the previous host’s match state is not implemented. [Network roadmap](NETWORKING.md)
 - The WebSocket relay authenticates *connection identity*, not game actions. Critical actions must be checked by the host, as pickup is in this example.
 - Collection range uses the peer's last transmitted position, with a 0.3-unit tolerance to allow for network delay.

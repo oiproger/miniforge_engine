@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Trash2, MessageSquare, Flag, GitBranch, Zap, Maximize2 } from 'lucide-react'
 import {
   parseDialogueGraph,
+  parseDbAsset,
+  parseDbPathText,
+  parseDbJson,
   uid,
   type Asset,
   type DialogueGraphData,
@@ -21,8 +24,10 @@ const NODE_COLORS: Record<DialogueNodeType, string> = {
 export function DialogueEditor({
   a,
   changeA,
+  assets,
 }: {
   a: Asset
+  assets: readonly Asset[]
   changeA: (fn: (asset: Asset) => void) => void
 }) {
   const data: DialogueGraphData = useMemo(() => parseDialogueGraph(a.data), [a.data])
@@ -46,6 +51,8 @@ export function DialogueEditor({
       asset.data = JSON.stringify(next)
     })
   }
+
+  const databases = assets.filter(asset => asset.type === 'db')
 
   // Reliable window-level pointer dragging for BOTH canvas pan and nodes
   useEffect(() => {
@@ -263,7 +270,9 @@ export function DialogueEditor({
                 <div style={{ padding: '6px 8px', fontSize: 11, color: '#cbd5e1', cursor: 'move' }}>
                   {n.type === 'line' && (n.text || '…').slice(0, 65)}
                   {n.type === 'condition' && `${n.conditionKey} ${n.conditionOp} ${n.conditionValue}`}
-                  {n.type === 'action' && `${n.actionKind}: ${n.actionKey} = ${n.actionValue}`}
+                  {n.type === 'action' && (n.actionKind === 'setDbValue'
+                    ? `${databases.find(asset => asset.id === n.actionDbId)?.name ?? 'Database'} / ${n.actionDbRow || 'row'} / ${n.actionDbPath || 'field'}`
+                    : `${n.actionKind}: ${n.actionKey} = ${n.actionValue}`)}
                   {n.type === 'start' && 'Entry point'}
                   {n.type === 'end' && 'Close dialogue'}
                 </div>
@@ -436,30 +445,40 @@ export function DialogueEditor({
                 <>
                   <Field label="Action">
                     <select
+                      aria-label="Action"
                       value={cur.actionKind || 'setQuest'}
                       onChange={(e) =>
                         commit((d) => (d.nodes.find((x) => x.id === cur.id)!.actionKind = e.target.value as any))
                       }
                     >
                       <option value="setQuest">Set Quest Status</option>
+                      <option value="setDbValue">Set DB Value</option>
                       <option value="setWorldState">Set WorldState</option>
                       <option value="setVar">Set HUD Var</option>
                       <option value="addVar">Add HUD Var</option>
                       <option value="emitEvent">Emit Event</option>
                     </select>
                   </Field>
-                  <Field label="Key / Quest ID">
-                    <input
-                      value={cur.actionKey || ''}
-                      onChange={(e) => commit((d) => (d.nodes.find((x) => x.id === cur.id)!.actionKey = e.target.value))}
-                    />
-                  </Field>
-                  <Field label="Value">
-                    <input
-                      value={String(cur.actionValue ?? '')}
-                      onChange={(e) => commit((d) => (d.nodes.find((x) => x.id === cur.id)!.actionValue = e.target.value))}
-                    />
-                  </Field>
+                  {cur.actionKind === 'setDbValue' ? (
+                    <DialogueDbFields node={cur} databases={databases} patch={values =>
+                      commit(d => Object.assign(d.nodes.find(node => node.id === cur.id)!, values))
+                    } />
+                  ) : (
+                    <>
+                      <Field label="Key / Quest ID">
+                        <input
+                          value={cur.actionKey || ''}
+                          onChange={(e) => commit((d) => (d.nodes.find((x) => x.id === cur.id)!.actionKey = e.target.value))}
+                        />
+                      </Field>
+                      <Field label="Value">
+                        <input
+                          value={String(cur.actionValue ?? '')}
+                          onChange={(e) => commit((d) => (d.nodes.find((x) => x.id === cur.id)!.actionValue = e.target.value))}
+                        />
+                      </Field>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -468,4 +487,34 @@ export function DialogueEditor({
       </div>
     </div>
   )
+}
+
+function DialogueDbFields({ node, databases, patch }: {
+  node: DialogueNode
+  databases: Asset[]
+  patch: (values: Partial<DialogueNode>) => void
+}) {
+  const asset = databases.find(asset => asset.id === node.actionDbId)
+  const data = asset && parseDbAsset(asset.data)
+  return <>
+    <Field label="Database">
+      <select aria-label="Database" value={node.actionDbId ?? ''} onChange={e => patch({ actionDbId: e.target.value, actionDbRow: '', actionDbPath: '' })}>
+        <option value="">Choose a DB Asset</option>
+        {databases.map(asset => <option value={asset.id} key={asset.id}>{asset.name}</option>)}
+      </select>
+    </Field>
+    <Field label="Row ID">
+      <input value={node.actionDbRow ?? ''} list="dialogue-db-rows" onChange={e => patch({ actionDbRow: e.target.value })} />
+      <datalist id="dialogue-db-rows">{data && data.rows.map(row => <option key={row.id} value={row.id} />)}</datalist>
+    </Field>
+    <Field label="Field path">
+      <input value={node.actionDbPath ?? ''} placeholder="stats.hp" list="dialogue-db-columns" aria-invalid={Boolean(node.actionDbPath && parseDbPathText(node.actionDbPath) === undefined)} onChange={e => patch({ actionDbPath: e.target.value })} />
+      <datalist id="dialogue-db-columns">{data && data.columns.map(column => (
+        <option key={column} value={column.includes('.') || column.trimStart().startsWith('[') ? JSON.stringify([column]) : column} />
+      ))}</datalist>
+    </Field>
+    <Field label="Value (JSON)">
+      <textarea rows={3} aria-label="Value (JSON)" aria-invalid={parseDbJson(node.actionDbJson ?? 'null') === undefined} value={node.actionDbJson ?? 'null'} onChange={e => patch({ actionDbJson: e.target.value })} />
+    </Field>
+  </>
 }

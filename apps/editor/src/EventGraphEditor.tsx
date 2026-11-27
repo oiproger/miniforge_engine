@@ -62,6 +62,7 @@ export function EventGraphEditor({
   changeA: (fn: (asset: Asset) => void) => void
 }) {
   const widgetIds = useId()
+  const databaseNames = useId()
   const graph: EventGraphData = useMemo(() => parseEventGraph(a.data), [a.data])
 
   // Active sub-graph: 'main' or function ID
@@ -278,6 +279,9 @@ export function EventGraphEditor({
   return (
     <div className="mf-bp-editor">
       {/* Top Blueprint Toolbar */}
+      <datalist id={databaseNames}>
+        {p?.assets.filter(asset => asset.type === 'db').map(asset => <option key={asset.id} value={asset.name} />)}
+      </datalist>
       <datalist id={widgetIds}>
         {p?.ui.map((widget) => (
           <option key={widget.id} value={widget.id}>
@@ -938,7 +942,7 @@ export function EventGraphEditor({
                                       <input
                                         className="mf-bp-inline-val"
                                         aria-label={inp.label}
-                                        list={inp.id === 'id' && node.type.startsWith('ui.') &&
+                                        list={inp.id === 'db' && node.type.startsWith('db.') ? databaseNames : inp.id === 'id' && node.type.startsWith('ui.') &&
                                           /widget|element/i.test(inp.label) ? widgetIds : undefined}
                                         value={Array.isArray(inpVal) ? inpVal.join(',') : String(inpVal ?? '')}
                                         onChange={(e) => {

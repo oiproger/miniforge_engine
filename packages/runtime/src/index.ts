@@ -1,3 +1,4 @@
+import { createDatabaseRuntime } from './database'
 import { RuntimePluginHost } from './plugins'
 import { createDialogueRuntime } from './dialogue'
 import { SequencerPlayer } from './sequencer'
@@ -612,6 +613,7 @@ export async function startGame(
         updateUI()
       },
       emit: (name, source?: unknown) => emit(name, source),
+      log: options.onLog,
       setVariable: (key, value) => { vars[key] = value },
     },
     input,
@@ -932,6 +934,7 @@ export async function startGame(
   }
 
   let lastApi: GameAPI | undefined
+  const db = createDatabaseRuntime(project.assets, emit)
   const dialogueRuntime = createDialogueRuntime(project, () => lastApi!)
   const sequencerPlayer = new SequencerPlayer(project, () => lastApi!)
   const pluginHost = new RuntimePluginHost(project)
@@ -1658,6 +1661,7 @@ export async function startGame(
         deleteSlot: (slot) => saveManager.deleteSlot(slot),
       },
       dialogue: dialogueRuntime,
+      db,
       sequencer: {
         play: (id, opts) => sequencerPlayer.play(id, opts),
         stop: (id) => sequencerPlayer.stop(id),

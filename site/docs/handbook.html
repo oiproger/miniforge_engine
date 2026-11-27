@@ -137,14 +137,15 @@
 <li><a href="#chapter-136">Miniforge 3.0.4 — Network example projects</a></li>
 <li><a href="#chapter-137">Miniforge 3.0.4 — Networking and Steam audit</a></li>
 <li><a href="#chapter-138">Render optimization pass (Miniforge 3.0.3)</a></li>
-<li><a href="#chapter-139">Native Steamworks export</a></li>
+<li><a href="#steamworks">Steamworks — редактор, SDK и экспорт депо</a></li>
 <li><a href="#chapter-140">Network Sync — selected fields and entity lifecycle (3.0.4)</a></li>
 <li><a href="#chapter-141">Компоненты объекта сцены</a></li>
 <li><a href="#chapter-142">Key Vault</a></li>
 <li><a href="#chapter-143">Графика Miniforge на LittleJS</a></li>
 <li><a href="#chapter-144">Сборки и SDK площадок</a></li>
 <li><a href="#chapter-145">Скрипты Miniforge</a></li>
-<li><a href="#chapter-146">Проверка MVP 0.1</a></li></ul></nav><section id="chapter-0"><h2>Как пользоваться справочником</h2><p>Для первого проекта начните с практикума по HUD или урока Key Vault. Разделы api.* содержат сигнатуры методов для скриптов. В разделах type приведены связанные типы, включая Tween. Каталог Event Graph показывает входы, выходы и значения по умолчанию. Для поиска по любой ноде или методу нажмите Ctrl+F.</p><p>Базовое руководство редактора описывает серию 3.0. Подробности текущего поведения сети, теней, декалей и GI приведены в тематических главах. Steam Local Debug доступен в редакторе. Нативный Steamworks доступен в исходном экспорте Steam для Desktop.</p></section>
+<li><a href="#chapter-146">Проверка MVP 0.1</a></li>
+<li><a href="#networking">Сеть Miniforge — выбор транспорта и план работ</a></li></ul></nav><section id="chapter-0"><h2>Как пользоваться справочником</h2><p>Для первого проекта начните с практикума по HUD или урока Key Vault. Разделы api.* содержат сигнатуры методов для скриптов. В разделах type приведены связанные типы, включая Tween. Каталог Event Graph показывает входы, выходы и значения по умолчанию. Для поиска по любой ноде или методу нажмите Ctrl+F.</p><p>Базовое руководство редактора описывает серию 3.0. Подробности текущего поведения сети, теней, декалей и GI приведены в тематических главах. Steam Relay Lab запускается в Local Debug или с нативным Steamworks через Play with Steam в Desktop-редакторе. Для проверки Steam Overlay и запуска через Steam используйте депо.</p></section>
 <section id="chapter-1"><h2>Редактор и рабочие процессы</h2><section class="doc-section" id="sec-start" data-cat="Основы"><div class="sec-meta"><span class="sec-badge">Глава 1</span><span class="sec-cat">Основы</span></div><h2>Архитектура и быстрый старт</h2><p class="sec-lead">Стек Miniforge Engine v3.0, структура репозитория, требования к окружению и все основные команды сборки.</p><p>Miniforge Engine v3.0 — модульный 3D-движок и визуальный редактор на базе <strong>LittleJS 1.30.1</strong> (WebGL2 3D), <strong>Rapier3D</strong> (WASM-физика), <strong>React 19 + TypeScript 5.9</strong> и <strong>Tauri v2</strong> для десктопных сборок. Все проекты хранятся в открытом JSON-формате (<code>Project v1</code>) или архивах <code>.miniforge</code>.</p>
 <div class="table-wrap"><table><thead><tr><th>Слой / пакет</th><th>Назначение</th><th>Ключевые технологии</th></tr></thead><tbody><tr><td><code>packages/graphics</code></td><td>WebGL2-рендерер, тени, свет, постпроцессинг, glTF-анимации, батчинг, террейн</td><td>LittleJS 1.30.1, GLSL ES 3.00</td></tr><tr><td><code>packages/runtime</code></td><td>Игровой цикл, физика, скрипты, NavGrid, Audio, Tween, Touch, SaveSystem</td><td>Rapier3D WASM, Web Audio API</td></tr><tr><td><code>packages/project-schema</code></td><td>Схема JSON-проекта, живые префабы, террейн, NavGrid, экраны HUD</td><td>TypeScript 5.9 (zero-runtime deps)</td></tr><tr><td><code>packages/platform-sdk</code></td><td>Единый адаптер для Web/HTML5, Яндекс Игр и Poki (реклама, облако, язык)</td><td>Yandex SDK, Poki SDK, localStorage</td></tr><tr><td><code>packages/exporter</code></td><td>Сборка автономных игр и копирование <code>assimpjs.wasm</code> для редактора</td><td>esbuild, fflate</td></tr><tr><td><code>apps/editor</code> &amp; <code>editor-desktop</code></td><td>Визуальный редактор с 13 встроенными студиями и десктопная оболочка</td><td>React 19, Vite 7, Monaco, Tauri v2</td></tr></tbody></table></div>
 <h3>Установка и основные команды</h3>
@@ -523,12 +524,13 @@ exports.registerRuntime = function(ctx) {
   <div class="sec-meta"><span class="sec-badge">Глава 17</span><span class="sec-cat">Мультиплеер</span></div>
   <h2>Мультиплеер, комнаты, встроенный Rust LAN-сервер и Split-Screen (v3.0)</h2>
   <p class="sec-lead">Единый NetManager на 5 режимов, встроенный Rust LAN-сервер с UDP-поиском, авто-спавн аватаров игроков, дельта-переменные Sync Keys, RPC, чат лобби и Dual Preview (Host + Client).</p>
+  <p><a href="#networking">Выбор транспорта, проверки и сетевой roadmap</a></p>
   <h3>1. Пять режимов мультиплеера</h3>
   <ul>
     <li><code>singleplayer</code> — одиночная игра без сетевых накладных расходов.</li>
     <li><code>local-splitscreen</code> — 2–4 игрока на одном экране (общая клавиатура WASD / Стрелки / IJKL / Numpad + геймпады 0–3 через <code>api.net.getLocalPlayerMove(0..3)</code> и <code>getLocalPlayerAction(0..3, action)</code>).</li>
     <li><code>client-server-ws</code> — комнаты через WebSocket-релей (встроенный Rust LAN-сервер в Desktop, <code>node server/relay-server.mjs 8765</code> для VPS/Web или мгновенный локальный тест <code>url: "local"</code> в редакторе).</li>
-    <li><code>p2p-webrtc</code> — прямое P2P-соединение WebRTC DataChannel (автоматически пропускает внешний STUN для локальных IP <code>192.168.x.x</code> / <code>10.x.x.x</code> / <code>localhost</code> — работает в локалке вообще без интернета).</li>
+    <li><code>p2p-webrtc</code> — принимает участников и передаёт сигнализацию через WebSocket, отправляет игровые пакеты по открытому DataChannel или через relay для пиров без канала. Для LAN-адресов пропускает внешний STUN.</li>
     <li><code>steam-p2p</code> — P2P-мультиплеер через Steamworks и Steam Lobbies (без проброса портов и аренды серверов).</li>
   </ul>
   <h3>2. Встроенный Rust LAN-сервер и UDP-поиск комнат (Desktop)</h3>
@@ -536,16 +538,16 @@ exports.registerRuntime = function(ctx) {
   <h3>3. Компонент NetworkSync и автоматические аватары</h3>
   <ul>
     <li><strong><code>owner: "local"</code> (Игроки):</strong> Каждый клиент управляет своей капсулой/персонажем, а рантайм сам создаёт цветной прокси-аватар для каждого подключившегося соперника и удаляет его при выходе (<code>leave</code> / <code>onPeerLeave</code>).</li>
-    <li><strong><code>owner: "host"</code> (Общие объекты):</strong> Враги, двери, платформы и лут симулируются только на Хосте и синхронизируются клиентам. Выбор Хоста упорядочен по времени подключения, поэтому первый вошедший игрок всегда остаётся Хостом до выхода.</li>
+    <li><strong><code>owner: "host"</code> (Общие объекты):</strong> Враги, двери, платформы и лут симулируются только на Хосте и синхронизируются клиентам. Steam следует владельцу лобби. В остальных транспортах хост определяется по наименьшему peer ID в списке. Передача роли не восстанавливает состояние матча.</li>
     <li><strong>Transform, Анимации и дельта <code>Sync Keys</code>:</strong> Синхронизируются позиция/поворот/масштаб (интерполяция углов по кратчайшей дуге), <code>animState</code> + <code>animClip</code> кроссфейд, глобальный <code>WorldState</code> (<code>vars</code>) и произвольные поля сущности (<code>hp, ammo, score</code>) через <code>api.net.setEntityVar()</code>. Поздно вошедшие игроки автоматически получают актуальные значения при <code>onPeerJoin</code>.</li>
   </ul>
-  <h3>4. Полный справочник <code>api.net</code> и Event Graph</h3>
+  <h3>4. Основные операции <code>api.net</code> и Event Graph</h3>
   <div class="table-wrap"><table>
     <thead><tr><th>Метод (<code>api.net.*</code>)</th><th>Нода Event Graph</th><th>Назначение</th></tr></thead>
     <tbody>
-      <tr><td><code>connect({ mode, room, url })</code> / <code>disconnect()</code></td><td><code>net.connect</code> / <code>net.disconnect</code></td><td>Подключение к комнате (<code>url: "local"</code> для Dual Preview / тестов во вкладках). Авто-переподключение при обрыве WebSocket.</td></tr>
-      <tr><td><code>hostLan({ port, room, gameName })</code> / <code>stopLan()</code></td><td><code>net.hostLan</code></td><td>Запуск/остановка встроенного Rust LAN-сервера + UDP-маяка на Desktop (в браузере откат на локальный режим).</td></tr>
-      <tr><td><code>discoverLan(timeoutMs)</code></td><td>—</td><td>Поиск активных LAN-комнат по UDP <code>41234</code>, возвращает <code>[{ hostIp, port, url, room, gameName, players }]</code>.</td></tr>
+      <tr><td><code>connect({ mode, room, url, token })</code> / <code>disconnect()</code></td><td><code>net.connect</code> / <code>net.disconnect</code></td><td>Подключение к комнате (<code>url: "local"</code> для Dual Preview / тестов во вкладках). Авто-переподключение при обрыве WebSocket.</td></tr>
+      <tr><td><code>hostLan({ port, room, gameName })</code> / <code>stopLan()</code></td><td><code>net.hostLan</code></td><td>Запуск или остановка Rust LAN-релея и UDP-маяка в Desktop-игре. В браузере нативный LAN-хостинг недоступен.</td></tr>
+      <tr><td><code>discoverLan(timeoutMs)</code></td><td><code>net.discoverLan</code></td><td>Поиск активных LAN-комнат по UDP <code>41234</code>, возвращает <code>[{ hostIp, port, url, room, gameName, players }]</code>.</td></tr>
       <tr><td><code>setEntityVar(id, key, val)</code> / <code>getEntityVar</code> / <code>onEntityVarChange</code></td><td><code>net.setEntityVar</code> / <code>net.getEntityVar</code></td><td>Дельта-синхронизация полей сущности (HP, патроны, счёт). Генерирует событие <code>net.entityVarChanged</code> с <code>{ source, templateId, peerId, key, value }</code>.</td></tr>
       <tr><td><code>rpc(name, payload, target)</code> / <code>onRpc(name, fn)</code></td><td><code>net.sendRpc</code> / <code>event.netRpc</code></td><td>Отправка RPC-событий всем (<code>"all"</code>), остальным (<code>"others"</code>), хосту (<code>"host"</code>) или конкретному <code>peerId</code>.</td></tr>
       <tr><td><code>sendChat(text)</code> / <code>onChat(fn)</code></td><td><code>net.sendChat</code> / <code>event.netChat</code></td><td>Встроенный чат комнаты/лобби.</td></tr>
@@ -558,17 +560,19 @@ exports.registerRuntime = function(ctx) {
   <div class="sec-meta"><span class="sec-badge">Глава 18</span><span class="sec-cat">Мультиплеер</span></div>
   <h2>Интеграция Steamworks SDK и Steam-лобби (v3.0)</h2>
   <p class="sec-lead">Встроенная Steam Studio, Steam Lobbies, Steam P2P, достижения, Cloud Saves, Rich Presence и тестирование через AppID 480 (Spacewar).</p>
-  <p>Настройки Steam находятся в <strong>Project → Steamworks SDK</strong> (<code>SteamStudio</code>). В браузере локальная симуляция включается вручную через Local Debug. Steam-экспорт для Desktop включает исходники нативного моста и скрипт сборки депо. Файл <code>steam_appid.txt</code> нужен только для локальной проверки.</p>
+  <p>Откройте <strong>Steam Relay Lab</strong> в Desktop-редакторе и выберите <strong>Project → Steamworks &amp; Debug Panel → Play with Steam</strong>. При запущенном Steam пример показывает <strong>Native Steamworks</strong> и Steam ID. После правок нажмите Stop и запустите снова. Обычный Play и Launch Host + Client используют явно включённую симуляцию Local Debug. Для проверки депо и Overlay используйте Steam-экспорт Desktop. Файл <code>steam_appid.txt</code> нужен только для локальной проверки депо. <a href="#steamworks">Руководство Steamworks</a></p>
   <div class="table-wrap"><table>
     <thead><tr><th>Метод (<code>api.steam.*</code>)</th><th>Нода Event Graph</th><th>Назначение</th></tr></thead>
     <tbody>
       <tr><td><code>init(appId?)</code> / <code>getUser()</code></td><td><code>steam.getUserName</code></td><td>Инициализация Steamworks (по умолчанию AppID <code>480</code>) и получение Steam ID / имени игрока.</td></tr>
-      <tr><td><code>createLobby({ name, maxMembers, type })</code></td><td><code>steam.createLobby</code></td><td>Создаёт Steam-лобби и привязывает его к транспорту <code>steam-p2p</code>.</td></tr>
-      <tr><td><code>listLobbies()</code> / <code>joinLobby(id)</code> / <code>leaveLobby()</code></td><td><code>steam.joinLobby</code> / <code>steam.leaveLobby</code></td><td>Поиск открытых лобби, вход по ID/имени или выход из текущего лобби.</td></tr>
+      <tr><td><code>createLobby({ name, maxMembers, type })</code></td><td><code>steam.createLobby</code></td><td>Скрипт создаёт лобби и вызывает <code>api.net.connect()</code> с полученным ID. Нода выполняет оба шага.</td></tr>
+      <tr><td><code>listLobbies()</code> / <code>joinLobby(id)</code> / <code>leaveLobby()</code></td><td><code>steam.joinLobby</code> / <code>steam.leaveLobby</code></td><td>Поиск открытых лобби, вход по ID или выход из текущего лобби.</td></tr>
       <tr><td><code>setLobbyData(key, value)</code> / <code>getLobby()</code></td><td>—</td><td>Запись метаданных лобби (карта, режим, версия) и чтение списка участников.</td></tr>
-      <tr><td><code>unlockAchievement(id)</code> / <code>hasAchievement(id)</code></td><td><code>steam.unlockAchievement</code></td><td>Разблокировка, проверка и сброс достижений Steam.</td></tr>
+      <tr><td><code>unlockAchievement(id)</code> / <code>queryAchievement(id)</code> / <code>clearAchievement(id)</code></td><td><code>steam.unlockAchievement</code></td><td>Разблокировка, проверка и сброс достижений Steam.</td></tr>
       <tr><td><code>setRichPresence(key, value)</code></td><td><code>steam.setRichPresence</code></td><td>Отображение статуса матча в списке друзей Steam.</td></tr>
-      <tr><td><code>cloudWrite(file, data)</code> / <code>cloudRead(file)</code></td><td><code>steam.cloudSave</code></td><td>Чтение, запись и удаление файлов сохранений в Steam Cloud.</td></tr>
+      <tr><td><code>cloudWrite(file, data)</code> / <code>cloudRead(file)</code> / <code>listCloudFiles()</code> / <code>cloudDelete(file)</code></td><td><code>steam.cloudSave</code></td><td>Скрипт читает, записывает, перечисляет и удаляет файлы Steam Cloud. Нода Steam Cloud Save записывает файл.</td></tr>
+      <tr><td><code>inviteFriends()</code> / <code>getPendingInvite()</code> / <code>relayStatus()</code></td><td>Steam Invite Friends / Steam Pending Lobby Invite / Steam Relay Status</td><td>Приглашения в лобби и статус SDR.</td></tr>
+      <tr><td><code>readStat()</code> / <code>writeStat()</code> / <code>isDlcInstalled()</code></td><td>—</td><td>Чтение и запись параметра статистики AppID, проверка установки DLC.</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -607,41 +611,42 @@ exports.registerRuntime = function(ctx) {
   <div class="code-block"><div class="code-head"><span>steamMatchmaking.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
   return {
     async onStart() {
-      await api.steam.init(480)
+      const user = await api.steam.init()
+      if (!user.steamId) throw new Error("Steam unavailable")
       const lobbies = await api.steam.listLobbies()
-      if (lobbies.length > 0) {
-        await api.steam.joinLobby(lobbies[0].id)
-      } else {
-        await api.steam.createLobby({ name: "Arena Match", maxMembers: 4 })
-        await api.steam.setLobbyData("map", "arena_01")
+      const match = lobbies.find(lobby =&gt; lobby.data?.game === "miniforge-arena")
+      const lobby = match
+        ? await api.steam.joinLobby(match.id)
+        : await api.steam.createLobby({
+            name: "Arena Match", maxMembers: 4,
+            data: { game: "miniforge-arena", map: "arena_01" },
+          })
+      if (!lobby) throw new Error("Could not join lobby")
+      const connected = await api.net.connect({ mode: "steam-p2p", room: lobby.id })
+      if (!connected) {
+        await api.steam.leaveLobby()
+        throw new Error(api.net.getLastError())
       }
-      await api.net.connect({ mode: "steam-p2p", room: "Arena Match" })
       await api.steam.setRichPresence("status", "В бою на арене")
     },
   }
 }</pre></div>
 
-  <h3>Рецепт 3: Нанесение урона другому игроку (RPC + Sync Keys)</h3>
-  <div class="code-block"><div class="code-head"><span>combatSync.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
-  let hp = 100
-  let attackHeld = false
+  <h3>Рецепт 3: Ответ на RPC</h3>
+  <div class="code-block"><div class="code-head"><span>replyToPing.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
+  let off
   return {
     onStart() {
-      api.net.setEntityVar(api.entity.id, "hp", hp)
-      // Получаем урон по RPC от другого игрока
-      api.net.onRpc("combat:hit", (data) => {
-        hp = Math.max(0, hp - Number(data?.damage || 10))
-        api.net.setEntityVar(api.entity.id, "hp", hp)
-        if (hp === 0) api.transform.position.set(0, 0.8, 0) // Респавн через Vector3.set()
+      off = api.net.onRpc("arena:ping", (data, sender) =&gt; {
+        if (typeof data?.sentAt === "number") {
+          api.net.rpc("arena:pong", { sentAt: data.sentAt }, sender)
+        }
       })
     },
-    onUpdate() {
-      const down = api.input.pressed("Attack")
-      if (down && !attackHeld) api.net.rpc("combat:hit", { damage: 15 }, "others")
-      attackHeld = down
-    },
+    onDestroy() { off?.() },
   }
 }</pre></div>
+  <p>Отправьте <code>arena:ping</code> с числовым <code>sentAt</code> и подпишитесь на <code>arena:pong</code>. Для боя передавайте намерение игрока и проверяйте его по авторитетному состоянию игры.</p>
 
   <h3>Рецепт 4: Локальный Split-Screen на 2 игроков (Vector3)</h3>
   <div class="code-block"><div class="code-head"><span>localCoop.ts</span><button type="button" class="copy-btn" data-copy>Копировать</button></div><pre>export default function createBehavior(api) {
@@ -722,7 +727,7 @@ api.ui.removeWidget(id)
 <li>Для живых числовых показателей используйте привязку. Цвет текста и фон меняются через setColors. Оформление отдельных DOM-свойств через setStyle действует на текущий экземпляр элемента.</li>
 <li>Для HTML-виджета с собственным скриптом используйте события его iframe. Метод setHtml и нода Set UI HTML заменяют содержимое кадра, сохраняя CSS и JS привязанного ассета. Для обычного HUD достаточно стабильного ID элемента.</li>
 <li>В профайлере откройте Play для измерения фактических draw calls. Для игры с GI проверьте отдельно время открытия сцены и время кадра после расчёта.</li>
-<li>Для локальной сетевой проверки используйте два клиента. Для интернет-проверки откройте их в разных сетях. Steam Relay Lab проверяет лобби в Local Debug через редактор и работает с нативным Steamworks после Desktop-экспорта.</li>
+<li>Для локальной сетевой проверки используйте два клиента. Для интернет-проверки откройте их в разных сетях. Steam Relay Lab запускается в Local Debug через обычный Play или с нативным Steamworks через Play with Steam в Desktop-редакторе. <a href="#steamworks">Проверка Steamworks</a></li>
 </ul>
 <h2>Метка над объектом в 3D-сцене</h2>
 <p>Создайте виджет верхнего уровня с якорем <strong>Top Left</strong>. Его координаты будут отсчитываться от верхнего левого угла так же, как результат проекции.</p>
@@ -2199,7 +2204,7 @@ pnpm build
 <li>Local Debug is available in editor preview. For a project with both Local Debug and a native Desktop test path, use <strong>Steam Relay Lab</strong>.</li>
 </ul>
 <h2>5. Steam Relay Lab</h2>
-<p>Open <strong>Steam Relay Lab</strong> to test lobby creation and discovery, member and owner updates, an acknowledged RPC round trip, invitations, Steam Cloud, achievements, stat reads, and DLC checks. Launch two clients through <strong>Multiplayer &amp; Net Debugger</strong> for the editor simulation. Desktop export produces a Steamworks source package with a depot build command. <a href="#chapter-139">Steam Relay Lab walkthrough</a></p>
+<p>Open <strong>Steam Relay Lab</strong> to test lobby creation and discovery, member and owner updates, an acknowledged RPC round trip, invitations, Steam Cloud, achievements, stat reads, and DLC checks. Use <strong>Project → Steamworks &amp; Debug Panel → Play with Steam</strong> in the Desktop editor for native play with your Steam account. Use <strong>Multiplayer &amp; Net Debugger → Launch Host + Client</strong> for the editor simulation. Desktop export produces a Steamworks source package for depot testing. <a href="#steamworks">Steam Relay Lab walkthrough</a></p>
 <h2>Regression commands</h2>
 <pre><code class="language-bash">node --experimental-strip-types --test tests/network-steam.check.mjs tests/steam-preview-bridge.check.mjs
 node --test tests/network-examples.check.mjs
@@ -2207,13 +2212,13 @@ pnpm typecheck
 pnpm test
 pnpm build
 </code></pre>
-<p><code>test:network</code> covers the real relay, transport contracts and opaque-origin preview bridge. <code>test:examples</code> checks JSON projects, embedded scripts and runtime lifecycle via dependency-free stubs. Full editor/Steam native E2E still requires a browser and Steamworks SDK, respectively.</p>
+<p><code>test:network</code> covers the real relay, transport contracts and opaque-origin preview bridge. <code>test:examples</code> checks JSON projects, embedded scripts and runtime lifecycle via dependency-free stubs. The Playwright Steam Relay Lab tests cover two simulated clients and the Desktop preview lifecycle with mocked IPC. Live native Steamworks and SDR require two signed-in Steam clients.</p>
 </section>
 <section id="chapter-137"><h2>Miniforge 3.0.4 — Networking and Steam audit</h2><h1>Miniforge 3.0.4 — Networking and Steam audit</h1>
-<p><strong>Current implementation</strong></p>
-<p>This document records the earlier transport audit. The current native feature set and depot instructions are in <a href="#chapter-139">Native Steamworks export</a>.</p>
+<p><strong>Historical audit</strong></p>
+<p>This document records the relay hardening that preceded native Steamworks. The Rust Steamworks bridge now ships in the Desktop editor and Steam-enabled depot exports. See <a href="#steamworks">Steamworks setup</a> and the <a href="#networking">current network roadmap</a>.</p>
 <h2>Summary</h2>
-<p>This update hardens the existing transports and fixes misleading Steam debug behavior. <strong>It does not claim to implement native Steamworks</strong>: the supplied Tauri <code>steam.rs</code> contains only unavailable stubs, is not wired into <code>main.rs</code>, and no Steamworks SDK is linked in Cargo. Implementing native Steamworks requires a separate, tested Steamworks SDK adapter and a legitimate AppID; AppID 480 (Spacewar) is only a development example.</p>
+<p>The initial audit hardened the existing relays and made the Local Debug simulation explicit. The notes below describe the routing and preview contracts that are still relevant.</p>
 <h2>Networking: repaired</h2>
 <ul>
 <li>Node WebSocket relay now binds to <code>127.0.0.1</code> by default, unless explicitly passed a public bind address. Each connected socket owns an immutable peer ID and room. A forged <code>from</code>, a room switch or a duplicate peer ID is rejected.</li>
@@ -2228,28 +2233,11 @@ pnpm build
 <li>Game runtime rejects invalid/NaN position and rotation snapshots and enforces host ownership of host-owned snapshots and global state. Remote dynamic entity property names are constrained.</li>
 <li>Packet room, chat sender, RPC name and pong RTT values are checked. The relay is <strong>not</strong> a server-authoritative anti-cheat layer; game rule validation remains a responsibility of the game/server.</li>
 </ul>
-<h2>Steam: repaired contract, native SDK still missing</h2>
+<h2>Steam and verification</h2>
 <ul>
-<li><code>SteamManager</code> is now honest by default: without native <code>steam_init</code>, <code>initialized = false</code>, <code>isAvailable() = false</code>, <code>getMode() = &#39;unavailable&#39;</code>. Achievements/Cloud/lobbies return failures, not fake success.</li>
-<li><code>Local Debug Simulation</code> is opt-in in Steam Studio. It uses <code>BroadcastChannel</code> and <code>localStorage</code>, does not connect to Steam, and <code>isAvailable()</code> still returns <code>false</code> in debug; <code>isDebug()</code> or <code>getMode()</code> show its mode.</li>
-<li>Game runtime passes <code>localDebug</code> only when <code>GameOptions.preview</code> is true. The exporter bootloader sets this flag <strong>only</strong> for editor preview, so shipped web or Tauri builds cannot accidentally simulate Steam.</li>
-<li>Native IPC failures never fall back to fake Steam lobbies or report a successful achievement/cloud deletion; local lobby discovery checks membership/capacity and no longer invents arbitrary nonexistent lobbies.</li>
-<li>Local owner leaving a lobby transfers ownership to remaining members; native sends target actual lobby members rather than passing an empty recipient ID.</li>
-<li>Steam Studio shows explicit mode and disables unavailable test controls. Native <code>hasAchievement()</code>/<code>listAchievements()</code> only reflect achievements confirmed during this session until a native query method is implemented.</li>
-</ul>
-<h3>What is required for real Steamworks integration</h3>
-<ol>
-<li>A genuine Steamworks SDK available on the target platforms, with redistributable native libraries, an AppID that the developer controls, and a game launched under Steam for end-to-end verification.</li>
-<li>A native Rust/Tauri Steamworks adapter (<code>steamworks-rs</code> is an option), registration of commands in the Tauri player, callback pumping and correct Steam Networking Messages / matchmaking / RemoteStorage / UserStats handling.</li>
-<li>Signed-in Steam test users on <strong>two machines</strong> for lobby discovery, invitations, NAT traversal, ownership migration, P2P delivery, achievements, Cloud, and offline recovery. The existing Tauri <code>steam.rs</code> is a stub and <strong>must not be shipped as a working integration</strong>.</li>
-<li>Add <code>wss://</code>/authentication and game-authoritative rules for public multiplayer: this relay only validates routing and envelope identity, not game cheats.</li>
-</ol>
-<h2>Verification</h2>
-<ul>
-<li><code>npm run test:network</code> (or <code>node --experimental-strip-types --test tests/network-steam.check.mjs</code>) runs self-contained Node 22+ integration checks with actual WebSockets and BroadcastChannel, without requiring npm dependencies.</li>
-<li><code>pnpm typecheck</code>, <code>pnpm test</code>, <code>pnpm build</code> must still be run with the project&#39;s full dependency installation. These were unavailable in the patch environment.</li>
-<li>A real Tauri desktop LAN session is also required: Rust Cargo/rustc were unavailable in the patch environment. The native LAN code is upgraded but <strong>not build-verified</strong>.</li>
-<li><strong>Steam native runtime testing was not possible</strong>, and is intentionally not claimed.</li>
+<li>Local Debug remains an editor simulation. In a Desktop editor built with Steamworks, <strong>Play with Steam</strong> opens a native session using the installed SDK. Native initialization errors surface in the editor.</li>
+<li>Exported Steam games use the native bridge when Steam initialization succeeds. Browser exports require another transport for online play.</li>
+<li><code>pnpm test:network</code> covers real WebSocket and BroadcastChannel sessions, routing rules and the sandboxed preview simulation. Native IPC mocks and archive checks cover the build and launch contracts. Check Steam accounts, remote networks and LAN discovery in separate acceptance runs.</li>
 </ul>
 <h2>Follow-up: working network example previews</h2>
 <p>See <a href="#chapter-136"><code>NETWORK_EXAMPLES_3_0_4.md</code></a>. Local Steam Debug across isolated editor preview iframes is now explicitly bridged by the parent editor via a same-origin BroadcastChannel. Exported builds do not use this bridge. When <code>localStorage</code> is blocked in an opaque-origin iframe, debug cloud and achievement data use volatile memory; this is <strong>not</strong> real Steam Cloud or persistent storage.</p>
@@ -2278,8 +2266,8 @@ pnpm build
 </ol>
 <p><strong>Limitations:</strong> GI Lighting intentionally disables static merging and GLB instancing to preserve per-object baked maps. The profiler&#39;s fallback estimate is approximate. This change was prepared without npm dependencies or a GPU test environment, so browser/WebGL and full project CI checks remain necessary.</p>
 </section>
-<section id="chapter-139"><h2>Native Steamworks export</h2><h1>Native Steamworks export</h1>
-<p>Enable Steam in the project settings and enter the AppID registered in Steamworks. Select Steam P2P in multiplayer settings for Steam matchmaking and Steam Datagram Relay. Steam uses its own identity, lobbies and relay infrastructure. You do not need to deploy the Miniforge WebSocket relay for this transport.</p>
+<section id="chapter-139"><h2 id="steamworks">Steamworks — редактор, SDK и экспорт депо</h2><h1>Steamworks — редактор, SDK и экспорт депо</h1>
+<p>Включите Steamworks для проекта и укажите AppID. Для автоматического подключения задайте <strong>Steam P2P</strong> в настройках мультиплеера. Если в игре есть экран выбора лобби, оставьте <code>singleplayer</code> при запуске и подключайте Steam-транспорт после выбора комнаты. Так работает <strong>Steam Relay Lab</strong>. Steam использует свои аккаунты, лобби и инфраструктуру ретрансляции. Отдельный Node.js relay для Steam не нужен. <a href="#networking">Обзор сетевых режимов</a></p>
 <h2>Быстрая проверка в Steam Relay Lab</h2>
 <p>Откройте <strong>Projects → Examples → Steam Relay Lab</strong> в редакторе. <strong>Play</strong> запускает панель проверки. Для двух клиентов откройте <strong>Project → Multiplayer &amp; Net Debugger → Launch Host + Client</strong>. Проект поставляется с флагом <strong>Local Debug Simulation</strong>, поэтому редактор показывает режим <strong>Local Debug simulation</strong> и выдаёт отдельный тестовый ID каждому клиенту.</p>
 <table>
@@ -2343,23 +2331,93 @@ Set-Location steam-depot
 </li>
 </ol>
 <p>Если панель показывает <strong>Steam unavailable</strong>, проверьте запущенный Steam, AppID и доступ аккаунта к приложению, затем нажмите <strong>Retry Steam</strong>. При проверке владельца используйте <strong>Leave</strong> на исходном хосте и наблюдайте новое значение в списке участников второго клиента.</p>
-<h2>Build a depot</h2>
+<h2>Сборка депо</h2>
 <ol>
-<li>Export the project for the target desktop OS. Steam-enabled projects use the source package because ordinary prebuilt players do not carry the Steamworks SDK. The package includes the native bridge and a depot build script.</li>
-<li>Extract the archive on the target OS and run <code>npm run build</code> with Rust and the usual Tauri prerequisites. The script builds with the <code>steamworks</code> feature, puts the executable and its Steamworks redistributable next to one another in <code>steam-depot/</code> and uses the release profile.</li>
-<li>Set <code>MINIFORGE_STEAM_TEST_APP_ID</code> when building a local test depot if you need <code>steam_appid.txt</code>. Launch the game with Steam running and with an account that has access to the AppID. Configure the actual deployment in Steamworks and SteamPipe. Production depots omit <code>steam_appid.txt</code>. On macOS, configure an application bundle and signing for distribution.</li>
-<li>Verify with two Steam accounts on separate machines, preferably on different networks. Create a lobby, join by invite and confirm that each user receives game events and sees the other user&#39;s state. Repeat after the owner leaves and Steam assigns a new owner. Check local saves, Steam Cloud, and an achievement defined for the AppID.</li>
+<li>Экспортируйте проект для целевой Desktop-платформы. Для Steam редактор создаёт архив с исходниками, нативным мостом и скриптом сборки депо.</li>
+<li>Распакуйте архив на целевой ОС и запустите <code>npm run build</code>. Понадобятся Rust и системные зависимости Tauri. Скрипт собирает release-профиль с флагом <code>steamworks</code> и помещает исполняемый файл и библиотеку Steamworks в <code>steam-depot/</code>.</li>
+<li>Для локального запуска при необходимости задайте <code>MINIFORGE_STEAM_TEST_APP_ID</code> при сборке. Эта переменная добавляет <code>steam_appid.txt</code>. Настройте продуктивное депо в Steamworks и SteamPipe без этого файла. Для поставки macOS упакуйте и подпишите приложение.</li>
+<li>При приёмке проверьте приглашение, выход владельца лобби, передачу пакетов после смены владельца и сервисы на своём AppID.</li>
 </ol>
-<p><code>STEAM_SDK_LOCATION</code> can point at an installed Steamworks SDK root. Without the override, the build uses the redistributable supplied by the pinned Rust binding.</p>
-<h2>Game logic</h2>
+<p><code>STEAM_SDK_LOCATION</code> позволяет указать путь к установленному Steamworks SDK. По умолчанию сборка использует библиотеку из закреплённой версии Rust-биндинга.</p>
+<h2>Сценарии, Script API и Event Graph</h2>
+<table>
+<thead>
+<tr>
+<th>Возможность</th>
+<th>Script API</th>
+<th>Event Graph</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Идентификация и диагностика</td>
+<td><code>init(appId?)</code>, <code>getUser()</code>, <code>getMode()</code>, <code>isNative()</code>, <code>isDebug()</code>, <code>isAvailable()</code>, <code>getLogs()</code></td>
+<td><strong>Steam User Name</strong></td>
+</tr>
+<tr>
+<td>Матчмейкинг</td>
+<td><code>createLobby({ name, maxMembers, type, data })</code>, <code>listLobbies()</code>, <code>joinLobby(id)</code>, <code>leaveLobby()</code>, <code>setLobbyData()</code>, <code>getLobby()</code>, <code>onLobbyChanged()</code></td>
+<td><strong>Steam Create Lobby</strong>, <strong>Steam List Lobbies</strong>, <strong>Steam Join Lobby</strong>, <strong>Steam Leave Lobby</strong>. Метаданные и чтение текущего лобби доступны из скрипта.</td>
+</tr>
+<tr>
+<td>SDR и приглашения</td>
+<td><code>relayStatus()</code>, <code>inviteFriends()</code>, <code>onLobbyInvite()</code>, <code>getPendingInvite()</code></td>
+<td><strong>Steam Relay Status</strong>, <strong>Steam Invite Friends</strong>, <strong>On Steam Lobby Invite</strong>, <strong>Steam Pending Lobby Invite</strong></td>
+</tr>
+<tr>
+<td>Достижения</td>
+<td><code>unlockAchievement()</code>, <code>queryAchievement()</code>, <code>clearAchievement()</code>, <code>hasAchievement()</code>, <code>listAchievements()</code></td>
+<td><strong>Steam Unlock Achievement</strong></td>
+</tr>
+<tr>
+<td>Steam Cloud</td>
+<td><code>cloudWrite()</code>, <code>cloudRead()</code>, <code>cloudDelete()</code>, <code>listCloudFiles()</code></td>
+<td><strong>Steam Cloud Save</strong> записывает файл. Чтение, список и удаление доступны из скрипта.</td>
+</tr>
+<tr>
+<td>Rich Presence, статистика и DLC</td>
+<td><code>setRichPresence()</code>, <code>clearRichPresence()</code>, <code>readStat(name, floatingPoint?)</code>, <code>writeStat(name, value, floatingPoint?)</code>, <code>isDlcInstalled(appId)</code></td>
+<td><strong>Steam Set Rich Presence</strong>. Статистика и DLC доступны из скрипта.</td>
+</tr>
+</tbody></table>
 <ul>
-<li>Create or join a lobby with <code>api.steam.createLobby</code> or <code>api.steam.joinLobby</code>, then call <code>api.net.connect({ mode: &#39;steam-p2p&#39;, room: lobby.id })</code>. Graph nodes Steam Create Lobby and Steam Join Lobby perform both actions and provide completion and failure outputs. Steam IDs stay strings.</li>
-<li>Use <code>api.steam.inviteFriends()</code> to open the Steam overlay. Subscribe to the <code>steam.lobbyInvite</code> game event or read <code>api.steam.getPendingInvite()</code> on startup. Pass the invite&#39;s <code>lobbyId</code> to Steam Join Lobby after confirmation.</li>
-<li>Use Network Status and Steam Relay Status for lobby UI. The relay status reports SDR initialization and availability. A successful lobby join only confirms membership. Test packet exchange separately.</li>
-<li>Use <code>api.steam.queryAchievement()</code>, <code>readStat()</code>, <code>writeStat()</code>, <code>isDlcInstalled()</code>, and <code>listCloudFiles()</code> for native features. Steam achievement and stat identifiers must be registered for the AppID. <code>api.saveSystem</code> uses Steam Cloud for native Steam games while retaining a local copy.</li>
-<li>Steam Local Debug remains an explicit editor simulation with no Steam account or relay. Browser exports use the browser APIs available to their platform.</li>
+<li>В скрипте вызовите <code>api.steam.createLobby()</code> или <code>api.steam.joinLobby(id)</code>. После успеха подключите транспорт через <code>api.net.connect({ mode: &#39;steam-p2p&#39;, room: lobby.id })</code>. Ноды <strong>Steam Create Lobby</strong> и <strong>Steam Join Lobby</strong> выполняют оба шага. Steam ID и ID лобби передавайте строками.</li>
+<li>Для Steam Overlay используйте <code>api.steam.inviteFriends()</code>. Запущенная игра получает событие <code>steam.lobbyInvite</code>. При старте проверьте <code>api.steam.getPendingInvite()</code> и передайте <code>lobbyId</code> в <strong>Steam Join Lobby</strong> после подтверждения игроком.</li>
+<li><strong>Network Status</strong> показывает подключение к комнате, а <strong>Steam Relay Status</strong> — состояние SDR. Для подтверждения доставки используйте тестовый RPC с ответом второго клиента.</li>
+<li><code>api.saveSystem</code> в нативном режиме использует Steam Cloud для облачной части и пытается записать локальную копию. Флаг <strong>Enable Steam Cloud Saves</strong> пока сохраняется в настройках проекта, но рантайм его не применяет. Для конкретного вызова сохранения облако можно отключить параметром <code>cloudSync: false</code>. Для ручной работы с файлами используйте <code>api.steam.cloudWrite()</code>, <code>cloudRead()</code>, <code>cloudDelete()</code> и <code>listCloudFiles()</code>.</li>
+<li>Для нативной проверки достижения используйте <code>await api.steam.queryAchievement(id)</code>. Синхронные <code>hasAchievement()</code> и <code>listAchievements()</code> в нативном режиме читают кэш текущего запуска. Для списка облачных файлов используйте <code>await api.steam.listCloudFiles()</code>. Синхронный <code>cloudList()</code> обслуживает Local Debug.</li>
+<li>В Local Debug <code>getMode()</code> возвращает <code>local-debug</code>, а <code>isAvailable()</code> остаётся <code>false</code>. Для логики, которую тестируют в обоих режимах, проверяйте, что <code>getMode()</code> возвращает <code>native</code> или <code>local-debug</code>. Экспорт для браузера не запускает Steam-симуляцию.</li>
 </ul>
-<p>In Event Graph, use <strong>Completed</strong> or <strong>Failed</strong> after Steam, save or network operations. Existing <strong>Started</strong> wires still run when the request starts. Graphs with unsupported compiled operations are kept interpreted and listed in the export report.</p>
+<p>В Event Graph используйте <strong>Completed</strong> и <strong>Failed</strong> у нод, которые предоставляют эти выходы. <strong>Started</strong> срабатывает сразу. У <strong>Steam Unlock Achievement</strong> и <strong>Steam Set Rich Presence</strong> есть обычный выход выполнения. Если нужно подтвердить результат этих операций, дождитесь ответа из Script API. Графы с неподдерживаемыми при компиляции операциями остаются интерпретируемыми и указаны в отчёте экспорта.</p>
+<h3>Диагностика результатов</h3>
+<table>
+<thead>
+<tr>
+<th>Наблюдение</th>
+<th>Что проверять</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Local Debug simulation</strong></td>
+<td>Это обычный <strong>Play</strong> или <strong>Launch Host + Client</strong>. Для аккаунта Steam используйте <strong>Play with Steam</strong> в Desktop-редакторе.</td>
+</tr>
+<tr>
+<td>Ошибка ещё до открытия Game</td>
+<td>Посмотрите уведомление и Console. Проверьте версию Desktop-редактора, запущенный Steam, доступ к AppID. После смены AppID перезапустите Desktop-редактор.</td>
+</tr>
+<tr>
+<td>Лобби видно, <strong>Ping peer</strong> не отвечает</td>
+<td>Сверьте AppID и ID лобби, дождитесь второго пира в поле <strong>Transport</strong>, затем проверьте <strong>Relay status</strong>. Состояния лобби, готовность SDR и подтверждённый RPC измеряются отдельно.</td>
+</tr>
+<tr>
+<td>Оверлей не открывается</td>
+<td>Для текущего теста используйте ID лобби. Приглашения с оверлеем проверьте в сборке, запущенной через Steam.</td>
+</tr>
+<tr>
+<td>Cloud, достижение, статистика или DLC возвращают ошибку</td>
+<td>Для сервиса проверьте его настройки в Steamworks и права тестового аккаунта. AppID 480 подходит для проверки подключения и лобби. Для собственных сервисов используйте AppID своего проекта.</td>
+</tr>
+</tbody></table>
+<p>Автотесты проверяют Local Debug, состав Desktop-архива и повторный запуск <strong>Play with Steam</strong> с подменой IPC. Нативная проверка с двумя аккаунтами и собственным AppID остаётся пунктом приёмки. <a href="#networking">План сетевых работ</a></p>
 </section>
 <section id="chapter-140"><h2>Network Sync — selected fields and entity lifecycle (3.0.4)</h2><h1>Network Sync — selected fields and entity lifecycle (3.0.4)</h1>
 <h2>Inspector</h2>
@@ -2385,7 +2443,7 @@ const isOpen = api.net.getSyncedField(&#39;door-1&#39;, &#39;properties.open&#39
 <li>Current packets are tick-based snapshots, not a transactional replicated database. Path changes can be missed if rapidly changed and reversed within the same network tick.</li>
 <li>Reconnects and late joins cause a full snapshot of selected fields; spawned entities and destroyed tombstones are also sent by the host (bounded to 256 spawns, 512 tombstones per join).</li>
 <li><code>net:spawn</code> only accepts a prefab already in the project and a host-supplied root ID. Only the host may spawn shared prefabs; peer-owned player proxies remain separate.</li>
-<li>No protocol version migration or server persistence. Host migration is not implemented; if the authoritative host quits, state can be lost.</li>
+<li>No protocol version migration or server persistence. The transport can elect a new host or follow the new Steam lobby owner. Recovery of the previous host’s match state is not implemented. <a href="#networking">Network roadmap</a></li>
 <li>The WebSocket relay authenticates <em>connection identity</em>, not game actions. Critical actions must be checked by the host, as pickup is in this example.</li>
 <li>Collection range uses the peer&#39;s last transmitted position, with a 0.3-unit tolerance to allow for network delay.</li>
 </ul>
@@ -2735,4 +2793,148 @@ pnpm exec tsx packages/exporter/cli.ts &#39;examples/Key Vault.json&#39; web dis
 <li>У HUD есть проценты позиции, выравнивание, размер, видимость и порядок наложения. Элементы группируются по экранам, а кнопки управляют переходами. Правила в Inspector связывают события, условия и действия.</li>
 </ul>
 <p>Архив исходников также проверен после распаковки в чистый каталог. Установка по frozen lockfile, typecheck, 19 модульных тестов и production-сборка редактора завершились успешно.</p>
+</section>
+<section id="chapter-147"><h2 id="networking">Сеть Miniforge — выбор транспорта и план работ</h2><h1>Сеть Miniforge — выбор транспорта и план работ</h1>
+<h2>Какой режим выбрать</h2>
+<table>
+<thead>
+<tr>
+<th>Режим</th>
+<th>Где запускать</th>
+<th>Как проходит трафик</th>
+<th>Как проверить</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>singleplayer</code></td>
+<td>Редактор, Web, Desktop</td>
+<td>Сетевого трафика нет. Подходит и для игры с экраном выбора лобби до ручного вызова <code>api.net.connect()</code>.</td>
+<td>Обычный <strong>Play</strong>.</td>
+</tr>
+<tr>
+<td><code>local-splitscreen</code></td>
+<td>Редактор, Web, Desktop</td>
+<td>2–4 локальных игрока, один экземпляр игры.</td>
+<td><strong>Split-Screen Co-op 3D</strong>, обычный <strong>Play</strong>, отдельные раскладки или геймпады.</td>
+</tr>
+<tr>
+<td><code>client-server-ws</code></td>
+<td>Web и Desktop</td>
+<td>Node.js-ретранслятор или встроенный Desktop LAN. Сервер принимает участников, разделяет комнаты и пересылает пакеты.</td>
+<td><strong>Multiplayer Arena 3D</strong>, два клиента и отдельный реальный relay.</td>
+</tr>
+<tr>
+<td><code>p2p-webrtc</code></td>
+<td>Web и Desktop с поддержкой WebRTC в браузере или WebView</td>
+<td>WebSocket принимает игроков в комнату и передаёт сигнализацию. Для каждого получателя пакеты идут по открытому DataChannel или по WebSocket, пока прямой канал недоступен. Для публичного адреса используется STUN, TURN пока не настраивается.</td>
+<td><strong>WebRTC Arena 3D</strong>, клиенты в разных сетях. Успешный RPC подтверждает доставку. Чтобы доказать прямой маршрут, проверьте состояние DataChannel через средства диагностики браузера.</td>
+</tr>
+<tr>
+<td><code>steam-p2p</code></td>
+<td>Desktop-редактор через <strong>Play with Steam</strong>, Desktop-депо через Steamworks</td>
+<td>Steam Lobbies для списка и владельца комнаты, Steam Networking Messages с доступом к Steam Datagram Relay для пакетов. Node.js relay не нужен.</td>
+<td><strong>Steam Relay Lab</strong>, два аккаунта с одним AppID, проверка <strong>Relay status</strong> и <strong>Ping peer</strong>. Подробности в <a href="#steamworks">руководстве Steam</a>.</td>
+</tr>
+</tbody></table>
+<p><code>url: &quot;local&quot;</code> и <strong>Project → Multiplayer &amp; Net Debugger → Launch Host + Client</strong> используют локальный обмен сообщениями в редакторе. Это быстрый тест логики двух клиентов, задержки и потерь. Для Steam используется отдельная <strong>Local Debug Simulation</strong>. Чтобы диагностировать реальные WebSocket, WebRTC, LAN или Steamworks, запускайте соответствующий транспорт. <a href="#chapter-136">Инструкции к проектам-примерам</a></p>
+<h2>WebSocket и LAN</h2>
+<p>Запустите Node.js relay из корня репозитория.</p>
+<pre><code class="language-bash">node server/relay-server.mjs 8765
+curl http://127.0.0.1:8765/health
+</code></pre>
+<p>По умолчанию relay слушает только <code>127.0.0.1</code>. Для второго ПК в доверенной LAN укажите доступный интерфейс или <code>0.0.0.0</code> вторым аргументом, а в настройке клиента используйте IP хоста. Для Web-игры по HTTPS настройте <code>wss://</code> через TLS-прокси с поддержкой WebSocket Upgrade. <code>/health</code> показывает число подключений и комнат. Комнаты живут в памяти процесса.</p>
+<p><code>api.net.connect({ mode: &#39;client-server-ws&#39;, url, room, token })</code> возвращает успех после подтверждённого входа в комнату. При отказе используйте <code>getLastError()</code>. Опциональный <code>MINIFORGE_RELAY_TOKEN</code> проверяется при входе и подходит для закрытого теста. Токен, встроенный в открытый клиент, доступен игрокам. Node relay ограничивает комнату 32 участниками по умолчанию, принимает текстовые пакеты до 256 КиБ и ограничивает частоту отправки. <code>settings.multiplayer.maxPlayers</code> пока не задаёт лимит отдельной комнаты на Node или Rust relay.</p>
+<p>В экспортированной Desktop-игре хост может включить <strong>Auto-start embedded LAN server</strong> или вызвать <code>api.net.hostLan({ port, room, gameName })</code>. По умолчанию игра слушает TCP <code>8765</code>, поиск соседних игр использует UDP <code>41234</code>. Клиент может прочитать <code>url</code> и <code>room</code> из <code>api.net.discoverLan(1400)</code> или ввести адрес вручную. Встроенный LAN-релей предназначен для локальной сети. Текущий <strong>Play with Steam</strong> передаёт кадру игровые Steam-команды, поэтому проверяйте нативный LAN API в Desktop-игре.</p>
+<h2>Скрипты, Event Graph и игровое состояние</h2>
+<table>
+<thead>
+<tr>
+<th>Задача</th>
+<th>Script API</th>
+<th>Event Graph</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Подключить игру и показать состояние</td>
+<td><code>api.net.connect()</code>, <code>disconnect()</code>, <code>isConnected()</code>, <code>getLastError()</code>, <code>getPeers()</code>, <code>getStats()</code></td>
+<td><code>net.connect</code>, <code>net.disconnect</code>, <strong>Network Status</strong></td>
+</tr>
+<tr>
+<td>Передать действие или чат</td>
+<td><code>rpc(name, payload, target)</code>, <code>onRpc()</code>, <code>sendChat()</code>, <code>onChat()</code></td>
+<td><code>net.sendRpc</code>, <strong>On Net RPC</strong>, <code>net.sendChat</code>, <strong>On Net Chat</strong></td>
+</tr>
+<tr>
+<td>Поднять и искать LAN-игры</td>
+<td><code>hostLan()</code>, <code>discoverLan()</code>, <code>stopLan()</code></td>
+<td><strong>Net Host LAN Server</strong>, <strong>Discover LAN Games</strong>. Остановку вызывает скрипт.</td>
+</tr>
+<tr>
+<td>Обновить выбранное поле Network Sync</td>
+<td><code>setSyncedField()</code>, <code>getSyncedField()</code></td>
+<td><strong>Write Network Sync Field</strong>, <strong>Read Network Sync Field</strong></td>
+</tr>
+<tr>
+<td>Следить за присутствием игроков</td>
+<td><code>onPeerJoin()</code>, <code>onPeerLeave()</code>, <code>peerId()</code>, <code>isHost()</code></td>
+<td><code>event.peerJoin</code>, <code>event.peerLeave</code>, <code>net.peerId</code>, <code>net.isHost</code></td>
+</tr>
+</tbody></table>
+<p>У асинхронных нод с <strong>Started / Completed / Failed</strong> обновляйте UI по <strong>Completed</strong> или <strong>Failed</strong>. <strong>Started</strong> означает, что запрос запущен. При подписке из скрипта храните функцию отписки и вызывайте её в <code>onDestroy()</code>.</p>
+<p>Компонент <strong>Network Sync</strong> синхронизирует выбранные поля, трансформы, анимацию, активность сущностей и поддерживаемые сценарии спавна и удаления. <code>owner: &quot;local&quot;</code> создаёт отдельные прокси для игроков. <code>owner: &quot;host&quot;</code> передаёт авторитет для общей сущности хосту. Для Steam текущий хост определяется владельцем лобби. У остальных транспортов роль определяется сортировкой peer ID. Смена роли не гарантирует восстановления состояния матча. WebSocket пытается переподключиться до пяти раз после обрыва уже принятого соединения. Возврат соединения сам по себе не гарантирует продолжение матча. <a href="#chapter-140">Настройка Network Sync</a></p>
+<p>Relay подтверждает, что пакет пришёл от сокета, принятого в комнату. Игровые правила исполняются в клиентах. Например, в <strong>Multiplayer Arena 3D</strong> подбор предмета обрабатывает хост и проверяет дистанцию. Для соревновательной игры серверный процесс должен сам проверять действия и рассчитывать итоговое состояние.</p>
+<h2>Что осталось</h2>
+<table>
+<thead>
+<tr>
+<th>Приоритет</th>
+<th>Работа</th>
+<th>Критерий готовности</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P0 · Нативная приёмка</td>
+<td>Прогнать Steam с двумя реальными аккаунтами на разных сетях. Проверить Desktop-редактор и депо, лобби и приглашения из запущенной и закрытой игры, обмен RPC/снимками, смену владельца, сеть после обрыва и сервисы Steam на своём AppID. Отдельно прогнать LAN discovery и реальный WebRTC на целевых ОС.</td>
+<td>Матрица ОС и сценариев с результатами. Автотесты Local Debug и проверки IPC дополняют этот прогон.</td>
+</tr>
+<tr>
+<td>P1 · Комнаты и вход</td>
+<td>Общий UI лобби, состояние Ready/Start, настройки доступа и вместимость комнаты, управляемые на сервере. Для публичного Web задать схему авторизации, короткоживущие допуски, TLS, мониторинг и нагрузочный тест.</td>
+<td>Три клиента видят одинаковый список и состояние. Полная или закрытая комната возвращает ясную причину отказа.</td>
+</tr>
+<tr>
+<td>P1 · Обрывы и совместимость</td>
+<td>Версия протокола и проекта при входе, отдельные состояния reconnect/resync, политика при уходе хоста. Для продолжения матча нужны снимок с номером версии, передача авторитета и проверка позднего входа.</td>
+<td>После потери хоста игра либо восстанавливает согласованное состояние, либо завершает матч с явной причиной.</td>
+</tr>
+<tr>
+<td>P1 · WebRTC через интернет</td>
+<td>Настраиваемые ICE/STUN/TURN, диагностика маршрута по каждому пиру и проверка переключения на relay.</td>
+<td>Явно виден используемый маршрут, проходят тесты прямого канала и принудительного TURN на двух сетях.</td>
+</tr>
+<tr>
+<td>P2 · API и Event Graph</td>
+<td>Подключить проектный флаг Steam Cloud к рантайму и добавить недостающие ноды для сервисов Steam, которые уже доступны из скриптов.</td>
+<td>При выключенном облаке сохранение остаётся локальным. Граф может отобразить ошибку чтения Cloud или статистики.</td>
+</tr>
+<tr>
+<td>P2 · Производительность</td>
+<td>Измерить трафик, задержку и CPU с несколькими клиентами. Если профиль игры требует, добавить разделение надёжных событий и снимков, приоритизацию видимых сущностей, предсказание и коррекцию.</td>
+<td>Для выбранного масштаба проекта есть бюджет трафика, задержки и контрольные сценарии потерь.</td>
+</tr>
+<tr>
+<td>По требованиям игры</td>
+<td>Выделенный авторитетный сервер, постоянное состояние матчей, серверная проверка команд. Для Steam при необходимости добавить выделенные серверы и аутентификацию сессионными билетами.</td>
+<td>Сервер принимает решения об уроне, движении и наградах, а перезапуск следует заданной политике восстановления.</td>
+</tr>
+</tbody></table>
+<p>Для небольшого Steam-коопа текущий API уже покрывает лобби, обмен сообщениями и синхронизацию. Ближайшая задача для такого проекта — нативная приёмка и понятное поведение при обрыве связи. Для публичного кроссплатформенного или соревновательного мультиплеера основные пробелы лежат в протоколе, серверных правилах и эксплуатации. WebRTC/TURN и Steam SDR можно развивать в текущем стеке.</p>
+<h2>Проверки в репозитории</h2>
+<pre><code class="language-bash">pnpm test:network
+pnpm test:network-sync
+pnpm test:examples
+pnpm build
+pnpm exec playwright test steam-relay-lab.spec.ts
+</code></pre>
+<p>Playwright проверяет два клиента Local Debug, Desktop-архив и жизненный цикл <strong>Play with Steam</strong> с подменой нативного IPC. Реальные Steam ID, маршрутизацию SDR и работу на двух сетях фиксируйте отдельно.</p>
 </section></main></html>

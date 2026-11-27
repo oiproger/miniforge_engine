@@ -8,10 +8,19 @@
 * **Standalone Prop / Foliage Scatter Brush**: dedicated viewport tool docked in the right sidebar that paints/erases Prefabs & 3D Models across both **Terrain** heightmaps and **any 3D Mesh** with automatic static batching.
 * **Unified Input, Gamepad & Touch Manager**: rebindable Keyboard, Mouse, W3C Gamepad API (`GP0..GP15`, sticks + deadzone), and Touch / Virtual Controls in one modal, plus 2–4 player local profiles.
 * **Multiplayer, Embedded Rust LAN Server & Steamworks SDK**:
-  * Unified `NetManager` (`Singleplayer`, `Local Split-Screen`, `P2P WebRTC`, `Client-Server WebSocket`, `Steam P2P + Lobbies`) with offline LAN WebRTC, auto-reconnect, shortest-arc lerp, lobby chat, and 1-click **Launch Host + Client** Dual Preview.
+  * Unified `NetManager` (`Singleplayer`, `Local Split-Screen`, `P2P WebRTC`, `Client-Server WebSocket`, `Steam P2P + Lobbies`) with WebSocket reconnect, WebRTC relay fallback, snapshot interpolation, lobby chat, and **Launch Host + Client** simulation.
   * Zero-dependency embedded Rust LAN WebSocket server + UDP discovery beacon (port `41234`) in both Editor and exported Desktop games (`api.net.hostLan`, `stopLan`, `discoverLan`), plus standalone `server/relay-server.mjs`.
   * `Network Sync` component with automatic colored remote proxy avatars for `owner: "local"`, delta-synced `Sync Keys` with late-join refresh, `animState` + `animClip` crossfade replication, and 14 Multiplayer/RPC/Chat Event Graph + AOT nodes.
-  * `api.steam.*` (Lobbies, Steam P2P, Achievements, Cloud Saves, Rich Presence, AppID `480` debug mode, automatic `steam_appid.txt` export), **12 Starter Templates**, and **11 Auto-Discovered Examples**.
+  * `api.steam.*` (Lobbies, Steam P2P, Achievements, Cloud Saves, Rich Presence, Stats, DLC checks), **Play with Steam** in the Desktop editor, Local Debug simulation, and Steam depot export. [Steamworks guide](docs/STEAM_NATIVE.md)
+
+### Networking priorities
+
+1. Verify native Steam and LAN on target operating systems and run cross-network Steam and WebRTC tests with two clients.
+2. Build a shared lobby UI, enforce room-specific access and capacity, and add protocol compatibility and reconnect/resync semantics.
+3. Expose ICE configuration and the active WebRTC path. Benchmark replication before adding prediction or scaling to larger rooms.
+4. Add an authoritative dedicated server when a game needs competitive rules or persistent matches.
+
+[Acceptance criteria and current limits](docs/NETWORKING.md)
 
 ## v3.1 (Next) — Editor QoL & Level Design Polish
 
@@ -24,7 +33,7 @@
 * **Visual HUD Layout Editor**: drag-and-drop HUD anchor positioning with 16:9 / 9:16 preview guides instead of manual percentage inputs.
 * **1-Click Atmosphere & Lighting Presets**: curated `Environment + Sky + Fog + Post-FX` presets (Sunny Day, Noir Night, Sunset, Retro PS1, Foggy Horror).
 * **Audio, Physics & Gizmo Clarity**: 3D spatial audio radius visualization in viewport, reverb/music trigger zones, and clear wireframe gizmos for Colliders, Triggers, and NavGrid.
-* **Multiplayer Lobby QoL**: ready-to-use in-game Lobby / Server Browser UI widget (Create/Join/Ready/Start) plus `maxPlayers` slot limits, room passwords, and public room listing on the WebSocket/LAN relay.
+* **Multiplayer Lobby QoL**: ready-to-use in-game Lobby / Server Browser UI widget (Create/Join/Ready/Start) plus `maxPlayers` slot limits, room passwords, and configurable room discovery that exposes only intended public rooms.
 
 ## v3.3 — Community Showcase & Publishing
 

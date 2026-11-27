@@ -1,6 +1,6 @@
-# Native Steamworks export
+# Steamworks — редактор, SDK и экспорт депо
 
-Enable Steam in the project settings and enter the AppID registered in Steamworks. Select Steam P2P in multiplayer settings for Steam matchmaking and Steam Datagram Relay. Steam uses its own identity, lobbies and relay infrastructure. You do not need to deploy the Miniforge WebSocket relay for this transport.
+Включите Steamworks для проекта и укажите AppID. Для автоматического подключения задайте **Steam P2P** в настройках мультиплеера. Если в игре есть экран выбора лобби, оставьте `singleplayer` при запуске и подключайте Steam-транспорт после выбора комнаты. Так работает **Steam Relay Lab**. Steam использует свои аккаунты, лобби и инфраструктуру ретрансляции. Отдельный Node.js relay для Steam не нужен. [Обзор сетевых режимов](NETWORKING.md)
 
 ## Быстрая проверка в Steam Relay Lab
 
@@ -51,21 +51,43 @@ Steam привязывает AppID к процессу. Для смены AppID 
 
 Если панель показывает **Steam unavailable**, проверьте запущенный Steam, AppID и доступ аккаунта к приложению, затем нажмите **Retry Steam**. При проверке владельца используйте **Leave** на исходном хосте и наблюдайте новое значение в списке участников второго клиента.
 
-## Build a depot
+## Сборка депо
 
-1. Export the project for the target desktop OS. Steam-enabled projects use the source package because ordinary prebuilt players do not carry the Steamworks SDK. The package includes the native bridge and a depot build script.
-2. Extract the archive on the target OS and run `npm run build` with Rust and the usual Tauri prerequisites. The script builds with the `steamworks` feature, puts the executable and its Steamworks redistributable next to one another in `steam-depot/` and uses the release profile.
-3. Set `MINIFORGE_STEAM_TEST_APP_ID` when building a local test depot if you need `steam_appid.txt`. Launch the game with Steam running and with an account that has access to the AppID. Configure the actual deployment in Steamworks and SteamPipe. Production depots omit `steam_appid.txt`. On macOS, configure an application bundle and signing for distribution.
-4. Verify with two Steam accounts on separate machines, preferably on different networks. Create a lobby, join by invite and confirm that each user receives game events and sees the other user's state. Repeat after the owner leaves and Steam assigns a new owner. Check local saves, Steam Cloud, and an achievement defined for the AppID.
+1. Экспортируйте проект для целевой Desktop-платформы. Для Steam редактор создаёт архив с исходниками, нативным мостом и скриптом сборки депо.
+2. Распакуйте архив на целевой ОС и запустите `npm run build`. Понадобятся Rust и системные зависимости Tauri. Скрипт собирает release-профиль с флагом `steamworks` и помещает исполняемый файл и библиотеку Steamworks в `steam-depot/`.
+3. Для локального запуска при необходимости задайте `MINIFORGE_STEAM_TEST_APP_ID` при сборке. Эта переменная добавляет `steam_appid.txt`. Настройте продуктивное депо в Steamworks и SteamPipe без этого файла. Для поставки macOS упакуйте и подпишите приложение.
+4. При приёмке проверьте приглашение, выход владельца лобби, передачу пакетов после смены владельца и сервисы на своём AppID.
 
-`STEAM_SDK_LOCATION` can point at an installed Steamworks SDK root. Without the override, the build uses the redistributable supplied by the pinned Rust binding.
+`STEAM_SDK_LOCATION` позволяет указать путь к установленному Steamworks SDK. По умолчанию сборка использует библиотеку из закреплённой версии Rust-биндинга.
 
-## Game logic
+## Сценарии, Script API и Event Graph
 
-- Create or join a lobby with `api.steam.createLobby` or `api.steam.joinLobby`, then call `api.net.connect({ mode: 'steam-p2p', room: lobby.id })`. Graph nodes Steam Create Lobby and Steam Join Lobby perform both actions and provide completion and failure outputs. Steam IDs stay strings.
-- Use `api.steam.inviteFriends()` to open the Steam overlay. Subscribe to the `steam.lobbyInvite` game event or read `api.steam.getPendingInvite()` on startup. Pass the invite's `lobbyId` to Steam Join Lobby after confirmation.
-- Use Network Status and Steam Relay Status for lobby UI. The relay status reports SDR initialization and availability. A successful lobby join only confirms membership. Test packet exchange separately.
-- Use `api.steam.queryAchievement()`, `readStat()`, `writeStat()`, `isDlcInstalled()`, and `listCloudFiles()` for native features. Steam achievement and stat identifiers must be registered for the AppID. `api.saveSystem` uses Steam Cloud for native Steam games while retaining a local copy.
-- Steam Local Debug remains an explicit editor simulation with no Steam account or relay. Browser exports use the browser APIs available to their platform.
+| Возможность | Script API | Event Graph |
+|---|---|---|
+| Идентификация и диагностика | `init(appId?)`, `getUser()`, `getMode()`, `isNative()`, `isDebug()`, `isAvailable()`, `getLogs()` | **Steam User Name** |
+| Матчмейкинг | `createLobby({ name, maxMembers, type, data })`, `listLobbies()`, `joinLobby(id)`, `leaveLobby()`, `setLobbyData()`, `getLobby()`, `onLobbyChanged()` | **Steam Create Lobby**, **Steam List Lobbies**, **Steam Join Lobby**, **Steam Leave Lobby**. Метаданные и чтение текущего лобби доступны из скрипта. |
+| SDR и приглашения | `relayStatus()`, `inviteFriends()`, `onLobbyInvite()`, `getPendingInvite()` | **Steam Relay Status**, **Steam Invite Friends**, **On Steam Lobby Invite**, **Steam Pending Lobby Invite** |
+| Достижения | `unlockAchievement()`, `queryAchievement()`, `clearAchievement()`, `hasAchievement()`, `listAchievements()` | **Steam Unlock Achievement** |
+| Steam Cloud | `cloudWrite()`, `cloudRead()`, `cloudDelete()`, `listCloudFiles()` | **Steam Cloud Save** записывает файл. Чтение, список и удаление доступны из скрипта. |
+| Rich Presence, статистика и DLC | `setRichPresence()`, `clearRichPresence()`, `readStat(name, floatingPoint?)`, `writeStat(name, value, floatingPoint?)`, `isDlcInstalled(appId)` | **Steam Set Rich Presence**. Статистика и DLC доступны из скрипта. |
 
-In Event Graph, use **Completed** or **Failed** after Steam, save or network operations. Existing **Started** wires still run when the request starts. Graphs with unsupported compiled operations are kept interpreted and listed in the export report.
+- В скрипте вызовите `api.steam.createLobby()` или `api.steam.joinLobby(id)`. После успеха подключите транспорт через `api.net.connect({ mode: 'steam-p2p', room: lobby.id })`. Ноды **Steam Create Lobby** и **Steam Join Lobby** выполняют оба шага. Steam ID и ID лобби передавайте строками.
+- Для Steam Overlay используйте `api.steam.inviteFriends()`. Запущенная игра получает событие `steam.lobbyInvite`. При старте проверьте `api.steam.getPendingInvite()` и передайте `lobbyId` в **Steam Join Lobby** после подтверждения игроком.
+- **Network Status** показывает подключение к комнате, а **Steam Relay Status** — состояние SDR. Для подтверждения доставки используйте тестовый RPC с ответом второго клиента.
+- `api.saveSystem` в нативном режиме использует Steam Cloud для облачной части и пытается записать локальную копию. Флаг **Enable Steam Cloud Saves** пока сохраняется в настройках проекта, но рантайм его не применяет. Для конкретного вызова сохранения облако можно отключить параметром `cloudSync: false`. Для ручной работы с файлами используйте `api.steam.cloudWrite()`, `cloudRead()`, `cloudDelete()` и `listCloudFiles()`.
+- Для нативной проверки достижения используйте `await api.steam.queryAchievement(id)`. Синхронные `hasAchievement()` и `listAchievements()` в нативном режиме читают кэш текущего запуска. Для списка облачных файлов используйте `await api.steam.listCloudFiles()`. Синхронный `cloudList()` обслуживает Local Debug.
+- В Local Debug `getMode()` возвращает `local-debug`, а `isAvailable()` остаётся `false`. Для логики, которую тестируют в обоих режимах, проверяйте, что `getMode()` возвращает `native` или `local-debug`. Экспорт для браузера не запускает Steam-симуляцию.
+
+В Event Graph используйте **Completed** и **Failed** у нод, которые предоставляют эти выходы. **Started** срабатывает сразу. У **Steam Unlock Achievement** и **Steam Set Rich Presence** есть обычный выход выполнения. Если нужно подтвердить результат этих операций, дождитесь ответа из Script API. Графы с неподдерживаемыми при компиляции операциями остаются интерпретируемыми и указаны в отчёте экспорта.
+
+### Диагностика результатов
+
+| Наблюдение | Что проверять |
+|---|---|
+| **Local Debug simulation** | Это обычный **Play** или **Launch Host + Client**. Для аккаунта Steam используйте **Play with Steam** в Desktop-редакторе. |
+| Ошибка ещё до открытия Game | Посмотрите уведомление и Console. Проверьте версию Desktop-редактора, запущенный Steam, доступ к AppID. После смены AppID перезапустите Desktop-редактор. |
+| Лобби видно, **Ping peer** не отвечает | Сверьте AppID и ID лобби, дождитесь второго пира в поле **Transport**, затем проверьте **Relay status**. Состояния лобби, готовность SDR и подтверждённый RPC измеряются отдельно. |
+| Оверлей не открывается | Для текущего теста используйте ID лобби. Приглашения с оверлеем проверьте в сборке, запущенной через Steam. |
+| Cloud, достижение, статистика или DLC возвращают ошибку | Для сервиса проверьте его настройки в Steamworks и права тестового аккаунта. AppID 480 подходит для проверки подключения и лобби. Для собственных сервисов используйте AppID своего проекта. |
+
+Автотесты проверяют Local Debug, состав Desktop-архива и повторный запуск **Play with Steam** с подменой IPC. Нативная проверка с двумя аккаунтами и собственным AppID остаётся пунктом приёмки. [План сетевых работ](NETWORKING.md)

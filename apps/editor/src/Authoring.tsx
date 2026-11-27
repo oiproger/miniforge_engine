@@ -7,6 +7,8 @@ import { makeDefaultDialogueGraph, makeDefaultSequence } from '../../../packages
 import { MeshBuilder, defaultMeshBuilderRecipe, buildRecipeToGlbDataUrl } from './MeshBuilder'
 import { PaintEditor } from './PaintEditor'
 import { SoundSynth } from './SoundSynth'
+import { DbEditor } from './DbEditor'
+import { dbNameProblem } from '../../../packages/project-schema/src'
 import { DialogueEditor } from './DialogueEditor'
 import { SequencerEditor } from './SequencerEditor'
 import { makeDefaultEventGraph } from '../../../packages/project-schema/src'
@@ -1169,6 +1171,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
   const [newId] = useState(() => uid('asset'))
   const [vertex, setVertex] = useState(false),
     [error, fail] = useState('')
+  const [dbEditing, setDbEditing] = useState(false)
   const activeTarget = subAssetId || target
   const id = activeTarget.startsWith('new-') ? newId : activeTarget
   const a = p.assets.find((a) => a.id === id)
@@ -1182,7 +1185,9 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
     if (!target.startsWith('new-')) return
     const type = target.slice(4)
     const created: Asset =
-      type === 'material'
+      type === 'db'
+        ? { id, name: 'DB Asset', type: 'db', data: JSON.stringify({ version: 1, columns: [], rows: [] }), properties: {} }
+        : type === 'material'
         ? makeMaterial('New material', '#78aca0', id)
         : type === 'particle'
           ? makeParticleAsset('New Particles', 'steam', id)
@@ -1274,7 +1279,13 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
             properties: type === 'shader' ? { vertex: shaders.Unlit.vertex } : {},
           }
     edit((n) => {
-      if (!n.assets.some((i) => i.id === id)) n.assets.push(created)
+      if (n.assets.some(i => i.id === id)) return
+      if (created.type === 'db') {
+        let number = 2
+        let name = created.name
+        while (dbNameProblem(n.assets, id, name)) name = 'DB Asset ' + number++
+        n.assets.push({ ...created, name })
+      } else n.assets.push(created)
     })
   }, [target, id])
   const root = useRef<HTMLDivElement>(null)
@@ -1335,6 +1346,8 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
                     ? 'Event Graph Editor (Blueprint)'
                   : a?.type === 'dialogue'
                     ? 'Dialogue & Quest Graph Editor'
+                  : a?.type === 'db'
+                    ? 'DB Editor'
                   : a?.type === 'sequence'
                     ? 'Keyframe Sequencer'
                   : target === 'plugins'
@@ -1368,6 +1381,10 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
     try {
       if (a?.type === 'shader') checkShader(a.properties.vertex || shaders.Unlit.vertex, a.data)
       if (!p.name.trim() || (a && !a.name.trim())) throw Error('Enter a name before saving.')
+      if (a?.type === 'db') {
+        const problem = dbNameProblem(p.assets, a.id, a.name)
+        if (problem) throw Error(problem)
+      }
       onChange(p)
       onClose()
     } catch (err) {
@@ -1382,7 +1399,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
       }}
     >
       <div
-        className={(activeTarget === 'ui' || a?.type === 'graph' || a?.type === 'dialogue' || a?.type === 'sequence' || a?.type === 'plugin' || a?.type === 'material' || a?.type === 'shader' || (a?.type === 'model' && Boolean(a.properties?.meshBuilder))) ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' || a?.type === 'audio' ? 'mf-dialog mf-particle-dialog' : a?.type === 'html' ? 'mf-dialog mf-hud-dialog mf-widget-dialog' : 'mf-dialog'}
+        className={(activeTarget === 'ui' || a?.type === 'graph' || a?.type === 'db' || a?.type === 'dialogue' || a?.type === 'sequence' || a?.type === 'plugin' || a?.type === 'material' || a?.type === 'shader' || (a?.type === 'model' && Boolean(a.properties?.meshBuilder))) ? 'mf-dialog mf-hud-dialog' : a?.type === 'particle' || a?.type === 'texture' || a?.type === 'prefab' || a?.type === 'model' || a?.type === 'audio' ? 'mf-dialog mf-particle-dialog' : a?.type === 'html' ? 'mf-dialog mf-hud-dialog mf-widget-dialog' : 'mf-dialog'}
         role="dialog"
         aria-modal="true"
         aria-label={name}
@@ -1496,7 +1513,8 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
               {a.type === 'audio' && <SoundSynth a={a} changeA={changeA} />}
               {a.type === 'prefab' && <PrefabEditor a={a} p={p} changeA={changeA} edit={edit} />}
               {a.type === 'graph' && <EventGraphEditor a={a} p={p} changeA={changeA} />}
-              {a.type === 'dialogue' && <DialogueEditor a={a} changeA={changeA} />}
+              {a.type === 'dialogue' && <DialogueEditor a={a} assets={p.assets} changeA={changeA} />}
+              {a.type === 'db' && <DbEditor asset={a} changeAsset={changeA} onEditing={setDbEditing} />}
               {a.type === 'sequence' && <SequencerEditor a={a} p={p} changeA={changeA} />}
               {a.type === 'plugin' && <PluginEditor a={a} p={p} changeA={changeA} edit={edit} />}
               {a.type === 'json' && (
@@ -1526,7 +1544,7 @@ function AuthoringDialog({ project, target, focusUiId, onChange, onClose }: Auth
         </div>
         <footer>
           <button onClick={onClose}>Cancel</button>
-          <button className="mf-primary" onClick={save}>
+          <button className="mf-primary" disabled={dbEditing} onClick={save}>
             <Check size={14} /> Save changes
           </button>
         </footer>

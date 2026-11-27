@@ -1,3 +1,4 @@
+import { parseDbJson } from '../../project-schema/src/database'
 import { Vector3 } from '../../graphics/src/scene'
 import { GRAPH_RUNTIME_EVENTS, UI_WIDGET_ACTIONS } from '../../project-schema/src/eventGraph'
 import type {
@@ -102,7 +103,8 @@ export function createEventGraphLifecycle(
 
     const out = evalPureNode(scope, node, depth)
     if (out) {
-      scope.nodeOutputs.set(nodeId, { ...(cached || {}), ...out })
+      // Database reads may be repeated after a write in the same execution.
+      if (!node.type.startsWith('db.')) scope.nodeOutputs.set(nodeId, { ...(cached || {}), ...out })
       return out[pinId]
     }
     return undefined
@@ -299,6 +301,10 @@ export function createEventGraphLifecycle(
       case 'object.fromJson': {
         try { return { value: JSON.parse(String(get('json', '{}'))), ok: true } } catch { return { value: null, ok: false } }
       }
+      case 'db.list': return { names: api.db.list() }
+      case 'db.rows': return { rows: api.db.rows(String(get('db', ''))) }
+      case 'db.get': return { value: api.db.get(String(get('db', '')), String(get('row', '')), get('path', '')) }
+      case 'db.has': return { found: api.db.has(String(get('db', '')), String(get('row', '')), get('path', '')) }
       case 'quest.getStatus': {
         const qid = String(get('questId', ''))
         return { status: qid ? api.dialogue.getQuestStatus(qid) : 'inactive' }
@@ -521,13 +527,6 @@ export function createEventGraphLifecycle(
         const val = get('value', '')
         const line = `[EventGraph:${api.entity.name}] ${typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val)}`
         console.log(line)
-        try {
-          if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'miniforge:log', log: line }, '*')
-          }
-        } catch {
-          /* ignore cross-origin */
-        }
         next()
         break
       }
@@ -1062,6 +1061,30 @@ export function createEventGraphLifecycle(
         next()
         break
       }
+      case 'db.set':
+      case 'db.upsertRow': {
+        const db = String(get('db', ''))
+        const row = String(get('row', ''))
+        const raw = get('value', node.type === 'db.set' ? 'null' : '{}')
+        const wired = scope.edges.some(edge => edge.toNode === node.id && edge.toPin === 'value')
+        const value = !wired && typeof raw === 'string' ? parseDbJson(raw) : raw
+        const ok = node.type === 'db.set' ? api.db.set(db, row, get('path', ''), value) : api.db.upsertRow(db, row, value)
+        setOut({ ok })
+        next()
+        break
+      }
+      case 'db.delete':
+        setOut({ ok: api.db.delete(String(get('db', '')), String(get('row', '')), get('path', '')) })
+        next()
+        break
+      case 'db.removeRow':
+        setOut({ ok: api.db.removeRow(String(get('db', '')), String(get('row', ''))) })
+        next()
+        break
+      case 'db.reset':
+        setOut({ ok: api.db.reset(String(get('db', ''))) })
+        next()
+        break
       case 'quest.setStatus': {
         const qid = String(get('questId', ''))
         const st = (String(get('status', 'active')) || 'active') as any

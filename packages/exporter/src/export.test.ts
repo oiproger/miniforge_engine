@@ -1,6 +1,7 @@
 import { transformSync } from 'esbuild'
 import type { GameAPI } from '../../runtime/src/types'
 import { createEventGraphLifecycle } from '../../runtime/src/eventGraph'
+import { createDatabaseRuntime } from '../../runtime/src/database'
 import { compileEventGraphToScript } from './nativizeEventGraph'
 import type { EventGraphData } from '../../project-schema/src/eventGraph'
 import { test, expect } from 'vitest'
@@ -132,4 +133,53 @@ test('compiled graph matches the interpreter for raycast, prefab, rotation and e
   ]
   expect(run((api) => createEventGraphLifecycle(graph, api))).toEqual(expected)
   expect(run(load)).toEqual(expected)
+})
+
+test('all DB Assets are exported and their data survives a project archive', async () => {
+  const project = makeProject('Database export')
+  const data = JSON.stringify({ version: 1, columns: ['details'], rows: [{ id: 'key', values: { details: { price: 7 } } }] })
+  project.assets.push(
+    { id: 'db-items', name: 'Inventory', type: 'db', data, properties: {} },
+    { id: 'db-empty', name: 'Optional', type: 'db', data: '{"version":1,"columns":[],"rows":[]}', properties: {} },
+  )
+  const build = await buildGame(project, 'web', async () => '// runtime')
+  const { project: exported } = JSON.parse(strFromU8(build.files['project.json']))
+  expect(exported.assets.filter((asset: { type: string }) => asset.type === 'db')).toEqual(project.assets.slice(-2))
+  expect(await importProject(exportProject(project))).toEqual(project)
+})
+
+test('DB writes, reads and success pins match in interpreted and nativized graphs', () => {
+  const nodes = [
+    { id: 'start', type: 'event.start' },
+    { id: 'old', type: 'flow.emitEvent', inputs: { eventName: 'old' } },
+    { id: 'set', type: 'db.set', inputs: { db: 'Inventory', row: 'key', path: 'stats.hp', value: '12' } },
+    { id: 'after', type: 'flow.emitEvent', inputs: { eventName: 'after' } },
+    { id: 'status', type: 'flow.emitEvent', inputs: { eventName: 'status' } },
+    { id: 'read', type: 'db.get', inputs: { db: 'Inventory', row: 'key', path: 'stats.hp' } },
+  ].map(node => ({ ...node, x: 0, y: 0 }))
+  const graph: EventGraphData = {
+    version: 1, nodes, functions: [], variables: [],
+    edges: [
+      ['start', 'exec', 'old', 'exec'],
+      ['old', 'exec', 'set', 'exec'],
+      ['set', 'exec', 'after', 'exec'],
+      ['after', 'exec', 'status', 'exec'],
+      ['read', 'value', 'old', 'payload'],
+      ['read', 'value', 'after', 'payload'],
+      ['set', 'ok', 'status', 'payload'],
+    ].map(([fromNode, fromPin, toNode, toPin], i) => ({ id: 'e' + i, fromNode, fromPin, toNode, toPin })),
+  }
+  const compiled = transformSync(compileEventGraphToScript(graph, 'DB parity')
+    .replace('export default function', 'const create = function'), { loader: 'ts' }).code
+  const load = new Function(compiled + '\nreturn create')() as (api: GameAPI) => ReturnType<typeof createEventGraphLifecycle>
+  for (const create of [(api: GameAPI) => createEventGraphLifecycle(graph, api), load]) {
+    const db = createDatabaseRuntime([{
+      id: 'inventory', type: 'db', name: 'Inventory', properties: {},
+      data: '{"version":1,"columns":["stats"],"rows":[{"id":"key","values":{"stats":{"hp":4}}}]}',
+    }], () => {})
+    const messages: unknown[][] = []
+    const api = { db, entity: { id: 'actor', name: 'Actor' }, events: { emit: (...args: unknown[]) => messages.push(args) } } as unknown as GameAPI
+    create(api).onStart?.()
+    expect(messages).toEqual([['old', 4], ['after', 12], ['status', true]])
+  }
 })
