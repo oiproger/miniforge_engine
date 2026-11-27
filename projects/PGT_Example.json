@@ -758,40 +758,6 @@
             }
           ],
           "properties": {}
-        },
-        {
-          "id": "node-555a567c-d47e-439b-a073-03990bffec35",
-          "name": "Flashlight",
-          "parent": "camera",
-          "active": true,
-          "transform": {
-            "position": [
-              0,
-              0.8802661384098918,
-              -0.307564560191354
-            ],
-            "rotation": [
-              0,
-              0,
-              0
-            ],
-            "scale": [
-              1,
-              1,
-              1
-            ]
-          },
-          "components": [
-            {
-              "type": "light",
-              "kind": "spot",
-              "color": "#fff7de",
-              "intensity": 2,
-              "castShadow": true,
-              "shadowPinned": true
-            }
-          ],
-          "properties": {}
         }
       ]
     }
@@ -1183,8 +1149,25 @@
       "id": "asset-39dde0f9-c07f-418c-9860-a4ad32eb07f2",
       "type": "script",
       "name": "HTMLBridger.ts",
-      "data": "export default function (api: GameAPI) {\n  const widgetId = 'ui-e05e8cde-6bcc-4b72-9b54-b09039edd5aa';\n  let unsubscribers = [];\n\n  function sendQuests() {\n    console.log(\"QUEST NEED\");\n    api.ui.sendEvent(widgetId, 'hud.quests.data', api.dialogue.listQuests());\n  }\n\n  function toggleFlashlight() {\n    const playerId = api.findByTag(\"player\")[0] ?? api.player.id;\n    if (!playerId) {\n      console.warn(\"Flashlight: игрок не найден\");\n      return;\n    }\n\n    const flashId = api.getChildByName(playerId, \"Flashlight\");\n    const flash = flashId ? api.find(flashId) : undefined;\n    if (!flash) {\n      console.warn(\"Flashlight: дочерний объект не найден\");\n      return;\n    }\n\n    api.setActive(flash.id, !flash.visible);\n    console.log(\"TOGGLE\", flash.active);\n  }\n\n  return {\n    onStart() {\n      unsubscribers = [\n        api.events.on('hud.quests.request', sendQuests),\n        api.events.on('quest.updated', sendQuests),\n        api.events.on('save.loaded', sendQuests),\n        api.events.on('hud.flashlight', toggleFlashlight),\n      ];\n    },\n\n    onDestroy() {\n      for (const unsubscribe of unsubscribers) unsubscribe();\n    },\n  };\n}\n",
+      "data": "export default function (api: GameAPI) {\n  const widgetId = 'ui-e05e8cde-6bcc-4b72-9b54-b09039edd5aa';\n  let unsubscribers = [];\n\n  function sendQuests() {\n    console.log(\"QUEST NEED\");\n    api.ui.sendEvent(widgetId, 'hud.quests.data', api.dialogue.listQuests());\n  }\n\n  function toggleScreen(screenId) {\n      console.info(screenId);\n    if (api.ui.current() === screenId) {\n      return api.ui.close();\n    }\n\n    return api.ui.open(screenId);\n  }\n\n  let flashlightOn = false;\n\n  function toggleFlashlight() {\n    flashlightOn = !flashlightOn;\n    api.lights.setFlashlight({\n      enabled: flashlightOn,\n      intensity: 3,\n      range: 20,\n    });\n  }\n\n  function togglePhone() {\n    toggleScreen(\"screen-41752949-ac69-41ec-a427-078aacf54cd8\");\n  }\n\n  return {\n    onStart() {\n      unsubscribers = [\n        api.events.on('hud.quests.request', sendQuests),\n        api.events.on('quest.updated', sendQuests),\n        api.events.on('save.loaded', sendQuests),\n        api.events.on('hud.flashlight', toggleFlashlight),\n        api.events.on('input.phone', togglePhone),\n      ];\n    },\n\n    onDestroy() {\n      for (const unsubscribe of unsubscribers) unsubscribe();\n    },\n  };\n}\n",
       "properties": {}
+    },
+    {
+      "id": "asset-c7850604-5b8c-4b84-b554-31ca84908cee",
+      "name": "DB Asset",
+      "type": "db",
+      "data": "{\"version\":1,\"columns\":[\"field_1\",\"field_2\",\"field_3\"],\"rows\":[]}",
+      "properties": {}
+    },
+    {
+      "id": "asset-de8aac4e-419f-4ee1-9428-6a28831b3ca8",
+      "name": "SegmenUI.html",
+      "type": "html",
+      "data": "<div id=\"health-hud\"></div>",
+      "properties": {
+        "css": "/* Paste in the CSS field of a Miniforge HTML HUD widget */\nhtml,\nbody {\n  width: 100%;\n  height: 100%;\n  margin: 0;\n  background: transparent;\n}\n\n#health-hud {\n  padding: 5px 8px;\n  width: 100%;\n}\n\n/* Segmented health component: works inside Miniforge mount() Shadow DOM. */\n.sh-widget {\n  --sh-segment-width: 34px;\n  --sh-segment-height: 23px;\n  --sh-gap: 5px;\n  --sh-text: #f0f3f9;\n  --sh-muted: #9aa8b9;\n  --sh-primary: #ff7759;\n  --sh-primary-light: #ffb05f;\n  box-sizing: border-box;\n  width: 100%;\n  max-width: 770px;\n  color: var(--sh-text);\n  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;\n  position: relative;\n  isolation: isolate;\n  user-select: none;\n}\n\n.sh-widget *,\n.sh-widget *::before,\n.sh-widget *::after {\n  box-sizing: border-box;\n}\n\n.sh-header {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 20px;\n  margin-bottom: 13px;\n}\n\n.sh-caption {\n  display: flex;\n  align-items: center;\n  gap: 9px;\n  font-size: 12px;\n  font-weight: 800;\n  letter-spacing: .19em;\n}\n\n.sh-icon {\n  color: var(--sh-primary);\n  font-size: 15px;\n  line-height: 1;\n}\n\n.sh-online {\n  color: #7dffa1;\n  font-size: 9px;\n  text-shadow: 0 0 10px #7dffa1aa;\n}\n\n.sh-value {\n  display: flex;\n  align-items: baseline;\n  gap: 5px;\n  font-size: 26px;\n  font-weight: 800;\n  line-height: 1;\n  font-variant-numeric: tabular-nums;\n  letter-spacing: -.03em;\n}\n\n.sh-current {\n  color: #fff;\n}\n\n.sh-divider {\n  color: #556476;\n  font-size: 17px;\n}\n\n.sh-max {\n  color: #9fabbb;\n  font-size: 17px;\n  font-weight: 600;\n}\n\n.sh-unit {\n  font-size: 11px;\n  letter-spacing: .1em;\n  color: #7c899e;\n  font-weight: 600;\n}\n\n.sh-progress {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: flex-start;\n  gap: var(--sh-gap);\n  position: relative;\n  padding: 2px 0;\n  min-height: calc(var(--sh-segment-height) + 4px);\n}\n\n.sh-segment {\n  position: relative;\n  flex: 0 0 var(--sh-segment-width);\n  width: var(--sh-segment-width);\n  height: var(--sh-segment-height);\n  background: linear-gradient(180deg, #394556, #252e3d);\n  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);\n}\n\n.sh-segment::before {\n  content: '';\n  position: absolute;\n  inset: 0;\n  z-index: 4;\n  pointer-events: none;\n  background: linear-gradient(180deg, #ffffff22, transparent 35%, #00000023 100%);\n}\n\n.sh-fill,\n.sh-trail,\n.sh-flash {\n  position: absolute;\n  top: 0;\n  left: 0;\n  bottom: 0;\n  width: 0;\n  pointer-events: none;\n}\n\n.sh-fill {\n  z-index: 1;\n  background: linear-gradient(90deg, var(--sh-primary) 0%, var(--sh-primary-light) 100%);\n  box-shadow: inset -2px 0 0 #fff6;\n  transition: width 430ms cubic-bezier(.16, .88, .25, 1);\n}\n\n.sh-trail {\n  z-index: 2;\n  background: #fff0a5;\n  width: 0;\n  opacity: 0;\n}\n\n.sh-flash {\n  z-index: 3;\n  width: 100%;\n  opacity: 0;\n  background: #fff;\n}\n\n.sh-segment.sh-hit .sh-flash {\n  animation: sh-hit 420ms ease-out;\n}\n\n.sh-segment.sh-break {\n  animation: sh-shatter 540ms ease-out;\n}\n\n.sh-segment.sh-break .sh-flash {\n  animation: sh-break-light 600ms ease-out;\n}\n\n.sh-segment.sh-heal .sh-flash {\n  background: linear-gradient(100deg, transparent 10%, #b4ffe1 50%, transparent 90%);\n  animation: sh-heal-sweep 630ms ease-out;\n}\n\n.sh-segment.sh-revive {\n  animation: sh-revive 660ms ease-out;\n}\n\n.sh-segment.sh-revive .sh-flash {\n  background: #a6ffd0;\n  animation: sh-break-light 600ms ease-out;\n}\n\n.sh-footer {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-top: 10px;\n  font-size: 10px;\n  font-weight: 700;\n  letter-spacing: .17em;\n  color: var(--sh-muted);\n}\n\n.sh-percentage {\n  letter-spacing: .05em;\n  font-variant-numeric: tabular-nums;\n}\n\n.sh-floating {\n  position: absolute;\n  pointer-events: none;\n  right: 6%;\n  top: -26px;\n  z-index: 6;\n}\n\n.sh-pop {\n  position: absolute;\n  right: 0;\n  top: 0;\n  white-space: nowrap;\n  padding: 4px 9px;\n  border-radius: 4px;\n  background: #0c1323da;\n  box-shadow: 0 4px 14px #0005;\n  font-size: 14px;\n  font-weight: 900;\n  letter-spacing: .02em;\n  animation: sh-float 960ms ease-out forwards;\n}\n\n.sh-pop-damage {\n  color: #ff9677;\n}\n\n.sh-pop-heal {\n  color: #90f7ca;\n}\n\n.sh-critical {\n  --sh-primary: #f74955;\n  --sh-primary-light: #ff8058;\n}\n\n.sh-critical .sh-state {\n  color: #ff818a;\n  animation: sh-low 1.2s ease-in-out infinite;\n}\n\n.sh-empty .sh-state {\n  color: #ff818a;\n}\n\n@keyframes sh-hit {\n  0% {\n    opacity: 0\n  }\n\n  15% {\n    opacity: .9\n  }\n\n  100% {\n    opacity: 0\n  }\n}\n\n@keyframes sh-break-light {\n  0% {\n    opacity: 0\n  }\n\n  22% {\n    opacity: 1\n  }\n\n  100% {\n    opacity: 0\n  }\n}\n\n@keyframes sh-shatter {\n  0% {\n    transform: translateY(0)\n  }\n\n  20% {\n    transform: translateY(-3px);\n    filter: brightness(1.7)\n  }\n\n  42% {\n    transform: translateY(2px)\n  }\n\n  100% {\n    transform: translateY(0);\n    filter: brightness(1)\n  }\n}\n\n@keyframes sh-heal-sweep {\n  0% {\n    opacity: 0;\n    transform: translateX(-22px)\n  }\n\n  26% {\n    opacity: .9\n  }\n\n  100% {\n    opacity: 0;\n    transform: translateX(26px)\n  }\n}\n\n@keyframes sh-revive {\n  0% {\n    filter: brightness(1)\n  }\n\n  32% {\n    filter: brightness(2);\n    transform: scaleY(1.22)\n  }\n\n  100% {\n    filter: brightness(1);\n    transform: scaleY(1)\n  }\n}\n\n@keyframes sh-float {\n  0% {\n    opacity: 0;\n    transform: translateY(12px) scale(.85)\n  }\n\n  20% {\n    opacity: 1;\n    transform: translateY(-2px) scale(1.02)\n  }\n\n  100% {\n    opacity: 0;\n    transform: translateY(-31px) scale(1)\n  }\n}\n\n@keyframes sh-low {\n  50% {\n    opacity: .55\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n\n  .sh-widget *,\n  .sh-widget *::before,\n  .sh-widget *::after {\n    transition: none !important;\n    animation: none !important;\n  }\n\n  .sh-pop {\n    display: none\n  }\n}",
+        "js": "/* Miniforge-compatible segmented health UI. No external dependencies. */\n(function (global) {\n  'use strict';\n\n  class SegmentedHealth {\n    constructor(host, options = {}) {\n      if (!host || typeof host.appendChild !== 'function') {\n        throw new TypeError('SegmentedHealth: host must be an HTMLElement');\n      }\n      this.host = host;\n      this.maxHealth = this._positive(options.maxHealth, 100);\n      this.health = this._clamp(Number(options.health ?? this.maxHealth), 0, this.maxHealth);\n      this.segmentCount = this._count(options.segments ?? 10);\n      this.segmentWidth = this._clamp(Number(options.segmentWidth ?? 34), 18, 72);\n      this.segmentHeight = this._clamp(Number(options.segmentHeight ?? 23), 12, 48);\n      this.title = String(options.title ?? 'VITALITY');\n      this.segments = [];\n      this.timers = new Set();\n      this.animationFrame = null;\n      this.root = document.createElement('section');\n      this.root.className = 'sh-widget';\n      this.root.style.setProperty('--sh-segment-width', `${this.segmentWidth}px`);\n      this.root.style.setProperty('--sh-segment-height', `${this.segmentHeight}px`);\n      this.root.innerHTML = `\n        <header class=\"sh-header\">\n          <div class=\"sh-caption\"><span class=\"sh-icon\" aria-hidden=\"true\">✚</span><span class=\"sh-title\"></span><span class=\"sh-online\">●</span></div>\n          <div class=\"sh-value\" aria-live=\"off\"><span class=\"sh-current\"></span><span class=\"sh-divider\">/</span><span class=\"sh-max\"></span><span class=\"sh-unit\"> HP</span></div>\n        </header>\n        <div class=\"sh-progress\" role=\"progressbar\" aria-label=\"Health\"></div>\n        <footer class=\"sh-footer\"><span class=\"sh-state\">SYSTEM NORMAL</span><span class=\"sh-percentage\"></span></footer>\n        <div class=\"sh-floating\" aria-hidden=\"true\"></div>`;\n      host.appendChild(this.root);\n      this.titleEl = this.root.querySelector('.sh-title');\n      this.currentEl = this.root.querySelector('.sh-current');\n      this.maxEl = this.root.querySelector('.sh-max');\n      this.progressEl = this.root.querySelector('.sh-progress');\n      this.percentEl = this.root.querySelector('.sh-percentage');\n      this.stateEl = this.root.querySelector('.sh-state');\n      this.floatingEl = this.root.querySelector('.sh-floating');\n      this.titleEl.textContent = this.title;\n      this.displayValue = this.health;\n      this._rebuild();\n      this._paint(this.health, this.health, false);\n    }\n\n    _clamp(value, min, max) { return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : min; }\n    _positive(value, fallback) { const n = Number(value); return Number.isFinite(n) && n > 0 ? n : fallback; }\n    _count(value) { return Math.floor(this._clamp(Number(value), 1, 64)); }\n    _format(value) { return Number(value.toFixed(1)).toLocaleString('ru-RU', { maximumFractionDigits: 1 }); }\n    _fraction(hp, i) {\n      const perSegment = this.maxHealth / this.segmentCount;\n      return this._clamp((hp - perSegment * i) / perSegment, 0, 1);\n    }\n    _later(callback, ms) {\n      const handle = setTimeout(() => { this.timers.delete(handle); callback(); }, ms);\n      this.timers.add(handle);\n      return handle;\n    }\n    _cancelTimers() {\n      for (const handle of this.timers) clearTimeout(handle);\n      this.timers.clear();\n      if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);\n      this.animationFrame = null;\n    }\n    _rebuild() {\n      this._cancelTimers();\n      this.progressEl.replaceChildren();\n      this.floatingEl.replaceChildren();\n      this.segments = [];\n      const frag = document.createDocumentFragment();\n      for (let i = 0; i < this.segmentCount; i++) {\n        const cell = document.createElement('div');\n        cell.className = 'sh-segment';\n        cell.dataset.index = String(i);\n        cell.innerHTML = '<div class=\"sh-trail\"></div><div class=\"sh-fill\"></div><div class=\"sh-flash\"></div>';\n        frag.appendChild(cell);\n        this.segments.push({ cell, fill: cell.querySelector('.sh-fill'), trail: cell.querySelector('.sh-trail') });\n      }\n      this.progressEl.appendChild(frag);\n    }\n    _animateNumber(oldValue, newValue) {\n      if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);\n      if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) {\n        this.displayValue = newValue;\n        this.currentEl.textContent = this._format(newValue);\n        this.animationFrame = null;\n        return;\n      }\n      const from = this.displayValue;\n      const start = performance.now();\n      const duration = 430;\n      const tick = (now) => {\n        const x = Math.min(1, (now - start) / duration);\n        const t = 1 - Math.pow(1 - x, 3);\n        this.displayValue = from + (newValue - from) * t;\n        this.currentEl.textContent = this._format(this.displayValue);\n        if (x < 1) this.animationFrame = requestAnimationFrame(tick);\n        else this.animationFrame = null;\n      };\n      this.animationFrame = requestAnimationFrame(tick);\n    }\n    _paint(previous, next, animated) {\n      const delta = next - previous;\n      if (animated && delta !== 0) {\n        this._cancelTimers();\n        this.floatingEl.replaceChildren();\n      }\n      this.maxEl.textContent = this._format(this.maxHealth);\n      this.progressEl.setAttribute('aria-valuemin', '0');\n      this.progressEl.setAttribute('aria-valuemax', String(this.maxHealth));\n      this.progressEl.setAttribute('aria-valuenow', String(next));\n      const percentage = next / this.maxHealth;\n      this.percentEl.textContent = `${Math.round(percentage * 100)}%`;\n      this.root.classList.toggle('sh-critical', percentage > 0 && percentage <= .25);\n      this.root.classList.toggle('sh-empty', next <= 0);\n      this.stateEl.textContent = next <= 0 ? 'SYSTEM OFFLINE' : percentage <= .25 ? 'CRITICAL STATUS' : 'SYSTEM NORMAL';\n      if (animated && delta !== 0) this._animateNumber(previous, next);\n      else {\n        this.displayValue = next;\n        this.currentEl.textContent = this._format(next);\n      }\n\n      const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;\n      for (let i = 0; i < this.segments.length; i++) {\n        const segment = this.segments[i];\n        const before = this._fraction(previous, i);\n        const after = this._fraction(next, i);\n        const changed = Math.abs(before - after) > 0.00001;\n        segment.cell.classList.remove('sh-hit', 'sh-break', 'sh-heal', 'sh-revive');\n        segment.cell.dataset.state = after <= .00001 ? 'empty' : after >= .99999 ? 'full' : 'partial';\n        segment.fill.style.width = `${after * 100}%`;\n        if (!animated || reducedMotion || !changed) {\n          segment.trail.style.transition = 'none';\n          segment.trail.style.width = `${after * 100}%`;\n          segment.trail.style.opacity = '0';\n          continue;\n        }\n        if (delta < 0) {\n          segment.trail.style.transition = 'none';\n          segment.trail.style.width = `${before * 100}%`;\n          segment.trail.style.opacity = '0.86';\n          void segment.trail.offsetWidth;\n          this._later(() => {\n            segment.trail.style.transition = 'width 680ms cubic-bezier(.15,.82,.22,1), opacity 680ms ease-out';\n            segment.trail.style.width = `${after * 100}%`;\n            segment.trail.style.opacity = '0';\n          }, 160);\n          segment.cell.classList.add(after === 0 ? 'sh-break' : 'sh-hit');\n        } else {\n          segment.trail.style.transition = 'none';\n          segment.trail.style.width = `${after * 100}%`;\n          segment.trail.style.opacity = '0';\n          segment.cell.classList.add(before === 0 && after >= .99999 ? 'sh-revive' : 'sh-heal');\n        }\n        this._later(() => segment.cell.classList.remove('sh-hit', 'sh-break', 'sh-heal', 'sh-revive'), 790);\n      }\n      if (animated && delta !== 0) this._popup(delta);\n    }\n    _popup(delta) {\n      const el = document.createElement('span');\n      el.className = `sh-pop ${delta < 0 ? 'sh-pop-damage' : 'sh-pop-heal'}`;\n      el.textContent = `${delta < 0 ? '−' : '+'}${this._format(Math.abs(delta))} HP`;\n      this.floatingEl.append(el);\n      this._later(() => el.remove(), 980);\n    }\n\n    /* Damage and healing automatically determine full/partial segment changes. */\n    setHealth(value, { animate = true } = {}) {\n      const target = this._clamp(Number(value), 0, this.maxHealth);\n      const previous = this.health;\n      if (target === previous) return this.health;\n      this.health = target;\n      this._paint(previous, target, animate);\n      return this.health;\n    }\n    damage(amount) {\n      const value = Number(amount);\n      if (!Number.isFinite(value) || value <= 0) return 0;\n      const old = this.health;\n      this.setHealth(old - value);\n      return old - this.health;\n    }\n    heal(amount) {\n      const value = Number(amount);\n      if (!Number.isFinite(value) || value <= 0) return 0;\n      const old = this.health;\n      this.setHealth(old + value);\n      return this.health - old;\n    }\n    setSegments(count) {\n      const next = this._count(count);\n      if (next === this.segmentCount) return;\n      this.segmentCount = next;\n      this._rebuild();\n      this._paint(this.health, this.health, false);\n    }\n    setMaxHealth(value, { preserveRatio = true } = {}) {\n      const next = this._positive(value, this.maxHealth);\n      const priorRatio = this.health / this.maxHealth;\n      this.maxHealth = next;\n      this.health = preserveRatio ? next * priorRatio : Math.min(this.health, next);\n      this._rebuild();\n      this._paint(this.health, this.health, false);\n    }\n    setSegmentSize(width, height = this.segmentHeight) {\n      this.segmentWidth = this._clamp(Number(width), 18, 72);\n      this.segmentHeight = this._clamp(Number(height), 12, 48);\n      this.root.style.setProperty('--sh-segment-width', `${this.segmentWidth}px`);\n      this.root.style.setProperty('--sh-segment-height', `${this.segmentHeight}px`);\n    }\n    getState() {\n      return {\n        health: this.health, maxHealth: this.maxHealth, segments: this.segmentCount,\n        segmentWidth: this.segmentWidth, segmentHeight: this.segmentHeight,\n        segmentHealth: this.maxHealth / this.segmentCount\n      };\n    }\n    destroy() {\n      this._cancelTimers();\n      this.root.remove();\n      this.segments.length = 0;\n    }\n  }\n  global.SegmentedHealth = SegmentedHealth;\n})(typeof window !== 'undefined' ? window : globalThis);\n\n// Paste in the JS field of the HTML HUD widget. This code runs in its sandboxed iframe.\nconst healthBar = new SegmentedHealth(document.getElementById('health-hud'), {\n  maxHealth: 120, health: 88, segments: 12, segmentWidth: 34, segmentHeight: 23\n});\n// Accessible inside this HTML HUD iframe; not directly from game scripts.\nwindow.healthBar = healthBar;\nwindow.damage = amount => healthBar.damage(amount);\nwindow.heal = amount => healthBar.heal(amount);\nwindow.setHealth = value => healthBar.setHealth(value);\nwindow.setSegments = count => healthBar.setSegments(count);\n\n// 'miniforge.on' is the bridge exposed by HTML widgets in the current runtime.\n// These names are USER-DEFINED, not built-in Miniforge events.\nif (window.miniforge) {\n  miniforge.on('health.damage', data => healthBar.damage(Number(data?.amount ?? data)));\n  miniforge.on('health.heal', data => healthBar.heal(Number(data?.amount ?? data)));\n  miniforge.on('health.set', data => healthBar.setHealth(Number(data?.value ?? data)));\n  miniforge.on('health.segments', data => healthBar.setSegments(Number(data?.count ?? data)));\n  miniforge.on('health.max', data => healthBar.setMaxHealth(Number(data?.value ?? data)));\n  // Optional: send updated values back to the game vars.\n  // To do so, call miniforge.setVar('hp', healthBar.health) after each mutation.\n}"
+      }
     }
   ],
   "ui": [
@@ -1211,7 +1194,7 @@
       "type": "text",
       "text": "NPC Name",
       "anchor": "bottom-center",
-      "x": -29.86,
+      "x": -29.72,
       "y": 39.49,
       "color": "#f3a05d",
       "fontSize": 15,
@@ -1343,6 +1326,35 @@
       "screen": "screen-41752949-ac69-41ec-a427-078aacf54cd8",
       "type": "html",
       "text": "",
+      "x": 17.05,
+      "y": 11.42,
+      "anchor": "top-left",
+      "color": "#ffffff",
+      "fontSize": 18,
+      "visible": true,
+      "width": 64,
+      "height": 65,
+      "interactive": true,
+      "asset": "asset-c0f11f6f-98a1-46a3-8504-b7843a57ad6c",
+      "zIndex": 2
+    },
+    {
+      "id": "ui-849add27-17e0-4049-b486-7388ca18fcf4",
+      "screen": "screen-ca48dcc9-a574-4cbb-8a79-78d35a937bfd",
+      "type": "text",
+      "text": "Q",
+      "x": 10.9,
+      "y": 7.16,
+      "anchor": "top-left",
+      "color": "#ffffff",
+      "fontSize": 18,
+      "visible": true
+    },
+    {
+      "id": "ui-86c492ba-8416-4ad3-9121-663594793b97",
+      "screen": "screen-41752949-ac69-41ec-a427-078aacf54cd8",
+      "type": "blur",
+      "text": "",
       "x": 17.31,
       "y": 11.26,
       "anchor": "top-left",
@@ -1351,8 +1363,11 @@
       "visible": true,
       "width": 64,
       "height": 65,
-      "interactive": true,
-      "asset": "asset-c0f11f6f-98a1-46a3-8504-b7843a57ad6c"
+      "background": "rgba(18, 26, 32, 0.35)",
+      "backdropBlur": 12,
+      "borderRadius": 12,
+      "borderColor": "rgba(255,255,255,0.18)",
+      "zIndex": 1
     }
   ],
   "locales": {
@@ -1447,6 +1462,9 @@
       "Pause": [
         "Escape",
         "GP9"
+      ],
+      "phone": [
+        "KeyQ"
       ]
     },
     "gamepadDeadzone": 0.18,
