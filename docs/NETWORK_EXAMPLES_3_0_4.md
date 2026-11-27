@@ -33,7 +33,7 @@ The example picker automatically imports `examples/*.json`; no registration or p
 
 ## 5. Steam Relay Lab
 
-Open **Steam Relay Lab** to test lobby creation and discovery, member and owner updates, an acknowledged RPC round trip, invitations, Steam Cloud, achievements, stat reads, and DLC checks. Launch two clients through **Multiplayer & Net Debugger** for the editor simulation. Desktop export produces a Steamworks source package with a depot build command. [Steam Relay Lab walkthrough](STEAM_NATIVE.md)
+Open **Steam Relay Lab** to test lobby creation and discovery, member and owner updates, an acknowledged RPC round trip, invitations, Steam Cloud, achievements, stat reads, and DLC checks. Use **Project → Steamworks & Debug Panel → Play with Steam** in the Desktop editor for native play with your Steam account. Use **Multiplayer & Net Debugger → Launch Host + Client** for the editor simulation. Desktop export produces a Steamworks source package for depot testing. [Steam Relay Lab walkthrough](STEAM_NATIVE.md)
 
 ## Regression commands
 
@@ -45,4 +45,4 @@ pnpm test
 pnpm build
 ```
 
-`test:network` covers the real relay, transport contracts and opaque-origin preview bridge. `test:examples` checks JSON projects, embedded scripts and runtime lifecycle via dependency-free stubs. Full editor/Steam native E2E still requires a browser and Steamworks SDK, respectively.
+`test:network` covers the real relay, transport contracts and opaque-origin preview bridge. `test:examples` checks JSON projects, embedded scripts and runtime lifecycle via dependency-free stubs. The Playwright Steam Relay Lab tests cover two simulated clients and the Desktop preview lifecycle with mocked IPC. Live native Steamworks and SDR require two signed-in Steam clients.

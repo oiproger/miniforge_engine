@@ -1,12 +1,12 @@
 # Miniforge 3.0.4 — Networking and Steam audit
 
-**Current implementation**
+**Historical audit**
 
-This document records the earlier transport audit. The current native feature set and depot instructions are in [Native Steamworks export](STEAM_NATIVE.md).
+This document records the relay hardening that preceded native Steamworks. The Rust Steamworks bridge now ships in the Desktop editor and Steam-enabled depot exports. See [Steamworks setup](STEAM_NATIVE.md) and the [current network roadmap](NETWORKING.md).
 
 ## Summary
 
-This update hardens the existing transports and fixes misleading Steam debug behavior. **It does not claim to implement native Steamworks**: the supplied Tauri `steam.rs` contains only unavailable stubs, is not wired into `main.rs`, and no Steamworks SDK is linked in Cargo. Implementing native Steamworks requires a separate, tested Steamworks SDK adapter and a legitimate AppID; AppID 480 (Spacewar) is only a development example.
+The initial audit hardened the existing relays and made the Local Debug simulation explicit. The notes below describe the routing and preview contracts that are still relevant.
 
 ## Networking: repaired
 
@@ -22,28 +22,11 @@ This update hardens the existing transports and fixes misleading Steam debug beh
 - Game runtime rejects invalid/NaN position and rotation snapshots and enforces host ownership of host-owned snapshots and global state. Remote dynamic entity property names are constrained.
 - Packet room, chat sender, RPC name and pong RTT values are checked. The relay is **not** a server-authoritative anti-cheat layer; game rule validation remains a responsibility of the game/server.
 
-## Steam: repaired contract, native SDK still missing
+## Steam and verification
 
-- `SteamManager` is now honest by default: without native `steam_init`, `initialized = false`, `isAvailable() = false`, `getMode() = 'unavailable'`. Achievements/Cloud/lobbies return failures, not fake success.
-- `Local Debug Simulation` is opt-in in Steam Studio. It uses `BroadcastChannel` and `localStorage`, does not connect to Steam, and `isAvailable()` still returns `false` in debug; `isDebug()` or `getMode()` show its mode.
-- Game runtime passes `localDebug` only when `GameOptions.preview` is true. The exporter bootloader sets this flag **only** for editor preview, so shipped web or Tauri builds cannot accidentally simulate Steam.
-- Native IPC failures never fall back to fake Steam lobbies or report a successful achievement/cloud deletion; local lobby discovery checks membership/capacity and no longer invents arbitrary nonexistent lobbies.
-- Local owner leaving a lobby transfers ownership to remaining members; native sends target actual lobby members rather than passing an empty recipient ID.
-- Steam Studio shows explicit mode and disables unavailable test controls. Native `hasAchievement()`/`listAchievements()` only reflect achievements confirmed during this session until a native query method is implemented.
-
-### What is required for real Steamworks integration
-
-1. A genuine Steamworks SDK available on the target platforms, with redistributable native libraries, an AppID that the developer controls, and a game launched under Steam for end-to-end verification.
-2. A native Rust/Tauri Steamworks adapter (`steamworks-rs` is an option), registration of commands in the Tauri player, callback pumping and correct Steam Networking Messages / matchmaking / RemoteStorage / UserStats handling.
-3. Signed-in Steam test users on **two machines** for lobby discovery, invitations, NAT traversal, ownership migration, P2P delivery, achievements, Cloud, and offline recovery. The existing Tauri `steam.rs` is a stub and **must not be shipped as a working integration**.
-4. Add `wss://`/authentication and game-authoritative rules for public multiplayer: this relay only validates routing and envelope identity, not game cheats.
-
-## Verification
-
-- `npm run test:network` (or `node --experimental-strip-types --test tests/network-steam.check.mjs`) runs self-contained Node 22+ integration checks with actual WebSockets and BroadcastChannel, without requiring npm dependencies.
-- `pnpm typecheck`, `pnpm test`, `pnpm build` must still be run with the project's full dependency installation. These were unavailable in the patch environment.
-- A real Tauri desktop LAN session is also required: Rust Cargo/rustc were unavailable in the patch environment. The native LAN code is upgraded but **not build-verified**.
-- **Steam native runtime testing was not possible**, and is intentionally not claimed.
+- Local Debug remains an editor simulation. In a Desktop editor built with Steamworks, **Play with Steam** opens a native session using the installed SDK. Native initialization errors surface in the editor.
+- Exported Steam games use the native bridge when Steam initialization succeeds. Browser exports require another transport for online play.
+- `pnpm test:network` covers real WebSocket and BroadcastChannel sessions, routing rules and the sandboxed preview simulation. Native IPC mocks and archive checks cover the build and launch contracts. Check Steam accounts, remote networks and LAN discovery in separate acceptance runs.
 
 ## Follow-up: working network example previews
 

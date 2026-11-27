@@ -16,7 +16,7 @@ Designed for solo indie developers, web portals, and game jams: model low-poly a
 - **Animation State Machine**: Visual pan/zoom transition graph (`Idle -> Walk -> Run -> Jump`) on top of Model Editor clips with `api.animation.setParam / setTrigger / playState / getCurrentState` and Event Graph nodes.
 - **Prop / Foliage Scatter Brush**: Standalone viewport tool (next to Transform/Snap) docked in the right sidebar; paints across both **Terrain** heightmaps and **3D Meshes** with automatic `staticBatch`.
 - **Unified Input, Gamepad & Touch Manager**: Rebindable Keyboard, Mouse, W3C Gamepad API, and Touch controls in one studio, plus Perspective view by default.
-- **Multiplayer & Steam API (native SDK pending)**: Local Split-Screen (2–4 players), WebSocket (`server/relay-server.mjs`), WebRTC P2P, and Steam P2P + Lobbies (`AppID 480` debug bridge + `steam_appid.txt` export), `Network Sync` component with `Sync Keys` delta variable sync, 1-click **Launch Host + Client** Net Debugger, **12 Starter Templates**, and **13 Examples**.
+- **Multiplayer & Steamworks**: Local Split-Screen (2–4 players), WebSocket (`server/relay-server.mjs`), WebRTC P2P, and native Steam lobbies and SDR (**Play with Steam** in the Desktop editor and Steam depot export), with optional Local Debug simulation, `Network Sync` component with `Sync Keys` delta variable sync, 1-click **Launch Host + Client** Net Debugger, **12 Starter Templates**, and **13 Examples**.
 
 ## Built-in Tools
 
@@ -58,7 +58,7 @@ See [ROADMAP.md](./ROADMAP.md) for the full plan:
 - **v2.8:** Live 3D Material Editor preview, Live GLSL Shader Editor preview with uniform sliders & presets, scene profiler.
 - **v2.9:** Animation State Machine, Prop / Foliage Scatter brush, Input Action & Gamepad Manager.
 - **v3.0:** Multiplayer (Local Split-Screen, WebSocket & WebRTC P2P), `NetworkSync` component, Lobbies & in-editor Host+Client debugger.
-- **v3.1:** Steamworks SDK integration for Tauri desktop builds (Steam Lobbies, Steam Networking Sockets, Achievements, Cloud Saves) & Steam Debug Panel.
+- **Networking next:** native Steam and LAN acceptance tests, WebRTC ICE/TURN configuration, lobby UX and reconnect/resync. [Network roadmap](docs/NETWORKING.md) · [Steamworks guide](docs/STEAM_NATIVE.md)
 
 ## Known Limitations
 
