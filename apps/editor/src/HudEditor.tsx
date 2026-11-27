@@ -846,6 +846,11 @@ export default function InterfaceForm({
             <Field label="Screen name">
               <input value={screen.name} onChange={(e) => patchScreen({ name: e.target.value })} />
             </Field>
+            {persisted && (
+              <Field label="Screen ID">
+                <input readOnly value={screen.id} onFocus={(e) => e.currentTarget.select()} />
+              </Field>
+            )}
             <Field label="Safe area">
               <input
                 type="checkbox"

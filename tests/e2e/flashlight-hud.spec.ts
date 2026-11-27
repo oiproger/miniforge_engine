@@ -50,7 +50,7 @@ test('phone HUD toggles a child spotlight and both scripts log to the editor con
       },
     },
   )
-  project.ui.push({ id: 'phone-widget', type: 'html', asset: 'phone-asset', x: 10, y: 10, width: 40, height: 25 })
+  project.ui.push({ id: 'phone-widget', type: 'html', text: '', asset: 'phone-asset', x: 10, y: 10, width: 40, height: 25 })
 
   await page.goto('/editor/')
   await page.locator('input[accept=".miniforge,.json,.zip"]').setInputFiles({
